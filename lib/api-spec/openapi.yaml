@@ -1,22 +1,18 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: واجهة دليل موردي المخابز والحلويات
 servers:
   - url: /api
-    description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: directory
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +20,309 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /home:
+    get:
+      operationId: getHome
+      tags: [directory]
+      responses:
+        "200":
+          description: Home page data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeData"
+  /search:
+    get:
+      operationId: searchDirectory
+      tags: [directory]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+  /categories/{id}:
+    get:
+      operationId: fetchCategory
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: rating
+          schema: { type: number }
+        - in: query
+          name: minOrder
+          schema: { type: integer }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [newest, rating, alphabetical] }
+      responses:
+        "200":
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryDetail"
+        "404": { description: Not found }
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [directory]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: verified
+          schema: { type: boolean }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [newest, rating, alphabetical] }
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Supplier" }
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Supplier details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierDetail"
+        "404": { description: Not found }
+  /suppliers/{id}/reviews:
+    post:
+      operationId: addReview
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "400": { description: Invalid review }
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404": { description: Not found }
+  /contact:
+    post:
+      operationId: sendContact
+      tags: [directory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Message received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactResponse"
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    Category:
+      type: object
+      required: [id, name, icon, slug]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        icon: { type: string }
+        slug: { type: string }
+        productCount: { type: integer }
+    Supplier:
+      type: object
+      required: [id, name, city, region, description, phone, whatsapp, isVerified, averageRating, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        region: { type: string }
+        description: { type: string }
+        phone: { type: string }
+        whatsapp: { type: string }
+        isVerified: { type: boolean }
+        averageRating: { type: number }
+        createdAt: { type: string }
+        productCount: { type: integer }
+    Product:
+      type: object
+      required: [id, supplierId, supplierName, categoryId, categoryName, name, weight, unit, countryOfOrigin, minOrder, createdAt]
+      properties:
+        id: { type: integer }
+        supplierId: { type: integer }
+        supplierName: { type: string }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        name: { type: string }
+        weight: { type: string }
+        unit: { type: string }
+        countryOfOrigin: { type: string }
+        minOrder: { type: integer }
+        price: { type: [number, "null"] }
+        imageUrl: { type: [string, "null"] }
+        createdAt: { type: string }
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          required: [ingredients, technicalData, recommendedUse, shelfLife, storageConditions, supplier, similarProducts]
+          properties:
+            ingredients: { type: string }
+            technicalData: { type: string }
+            recommendedUse: { type: string }
+            shelfLife: { type: string }
+            storageConditions: { type: string }
+            supplier: { $ref: "#/components/schemas/Supplier" }
+            similarProducts:
+              type: array
+              items: { $ref: "#/components/schemas/Product" }
+    Review:
+      type: object
+      required: [id, supplierId, reviewerName, rating, comment, createdAt]
+      properties:
+        id: { type: integer }
+        supplierId: { type: integer }
+        reviewerName: { type: string }
+        rating: { type: integer }
+        comment: { type: string }
+        createdAt: { type: string }
+    ReviewInput:
+      type: object
+      required: [reviewerName, rating, comment]
+      properties:
+        reviewerName: { type: string, minLength: 2, maxLength: 80 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, minLength: 3, maxLength: 500 }
+    SupplierDetail:
+      allOf:
+        - $ref: "#/components/schemas/Supplier"
+        - type: object
+          required: [products, reviews]
+          properties:
+            products:
+              type: array
+              items: { $ref: "#/components/schemas/Product" }
+            reviews:
+              type: array
+              items: { $ref: "#/components/schemas/Review" }
+    HomeData:
+      type: object
+      required: [categories, featuredSuppliers, latestProducts, stats]
+      properties:
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+        featuredSuppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        latestProducts:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        stats:
+          $ref: "#/components/schemas/Stats"
+    Stats:
+      type: object
+      required: [suppliers, products, cities]
+      properties:
+        suppliers: { type: integer }
+        products: { type: integer }
+        cities: { type: integer }
+    SearchResults:
+      type: object
+      required: [suppliers, products]
+      properties:
+        suppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+    CategoryDetail:
+      type: object
+      required: [category, suppliers, products, cities]
+      properties:
+        category: { $ref: "#/components/schemas/Category" }
+        suppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        cities:
+          type: array
+          items: { type: string }
+    ContactInput:
+      type: object
+      required: [name, email, subject, message]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        email: { type: string, format: email }
+        subject: { type: string, minLength: 2, maxLength: 120 }
+        message: { type: string, minLength: 5, maxLength: 1000 }
+    ContactResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }

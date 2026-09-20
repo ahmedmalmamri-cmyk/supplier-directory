@@ -1,45 +1,41 @@
-# [Project name]
+# دليل موردي المخابز والحلويات
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+دليل عربي معلوماتي لأصحاب المخابز والكافيهات للبحث عن الموردين والمنتجات والتواصل المباشر معهم.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/api-server run dev` — تشغيل خادم Express على المسار `/api`
+- `pnpm --filter @workspace/bakery-suppliers run dev` — تشغيل واجهة الدليل
+- `pnpm --filter @workspace/api-server run typecheck` — فحص أنواع الخادم
+- `pnpm --filter @workspace/bakery-suppliers run typecheck` — فحص أنواع الواجهة
+- `pnpm --filter @workspace/api-spec run codegen` — إعادة توليد عميل API بعد تعديل OpenAPI
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- React + Vite + TypeScript + Tailwind CSS للواجهة العربية RTL
+- Express 5 للخادم
+- SQLite عبر `node:sqlite` للتخزين المحلي
+- OpenAPI + Orval لعقود API والـ hooks المولدة
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
-
-## Architecture decisions
-
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- `artifacts/bakery-suppliers/src/` — صفحات ومكونات الواجهة
+- `artifacts/api-server/src/routes/directory.ts` — نقاط API للدليل
+- `artifacts/api-server/src/lib/directory-db.ts` — مخطط SQLite والبيانات التجريبية
+- `lib/api-spec/openapi.yaml` — المصدر الأساسي لعقد API
+- `data/bakery-directory.sqlite` — قاعدة البيانات المحلية، تُنشأ تلقائياً عند تشغيل الخادم
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- بحث باسم المنتج أو المورد
+- تصنيفات مع فلترة وترتيب
+- دليل موردين مع ملفات تفصيلية وتواصل واتساب واتصال
+- تفاصيل فنية للمنتجات ومنتجات مشابهة
+- تقييمات مفتوحة بالاسم وتُحفظ في SQLite
+- صفحات من نحن واتصل بنا وشروط الاستخدام
 
-## User preferences
+## Architecture decisions
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- الموقع دليل معلوماتي فقط؛ لا توجد حسابات أو مدفوعات أو طلبات.
+- كل الصور اختيارية وتظهر بدائل رسومية محلية عند عدم توفر صورة.
+- الاتصال التجاري يتم خارج الموقع عبر الهاتف أو واتساب.

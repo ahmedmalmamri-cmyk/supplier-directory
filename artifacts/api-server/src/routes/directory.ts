@@ -1,0 +1,259 @@
+import { Router, type IRouter } from "express";
+import {
+  AddReviewBody,
+  AddReviewParams,
+  AddReviewResponse,
+  FetchCategoryParams,
+  FetchCategoryQueryParams,
+  FetchCategoryResponse,
+  GetHomeResponse,
+  GetProductParams,
+  GetProductResponse,
+  GetSupplierParams,
+  GetSupplierResponse,
+  ListSuppliersQueryParams,
+  ListSuppliersResponse,
+  SearchDirectoryQueryParams,
+  SearchDirectoryResponse,
+  SendContactBody,
+  SendContactResponse,
+} from "@workspace/api-zod";
+import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
+
+const router: IRouter = Router();
+
+const supplierSelect = `
+  SELECT s.id, s.name, s.city, s.region, s.description, s.phone, s.whatsapp,
+    CAST(s.is_verified AS INTEGER) AS isVerified, s.average_rating AS averageRating,
+    s.created_at AS createdAt, COUNT(DISTINCT p.id) AS productCount
+  FROM suppliers s LEFT JOIN products p ON p.supplier_id = s.id
+`;
+const productSelect = `
+  SELECT p.id, p.supplier_id AS supplierId, s.name AS supplierName,
+    p.category_id AS categoryId, c.name AS categoryName, p.name, p.weight, p.unit,
+    p.country_of_origin AS countryOfOrigin, p.min_order AS minOrder, p.price,
+    p.image_url AS imageUrl, p.created_at AS createdAt
+  FROM products p
+  JOIN suppliers s ON s.id = p.supplier_id
+  JOIN categories c ON c.id = p.category_id
+`;
+const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
+  rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified) }));
+
+router.get("/home", (_req, res): void => {
+  const categories = directoryDb.prepare(`
+    SELECT c.id, c.name, c.icon, c.slug, COUNT(p.id) AS productCount
+    FROM categories c LEFT JOIN products p ON p.category_id = c.id
+    GROUP BY c.id ORDER BY c.id
+  `).all();
+  const featuredSuppliers = normalizeSuppliers(directoryDb.prepare(`
+    ${supplierSelect} GROUP BY s.id ORDER BY s.is_verified DESC, s.average_rating DESC LIMIT 6
+  `).all() as Record<string, unknown>[]);
+  const latestProducts = directoryDb.prepare(`
+    ${productSelect} ORDER BY p.created_at DESC, p.id DESC LIMIT 9
+  `).all();
+  const stats = directoryDb.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM suppliers) AS suppliers,
+      (SELECT COUNT(*) FROM products) AS products,
+      (SELECT COUNT(DISTINCT city) FROM suppliers) AS cities
+  `).get();
+  res.json(GetHomeResponse.parse({ categories, featuredSuppliers, latestProducts, stats }));
+});
+
+router.get("/search", (req, res): void => {
+  const parsed = SearchDirectoryQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const term = `%${parsed.data.q ?? ""}%`;
+  const suppliers = normalizeSuppliers(directoryDb.prepare(`
+    ${supplierSelect} WHERE s.name LIKE ? OR s.description LIKE ?
+    GROUP BY s.id ORDER BY s.average_rating DESC
+  `).all(term, term) as Record<string, unknown>[]);
+  const products = directoryDb.prepare(`
+    ${productSelect} WHERE p.name LIKE ? OR s.name LIKE ?
+    ORDER BY p.created_at DESC
+  `).all(term, term);
+  res.json(SearchDirectoryResponse.parse({ suppliers, products }));
+});
+
+router.get("/categories/:id", (req, res): void => {
+  const params = FetchCategoryParams.safeParse(req.params);
+  const query = FetchCategoryQueryParams.safeParse(req.query);
+  if (!params.success || !query.success) {
+    res.status(400).json({ error: "بيانات الفلترة غير صالحة" });
+    return;
+  }
+  const category = directoryDb.prepare(`
+    SELECT c.id, c.name, c.icon, c.slug, COUNT(p.id) AS productCount
+    FROM categories c LEFT JOIN products p ON p.category_id = c.id
+    WHERE c.id = ? GROUP BY c.id
+  `).get(params.data.id);
+  if (!category) {
+    res.status(404).json({ error: "التصنيف غير موجود" });
+    return;
+  }
+  const { city, rating, minOrder, sort = "newest" } = query.data;
+  const order = sort === "rating"
+    ? "s.average_rating DESC"
+    : sort === "alphabetical" ? "p.name ASC" : "p.created_at DESC";
+  const values: (string | number)[] = [params.data.id];
+  let filters = "WHERE p.category_id = ?";
+  if (city) { filters += " AND s.city = ?"; values.push(city); }
+  if (rating) { filters += " AND s.average_rating >= ?"; values.push(rating); }
+  if (minOrder) { filters += " AND p.min_order <= ?"; values.push(minOrder); }
+  const products = directoryDb.prepare(`
+    ${productSelect} ${filters} ORDER BY ${order}
+  `).all(...values);
+  const suppliers = normalizeSuppliers(directoryDb.prepare(`
+    ${supplierSelect}
+    JOIN products cp ON cp.supplier_id = s.id
+    WHERE cp.category_id = ?
+    ${city ? "AND s.city = ?" : ""}
+    ${rating ? "AND s.average_rating >= ?" : ""}
+    GROUP BY s.id ORDER BY s.average_rating DESC
+  `).all(
+    params.data.id,
+    ...([city, rating].filter((value) => value !== undefined) as (string | number)[]),
+  ) as Record<string, unknown>[]);
+  const cities = directoryDb.prepare(`
+    SELECT DISTINCT s.city FROM suppliers s
+    JOIN products p ON p.supplier_id = s.id WHERE p.category_id = ? ORDER BY s.city
+  `).all(params.data.id).map((row) => (row as { city: string }).city);
+  res.json(FetchCategoryResponse.parse({ category, products, suppliers, cities }));
+});
+
+router.get("/suppliers", (req, res): void => {
+  const parsed = ListSuppliersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { q, city, verified, sort = "rating" } = parsed.data;
+  const values: (string | number)[] = [];
+  const clauses: string[] = [];
+  if (q) { clauses.push("(s.name LIKE ? OR s.description LIKE ?)"); values.push(`%${q}%`, `%${q}%`); }
+  if (city) { clauses.push("s.city = ?"); values.push(city); }
+  if (verified !== undefined) { clauses.push("s.is_verified = ?"); values.push(verified ? 1 : 0); }
+  const order = sort === "newest"
+    ? "s.created_at DESC"
+    : sort === "alphabetical" ? "s.name ASC" : "s.average_rating DESC";
+  const rows = directoryDb.prepare(`
+    ${supplierSelect}
+    ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+    GROUP BY s.id ORDER BY ${order}
+  `).all(...values) as Record<string, unknown>[];
+  res.json(ListSuppliersResponse.parse(normalizeSuppliers(rows)));
+});
+
+router.get("/suppliers/:id", (req, res): void => {
+  const parsed = GetSupplierParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const supplierRows = directoryDb.prepare(`
+    ${supplierSelect} WHERE s.id = ? GROUP BY s.id
+  `).all(parsed.data.id) as Record<string, unknown>[];
+  const supplier = normalizeSuppliers(supplierRows)[0];
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود" });
+    return;
+  }
+  const products = directoryDb.prepare(`
+    ${productSelect} WHERE p.supplier_id = ? ORDER BY p.created_at DESC
+  `).all(parsed.data.id);
+  const reviews = directoryDb.prepare(`
+    SELECT id, supplier_id AS supplierId, reviewer_name AS reviewerName,
+      rating, comment, created_at AS createdAt
+    FROM reviews WHERE supplier_id = ? ORDER BY created_at DESC, id DESC
+  `).all(parsed.data.id);
+  res.json(GetSupplierResponse.parse({ ...supplier, products, reviews }));
+});
+
+router.post("/suppliers/:id/reviews", (req, res): void => {
+  const params = AddReviewParams.safeParse(req.params);
+  const body = AddReviewBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "يرجى إدخال اسم وتقييم وتعليق صالح" });
+    return;
+  }
+  const exists = directoryDb.prepare("SELECT id FROM suppliers WHERE id = ?").get(params.data.id);
+  if (!exists) {
+    res.status(404).json({ error: "المورد غير موجود" });
+    return;
+  }
+  const createdAt = new Date().toISOString();
+  const result = directoryDb.prepare(`
+    INSERT INTO reviews (supplier_id, reviewer_name, rating, comment, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(params.data.id, body.data.reviewerName, body.data.rating, body.data.comment, createdAt);
+  refreshSupplierRatings(params.data.id);
+  const review = {
+    id: Number(result.lastInsertRowid),
+    supplierId: params.data.id,
+    reviewerName: body.data.reviewerName,
+    rating: body.data.rating,
+    comment: body.data.comment,
+    createdAt,
+  };
+  res.status(201).json(AddReviewResponse.parse(review));
+});
+
+router.get("/products/:id", (req, res): void => {
+  const parsed = GetProductParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const product = directoryDb.prepare(`
+    SELECT p.id, p.supplier_id AS supplierId, s.name AS supplierName,
+      p.category_id AS categoryId, c.name AS categoryName, p.name, p.weight, p.unit,
+      p.country_of_origin AS countryOfOrigin, p.ingredients,
+      p.technical_data AS technicalData, p.recommended_use AS recommendedUse,
+      p.shelf_life AS shelfLife, p.storage_conditions AS storageConditions,
+      p.min_order AS minOrder, p.price, p.image_url AS imageUrl, p.created_at AS createdAt
+    FROM products p JOIN suppliers s ON s.id = p.supplier_id
+    JOIN categories c ON c.id = p.category_id WHERE p.id = ?
+  `).get(parsed.data.id) as Record<string, unknown> | undefined;
+  if (!product) {
+    res.status(404).json({ error: "المنتج غير موجود" });
+    return;
+  }
+  const supplierId = Number(product.supplierId);
+  const categoryId = Number(product.categoryId);
+  const productId = Number(product.id);
+  const supplierRows = directoryDb.prepare(`
+    ${supplierSelect} WHERE s.id = ? GROUP BY s.id
+  `).all(supplierId) as Record<string, unknown>[];
+  const similarProducts = directoryDb.prepare(`
+    ${productSelect}
+    WHERE p.category_id = ? AND p.supplier_id != ? AND p.id != ?
+    ORDER BY s.average_rating DESC, p.created_at DESC LIMIT 4
+  `).all(categoryId, supplierId, productId);
+  res.json(GetProductResponse.parse({
+    ...product,
+    supplier: normalizeSuppliers(supplierRows)[0],
+    similarProducts,
+  }));
+});
+
+router.post("/contact", (req, res): void => {
+  const body = SendContactBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "يرجى استكمال بيانات الرسالة بشكل صحيح" });
+    return;
+  }
+  directoryDb.prepare(`
+    INSERT INTO contact_messages (name, email, subject, message, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(body.data.name, body.data.email, body.data.subject, body.data.message, new Date().toISOString());
+  res.status(201).json(SendContactResponse.parse({
+    success: true,
+    message: "وصلتنا رسالتك، وسنتواصل معك قريباً.",
+  }));
+});
+
+export default router;
