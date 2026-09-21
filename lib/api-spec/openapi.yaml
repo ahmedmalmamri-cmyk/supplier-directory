@@ -174,6 +174,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactResponse"
+  /register:
+    post:
+      operationId: registerInterest
+      tags: [directory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registration interest saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400": { description: Invalid registration }
 components:
   schemas:
     HealthStatus:
@@ -321,6 +339,19 @@ components:
         subject: { type: string, minLength: 2, maxLength: 120 }
         message: { type: string, minLength: 5, maxLength: 1000 }
     ContactResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    RegisterInput:
+      type: object
+      required: [name, email, region]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        email: { type: string, format: email }
+        region: { type: string, enum: ["المنطقة الشرقية"] }
+    RegisterResponse:
       type: object
       required: [success, message]
       properties:

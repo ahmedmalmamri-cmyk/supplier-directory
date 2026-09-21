@@ -63,6 +63,13 @@ directoryDb.exec(`
     message TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS registration_interests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    region TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
 `);
 
 const categoryCount = directoryDb

@@ -140,6 +140,28 @@ export interface ContactResponse {
   message: string;
 }
 
+export type RegisterInputRegion = typeof RegisterInputRegion[keyof typeof RegisterInputRegion];
+
+
+export const RegisterInputRegion = {
+  المنطقة_الشرقية: 'المنطقة الشرقية',
+} as const;
+
+export interface RegisterInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  name: string;
+  email: string;
+  region: RegisterInputRegion;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+}
+
 export type SearchDirectoryParams = {
 q?: string;
 };

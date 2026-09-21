@@ -319,3 +319,20 @@ export const SendContactResponse = zod.object({
 })
 
 
+export const registerInterestBodyNameMin = 2;
+export const registerInterestBodyNameMax = 80;
+
+
+
+export const RegisterInterestBody = zod.object({
+  "name": zod.string().min(registerInterestBodyNameMin).max(registerInterestBodyNameMax),
+  "email": zod.string().email(),
+  "region": zod.enum(['المنطقة الشرقية'])
+})
+
+export const RegisterInterestResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+

@@ -15,6 +15,8 @@ import {
   ListSuppliersResponse,
   SearchDirectoryQueryParams,
   SearchDirectoryResponse,
+  RegisterInput,
+  RegisterResponse,
   SendContactBody,
   SendContactResponse,
 } from "@workspace/api-zod";
@@ -253,6 +255,22 @@ router.post("/contact", (req, res): void => {
   res.status(201).json(SendContactResponse.parse({
     success: true,
     message: "وصلتنا رسالتك، وسنتواصل معك قريباً.",
+  }));
+});
+
+router.post("/register", (req, res): void => {
+  const body = RegisterInput.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "يرجى إدخال الاسم والبريد والمنطقة الشرقية" });
+    return;
+  }
+  directoryDb.prepare(`
+    INSERT INTO registration_interests (name, email, region, created_at)
+    VALUES (?, ?, ?, ?)
+  `).run(body.data.name, body.data.email, body.data.region, new Date().toISOString());
+  res.status(201).json(RegisterResponse.parse({
+    success: true,
+    message: "تم تسجيل اهتمامك، وسنخبرك عند اكتمال التوسع في منطقتك.",
   }));
 });
 
