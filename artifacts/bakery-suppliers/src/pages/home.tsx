@@ -30,8 +30,8 @@ export default function Home() {
         </div>
       </section>
       {/* Hero Section */}
-      <section className="relative bg-secondary/10 py-20 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0 z-0 opacity-40 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.24),transparent_30%),radial-gradient(circle_at_80%_70%,hsl(var(--secondary)/0.2),transparent_32%)]"></div>
+      <section className="relative bg-background py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0 z-0 opacity-70 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.18),transparent_30%),radial-gradient(circle_at_80%_70%,hsl(var(--secondary)/0.3),transparent_32%)]"></div>
         <div className="container mx-auto px-4 relative z-10 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight max-w-4xl mx-auto">
             ابحث عن أفضل <span className="text-primary">موردي</span> المخابز والحلويات والمقاهي
