@@ -64,7 +64,7 @@ router.get("/contact-settings", (_req, res): void => {
   res.json({
     whatsapp: settings.admin_whatsapp || "0566866805",
     email: settings.admin_email || "ahmed.m.almamri@gmail.com",
-    address: settings.admin_address || "الرياض، المملكة العربية السعودية",
+    address: settings.admin_address || "الدمام، المنطقة الشرقية\nالمملكة العربية السعودية",
   });
 });
 

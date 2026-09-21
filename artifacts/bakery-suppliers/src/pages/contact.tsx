@@ -21,7 +21,7 @@ export default function ContactPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [whatsapp, setWhatsapp] = useState("0566866805");
   const [email, setEmail] = useState("ahmed.m.almamri@gmail.com");
-  const [address, setAddress] = useState("الرياض، المملكة العربية السعودية");
+  const [address, setAddress] = useState("الدمام، المنطقة الشرقية\nالمملكة العربية السعودية");
 
   useEffect(() => {
     fetch("/api/contact-settings")
@@ -99,7 +99,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-bold mb-1">العنوان</div>
-                    <div className="text-muted-foreground text-sm">{address}</div>
+                    <div className="text-muted-foreground text-sm whitespace-pre-line">{address}</div>
                   </div>
                 </li>
               </ul>

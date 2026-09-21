@@ -220,7 +220,7 @@ directoryDb.prepare(`
 directoryDb.prepare(`
   INSERT OR IGNORE INTO directory_settings (key, value)
   VALUES ('admin_address', ?)
-`).run("الرياض، المملكة العربية السعودية");
+`).run("الدمام، المنطقة الشرقية\nالمملكة العربية السعودية");
 
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")

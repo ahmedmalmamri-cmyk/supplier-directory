@@ -512,7 +512,7 @@ router.get("/admin/settings", (req, res): void => {
     cities: JSON.parse(citiesRow?.value || "[]"),
     whatsapp: whatsappRow?.value || "0566866805",
     email: emailRow?.value || "ahmed.m.almamri@gmail.com",
-    address: addressRow?.value || "الرياض، المملكة العربية السعودية",
+    address: addressRow?.value || "الدمام، المنطقة الشرقية\nالمملكة العربية السعودية",
     plans: directoryDb.prepare(`
       SELECT id, name, slug, price_monthly AS priceMonthly, max_products AS maxProducts,
         max_images_per_product AS maxImagesPerProduct, has_verified_badge AS hasVerifiedBadge,
