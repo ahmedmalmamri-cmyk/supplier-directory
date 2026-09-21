@@ -222,7 +222,7 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
 }
 
 function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { form: BuyerForm; error: string; isSubmitting: boolean; onChange: (patch: Partial<BuyerForm>) => void; onBack: () => void; onSubmit: () => void }) {
-  const businessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"];
+  const businessTypes = ["مخبز", "مخبز وحلويات", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"];
   return <section className="max-w-2xl mx-auto bg-card border rounded-3xl p-6 md:p-8 shadow-sm">
     <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground mb-6">تغيير نوع التسجيل</button>
     <div className="flex items-start gap-4 mb-7">
