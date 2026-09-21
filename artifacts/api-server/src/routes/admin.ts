@@ -59,6 +59,14 @@ function verifyPassword(password: string, stored: string) {
   return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
+function createBasicSubscription(supplierId: number, startDate: string) {
+  directoryDb.prepare(`
+    INSERT INTO subscriptions
+      (supplier_id, plan_id, start_date, end_date, status, amount_paid, payment_method, notes, created_at)
+    VALUES (?, 1, ?, NULL, 'active', 0, 'free', ?, ?)
+  `).run(supplierId, startDate, "الباقة الأساسية الافتراضية", startDate);
+}
+
 router.post("/admin/login", (req, res): void => {
   const parsed = AdminLoginBody.safeParse(req.body);
   const configuredPassword = process.env.ADMIN_PASSWORD;
@@ -131,8 +139,9 @@ function reviewRegistration(req: Request, res: Response, status: "approved" | "r
         const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
         directoryDb.prepare(`
           INSERT INTO suppliers
-            (id, name, city, region, description, phone, whatsapp, is_verified, created_at)
-          VALUES (?, ?, ?, ?, ?, '', '', 0, ?)
+            (id, name, city, region, description, phone, whatsapp, is_verified,
+             plan_id, max_products_allowed, is_featured, created_at)
+          VALUES (?, ?, ?, ?, ?, '', '', 0, 1, 3, 0, ?)
         `).run(
           nextId,
           registration.name,
@@ -141,6 +150,7 @@ function reviewRegistration(req: Request, res: Response, status: "approved" | "r
           "بيانات المورد قيد الإضافة والتحديث.",
           reviewedAt,
         );
+        createBasicSubscription(nextId, reviewedAt);
       }
     }
     directoryDb.prepare(`
@@ -249,9 +259,11 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
       directoryDb.prepare(`
         INSERT INTO suppliers
-          (id, name, city, region, description, phone, whatsapp, is_verified, request_id, is_active, created_at)
-        VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, ?)
+          (id, name, city, region, description, phone, whatsapp, is_verified, request_id,
+           is_active, plan_id, max_products_allowed, is_featured, created_at)
+        VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, 1, 3, 0, ?)
       `).run(nextId, businessName, city, String(request.description), phone, whatsapp, verified, id, reviewedAt);
+      createBasicSubscription(nextId, reviewedAt);
     }
     directoryDb.prepare("UPDATE supplier_requests SET status = 'approved', rejection_reason = NULL, reviewed_at = ? WHERE id = ?").run(reviewedAt, id);
     directoryDb.exec("COMMIT");
@@ -314,9 +326,17 @@ router.get("/admin/suppliers", (req, res): void => {
     SELECT id, name, city, region, description, phone, whatsapp,
       is_verified AS isVerified, is_active AS isActive, request_id AS requestId,
       average_rating AS averageRating, created_at AS createdAt,
+      plan_id AS planId, max_products_allowed AS maxProductsAllowed,
+      is_featured AS isFeatured,
+      (SELECT name FROM plans p WHERE p.id = s.plan_id) AS planName,
       (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id) AS productCount
     FROM suppliers s ORDER BY is_active DESC, created_at DESC, id DESC
-  `).all().map((row) => ({ ...row as object, isVerified: Boolean((row as { isVerified: number }).isVerified), isActive: Boolean((row as { isActive: number }).isActive) })));
+  `).all().map((row) => ({
+    ...row as object,
+    isVerified: Boolean((row as { isVerified: number }).isVerified),
+    isActive: Boolean((row as { isActive: number }).isActive),
+    isFeatured: Boolean((row as { isFeatured: number }).isFeatured),
+  })));
 });
 
 router.patch("/admin/suppliers/:id", (req, res): void => {
@@ -356,6 +376,7 @@ router.delete("/admin/suppliers/:id", (req, res): void => {
   const id = Number(req.params.id);
   directoryDb.exec("BEGIN");
   try {
+    directoryDb.prepare("DELETE FROM subscriptions WHERE supplier_id = ?").run(id);
     directoryDb.prepare("DELETE FROM reviews WHERE supplier_id = ?").run(id);
     directoryDb.prepare("DELETE FROM products WHERE supplier_id = ?").run(id);
     const result = directoryDb.prepare("DELETE FROM suppliers WHERE id = ?").run(id);
@@ -386,6 +407,29 @@ router.post("/admin/suppliers/:id/products", (req, res): void => {
     res.status(404).json({ error: "المورد غير موجود" });
     return;
   }
+  const supplierPlan = directoryDb.prepare(`
+    SELECT s.max_products_allowed AS maxProductsAllowed, s.plan_id AS planId,
+      p.name AS planName, p.max_products AS planMaxProducts
+    FROM suppliers s LEFT JOIN plans p ON p.id = s.plan_id
+    WHERE s.id = ?
+  `).get(Number(req.params.id)) as {
+    maxProductsAllowed: number;
+    planId: number;
+    planName: string | null;
+    planMaxProducts: number | null;
+  } | undefined;
+  const currentProductCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM products WHERE supplier_id = ?").get(Number(req.params.id)) as { count: number }).count;
+  const maxProducts = supplierPlan?.planMaxProducts ?? supplierPlan?.maxProductsAllowed ?? 3;
+  if (currentProductCount >= maxProducts) {
+    res.status(403).json({
+      error: `وصل المورد إلى الحد الأقصى في ${supplierPlan?.planName || "الباقة الحالية"} (${maxProducts} منتجات). يرجى ترقية الباقة لإضافة منتجات أكثر.`,
+      code: "PLAN_LIMIT_REACHED",
+      planId: supplierPlan?.planId ?? 1,
+      maxProducts,
+      currentProductCount,
+    });
+    return;
+  }
   const result = directoryDb.prepare(`
     INSERT INTO products
       (supplier_id, category_id, name, weight, unit, country_of_origin, ingredients,
@@ -396,6 +440,53 @@ router.post("/admin/suppliers/:id/products", (req, res): void => {
     String(body.countryOfOrigin || "السعودية"), Number(body.minOrder) || 1, body.price == null ? null : Number(body.price), new Date().toISOString(),
   );
   res.status(201).json({ success: true, productId: Number(result.lastInsertRowid), message: "تمت إضافة المنتج." });
+});
+
+router.post("/admin/suppliers/:id/subscription", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  const planId = Number(req.body.planId);
+  const plan = directoryDb.prepare("SELECT * FROM plans WHERE id = ? AND is_active = 1").get(planId) as Record<string, unknown> | undefined;
+  if (!plan) {
+    res.status(400).json({ error: "الباقة غير موجودة أو غير مفعلة." });
+    return;
+  }
+  const supplier = directoryDb.prepare("SELECT id FROM suppliers WHERE id = ?").get(supplierId);
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود." });
+    return;
+  }
+  const startDate = typeof req.body.startDate === "string" && req.body.startDate.trim()
+    ? req.body.startDate.trim()
+    : new Date().toISOString();
+  const endDate = typeof req.body.endDate === "string" && req.body.endDate.trim() ? req.body.endDate.trim() : null;
+  const paymentMethods = ["bank_transfer", "cash", "free"] as const;
+  const paymentMethod = paymentMethods.includes(req.body.paymentMethod) ? req.body.paymentMethod : "free";
+  const amountPaid = Number.isFinite(Number(req.body.amountPaid)) ? Number(req.body.amountPaid) : Number(plan.price_monthly);
+  const notes = typeof req.body.notes === "string" ? req.body.notes.trim().slice(0, 500) : null;
+  const reviewedAt = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.prepare(`
+      UPDATE subscriptions SET status = 'cancelled'
+      WHERE supplier_id = ? AND status = 'active'
+    `).run(supplierId);
+    directoryDb.prepare(`
+      UPDATE suppliers SET plan_id = ?, subscription_start_date = ?, subscription_end_date = ?,
+        max_products_allowed = ?, is_featured = ?
+      WHERE id = ?
+    `).run(planId, startDate, endDate, Number(plan.max_products), Number(plan.has_featured_listing) ? 1 : 0, supplierId);
+    directoryDb.prepare(`
+      INSERT INTO subscriptions
+        (supplier_id, plan_id, start_date, end_date, status, amount_paid, payment_method, notes, created_at)
+      VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)
+    `).run(supplierId, planId, startDate, endDate, amountPaid, paymentMethod, notes, reviewedAt);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  res.json({ success: true, message: `تم تفعيل ${String(plan.name)} للمورد.`, planId, maxProducts: Number(plan.max_products) });
 });
 
 router.get("/admin/stats", (req, res): void => {
@@ -422,6 +513,22 @@ router.get("/admin/settings", (req, res): void => {
     whatsapp: whatsappRow?.value || "0566866805",
     email: emailRow?.value || "ahmed.m.almamri@gmail.com",
     address: addressRow?.value || "الرياض، المملكة العربية السعودية",
+    plans: directoryDb.prepare(`
+      SELECT id, name, slug, price_monthly AS priceMonthly, max_products AS maxProducts,
+        max_images_per_product AS maxImagesPerProduct, has_verified_badge AS hasVerifiedBadge,
+        has_featured_listing AS hasFeaturedListing, has_banner AS hasBanner,
+        has_analytics AS hasAnalytics, has_priority_support AS hasPrioritySupport,
+        description, is_active AS isActive, display_order AS displayOrder
+      FROM plans ORDER BY display_order, id
+    `).all().map((row) => ({
+      ...row as object,
+      hasVerifiedBadge: Boolean((row as { hasVerifiedBadge: number }).hasVerifiedBadge),
+      hasFeaturedListing: Boolean((row as { hasFeaturedListing: number }).hasFeaturedListing),
+      hasBanner: Boolean((row as { hasBanner: number }).hasBanner),
+      hasAnalytics: Boolean((row as { hasAnalytics: number }).hasAnalytics),
+      hasPrioritySupport: Boolean((row as { hasPrioritySupport: number }).hasPrioritySupport),
+      isActive: Boolean((row as { isActive: number }).isActive),
+    })),
     categories: directoryDb.prepare("SELECT id, name, icon, slug FROM categories ORDER BY id").all(),
   });
 });

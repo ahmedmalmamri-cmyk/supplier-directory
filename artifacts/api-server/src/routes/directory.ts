@@ -28,6 +28,7 @@ const supplierSelect = `
   SELECT s.id, s.name, s.city, s.region, s.description, s.phone, s.whatsapp,
     CAST(s.is_verified AS INTEGER) AS isVerified, s.average_rating AS averageRating,
     s.created_at AS createdAt, s.request_id AS requestId, s.is_active AS isActive,
+    s.is_featured AS isFeatured,
     COUNT(DISTINCT p.id) AS productCount
   FROM suppliers s LEFT JOIN products p ON p.supplier_id = s.id
 `;
@@ -41,7 +42,18 @@ const productSelect = `
   JOIN categories c ON c.id = p.category_id
 `;
 const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
-  rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified) }));
+  rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified), isFeatured: Boolean(row.isFeatured) }));
+
+const normalizePlans = (rows: Record<string, unknown>[]) =>
+  rows.map((row) => ({
+    ...row,
+    hasVerifiedBadge: Boolean(row.hasVerifiedBadge),
+    hasFeaturedListing: Boolean(row.hasFeaturedListing),
+    hasBanner: Boolean(row.hasBanner),
+    hasAnalytics: Boolean(row.hasAnalytics),
+    hasPrioritySupport: Boolean(row.hasPrioritySupport),
+    isActive: Boolean(row.isActive),
+  }));
 
 router.get("/contact-settings", (_req, res): void => {
   const rows = directoryDb.prepare(`
@@ -56,6 +68,17 @@ router.get("/contact-settings", (_req, res): void => {
   });
 });
 
+router.get("/plans", (_req, res): void => {
+  const plans = directoryDb.prepare(`
+    SELECT id, name, slug, price_monthly AS priceMonthly, max_products AS maxProducts,
+      max_images_per_product AS maxImagesPerProduct, has_verified_badge AS hasVerifiedBadge,
+      has_featured_listing AS hasFeaturedListing, has_banner AS hasBanner,
+      has_analytics AS hasAnalytics, has_priority_support AS hasPrioritySupport,
+      description, is_active AS isActive, display_order AS displayOrder
+    FROM plans WHERE is_active = 1 ORDER BY display_order, id
+  `).all() as Record<string, unknown>[];
+  res.json(normalizePlans(plans));
+});
 router.get("/home", (_req, res): void => {
   const categories = directoryDb.prepare(`
     SELECT c.id, c.name, c.icon, c.slug, COUNT(p.id) AS productCount
@@ -63,7 +86,7 @@ router.get("/home", (_req, res): void => {
     GROUP BY c.id ORDER BY c.id
   `).all();
   const featuredSuppliers = normalizeSuppliers(directoryDb.prepare(`
-    ${supplierSelect} WHERE s.is_active = 1 GROUP BY s.id ORDER BY s.is_verified DESC, s.average_rating DESC LIMIT 6
+    ${supplierSelect} WHERE s.is_active = 1 GROUP BY s.id ORDER BY s.is_featured DESC, s.is_verified DESC, s.average_rating DESC LIMIT 6
   `).all() as Record<string, unknown>[]);
   const latestProducts = directoryDb.prepare(`
     ${productSelect} ORDER BY p.created_at DESC, p.id DESC LIMIT 9

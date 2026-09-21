@@ -17,6 +17,22 @@ directoryDb.exec(`
     icon TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE
   );
+  CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    price_monthly REAL NOT NULL DEFAULT 0,
+    max_products INTEGER NOT NULL,
+    max_images_per_product INTEGER NOT NULL,
+    has_verified_badge INTEGER NOT NULL DEFAULT 0,
+    has_featured_listing INTEGER NOT NULL DEFAULT 0,
+    has_banner INTEGER NOT NULL DEFAULT 0,
+    has_analytics INTEGER NOT NULL DEFAULT 0,
+    has_priority_support INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    display_order INTEGER NOT NULL DEFAULT 1
+  );
   CREATE TABLE IF NOT EXISTS suppliers (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -27,6 +43,23 @@ directoryDb.exec(`
     whatsapp TEXT NOT NULL,
     is_verified INTEGER NOT NULL DEFAULT 0,
     average_rating REAL NOT NULL DEFAULT 0,
+    plan_id INTEGER NOT NULL DEFAULT 1 REFERENCES plans(id),
+    subscription_start_date TEXT,
+    subscription_end_date TEXT,
+    max_products_allowed INTEGER NOT NULL DEFAULT 3,
+    is_featured INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+    plan_id INTEGER NOT NULL REFERENCES plans(id),
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'cancelled')),
+    amount_paid REAL NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL DEFAULT 'free' CHECK (payment_method IN ('bank_transfer', 'cash', 'free')),
+    notes TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS products (
@@ -148,6 +181,21 @@ if (!supplierColumns.some((column) => column.name === "request_id")) {
 if (!supplierColumns.some((column) => column.name === "is_active")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
 }
+if (!supplierColumns.some((column) => column.name === "plan_id")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN plan_id INTEGER NOT NULL DEFAULT 1");
+}
+if (!supplierColumns.some((column) => column.name === "subscription_start_date")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN subscription_start_date TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "subscription_end_date")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN subscription_end_date TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "max_products_allowed")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN max_products_allowed INTEGER NOT NULL DEFAULT 3");
+}
+if (!supplierColumns.some((column) => column.name === "is_featured")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0");
+}
 const supplierRequestColumns = directoryDb
   .prepare("PRAGMA table_info(supplier_requests)")
   .all() as Array<{ name: string }>;
@@ -195,6 +243,20 @@ if (categoryCount.count === 0) {
   categories.forEach((row) => insert.run(...row));
 
 }
+
+const plans = [
+  [1, "الباقة الأساسية", "basic", 0, 3, 3, 0, 0, 0, 0, 0, "ابدأ مجاناً واعرض 3 من أفضل منتجاتك", 1, 1],
+  [2, "الباقة الاحترافية", "pro", 150, 7, 5, 1, 1, 0, 1, 1, "الأكثر اختياراً - 7 منتجات مع شارة موثق", 1, 2],
+  [3, "الباقة المميزة", "premium", 400, 10, 10, 1, 1, 1, 1, 1, "أقصى ظهور - 10 منتجات مع بانر إعلاني", 1, 3],
+] as const;
+const insertPlan = directoryDb.prepare(`
+  INSERT OR IGNORE INTO plans
+    (id, name, slug, price_monthly, max_products, max_images_per_product,
+     has_verified_badge, has_featured_listing, has_banner, has_analytics,
+     has_priority_support, description, is_active, display_order)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+plans.forEach((plan) => insertPlan.run(...plan));
 
 const seededSupplierNames = [
   "الشيف العصري", "عجائن السكر", "مصادر الحلى", "ديكور الكيك",

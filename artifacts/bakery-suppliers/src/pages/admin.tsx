@@ -13,9 +13,10 @@ type SupplierRequest = {
   createdAt: string; reviewedAt: string | null;
 };
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; businessName: string | null; referralSource: string | null; createdAt: string };
-type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number };
+type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number; planId: number; planName: string | null; maxProductsAllowed: number; isFeatured: boolean };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
-type Settings = { whatsapp: string; email: string; address: string; cities: string[]; categories: { id: number; name: string }[] };
+type Plan = { id: number; name: string; slug: string; priceMonthly: number; maxProducts: number; maxImagesPerProduct: number; hasVerifiedBadge: boolean; hasFeaturedListing: boolean; hasBanner: boolean; hasAnalytics: boolean; hasPrioritySupport: boolean; description: string; isActive: boolean; displayOrder: number };
+type Settings = { whatsapp: string; email: string; address: string; cities: string[]; categories: { id: number; name: string }[]; plans: Plan[] };
 
 const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
@@ -116,7 +117,7 @@ export default function AdminPage() {
           {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب المشتري.")} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
           {tab === "stats" && <StatsTab stats={stats} />}
-          {tab === "settings" && <SettingsTab settings={settings} onAction={act} />}
+           {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
       </div>
     </AdminShell>
@@ -158,12 +159,15 @@ function StatsTab({ stats }: { stats: Stats | null }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{cards.map(([label, value, Icon]) => <div key={label} className="bg-card border rounded-2xl p-6"><Icon className="w-6 h-6 text-primary mb-4" /><div className="text-3xl font-bold">{value}</div><div className="text-muted-foreground mt-1">{label}</div></div>)}</div>;
 }
 
-function SettingsTab({ settings, onAction }: { settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
+function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | null; suppliers: Supplier[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("1");
+  const [paymentMethod, setPaymentMethod] = useState("free");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -172,6 +176,7 @@ function SettingsTab({ settings, onAction }: { settings: Settings | null; onActi
       setWhatsapp(settings.whatsapp);
       setEmail(settings.email);
       setAddress(settings.address);
+      setSelectedPlanId(String(settings.plans[0]?.id || 1));
     }
   }, [settings]);
 
@@ -192,6 +197,50 @@ function SettingsTab({ settings, onAction }: { settings: Settings | null; onActi
         <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="العنوان" className="h-11 px-3 rounded-lg border bg-background" />
         <button type="button" onClick={() => void onAction("/api/admin/settings/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, address }) }, "تم تحديث بيانات التواصل.")} className="md:col-span-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-bold">حفظ بيانات التواصل</button>
       </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-2">الباقات المتاحة</h3>
+      <p className="text-sm text-muted-foreground mb-5">يبدأ كل مورد بالباقة الأساسية، ويمكن ترقية الباقة من قسم تعيين الاشتراك أدناه.</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {settings?.plans.map((plan) => (
+          <article key={plan.id} className={`rounded-2xl border p-4 ${plan.slug === "pro" ? "border-primary shadow-sm" : ""}`}>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-bold">{plan.name}</h4>
+              {plan.slug === "pro" && <span className="text-[11px] rounded-full bg-primary/15 text-primary px-2 py-1 font-bold">الأكثر اختياراً</span>}
+            </div>
+            <div className="text-2xl font-bold text-primary mt-3">{plan.priceMonthly === 0 ? "مجانية" : `${plan.priceMonthly} ر.س / شهر`}</div>
+            <p className="text-sm text-muted-foreground mt-2 min-h-10">{plan.description}</p>
+            <div className="text-sm mt-4 space-y-1">
+              <div>المنتجات: {plan.maxProducts}</div>
+              <div>الصور لكل منتج: {plan.maxImagesPerProduct}</div>
+              <div>{plan.hasVerifiedBadge ? "✓ شارة موثق" : "— بدون شارة موثق"}</div>
+              <div>{plan.hasFeaturedListing ? "✓ ظهور مميز" : "— ظهور عادي"}</div>
+              <div>{plan.hasBanner ? "✓ بانر إعلاني" : "— بدون بانر إعلاني"}</div>
+              <div>{plan.hasAnalytics ? "✓ إحصائيات" : "— بدون إحصائيات"}</div>
+              <div>{plan.hasPrioritySupport ? "✓ دعم أولوي" : "— دعم عادي"}</div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-2">تعيين اشتراك لمورد</h3>
+      <p className="text-sm text-muted-foreground mb-4">يحدّث هذا الإجراء الحد الأقصى للمنتجات والظهور المميز، ويسجل الاشتراك السابق.</p>
+      {suppliers.length === 0 ? <p className="text-sm text-muted-foreground">لا يوجد موردون معتمدون حالياً.</p> : <div className="grid md:grid-cols-4 gap-3">
+        <select value={selectedSupplierId} onChange={(event) => setSelectedSupplierId(event.target.value)} className="h-11 px-3 rounded-lg border bg-background">
+          <option value="">اختر المورد</option>
+          {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+        </select>
+        <select value={selectedPlanId} onChange={(event) => setSelectedPlanId(event.target.value)} className="h-11 px-3 rounded-lg border bg-background">
+          {settings?.plans.filter((plan) => plan.isActive).map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.maxProducts} منتجات</option>)}
+        </select>
+        <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="h-11 px-3 rounded-lg border bg-background">
+          <option value="free">مجاني</option>
+          <option value="cash">دفع نقدي</option>
+          <option value="bank_transfer">تحويل بنكي</option>
+        </select>
+        <button type="button" disabled={!selectedSupplierId} onClick={() => void onAction(`/api/admin/suppliers/${selectedSupplierId}/subscription`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId: Number(selectedPlanId), paymentMethod }) }, "تم تحديث اشتراك المورد.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold disabled:opacity-50">تفعيل الباقة</button>
+      </div>}
     </section>
     <section className="bg-card border rounded-2xl p-6">
       <h3 className="text-xl font-bold mb-4">تغيير كلمة مرور اللوحة</h3>
