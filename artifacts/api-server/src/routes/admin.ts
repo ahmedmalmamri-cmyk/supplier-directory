@@ -244,14 +244,14 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       directoryDb.prepare(`
         UPDATE suppliers SET name = ?, city = ?, region = 'المنطقة الشرقية', description = ?,
           phone = ?, whatsapp = ?, is_verified = ?, is_active = 1 WHERE id = ?
-      `).run(businessName, city, "بيانات المورد قيد الإضافة والتحديث.", phone, whatsapp, verified, existing.id);
+      `).run(businessName, city, String(request.description), phone, whatsapp, verified, existing.id);
     } else {
       const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
       directoryDb.prepare(`
         INSERT INTO suppliers
           (id, name, city, region, description, phone, whatsapp, is_verified, request_id, is_active, created_at)
         VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, ?)
-      `).run(nextId, businessName, city, "بيانات المورد قيد الإضافة والتحديث.", phone, whatsapp, verified, id, reviewedAt);
+      `).run(nextId, businessName, city, String(request.description), phone, whatsapp, verified, id, reviewedAt);
     }
     directoryDb.prepare("UPDATE supplier_requests SET status = 'approved', rejection_reason = NULL, reviewed_at = ? WHERE id = ?").run(reviewedAt, id);
     directoryDb.exec("COMMIT");

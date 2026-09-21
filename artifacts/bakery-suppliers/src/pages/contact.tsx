@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Mail, MapPin, Phone } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const contactSchema = z.object({
   name: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
@@ -18,6 +18,16 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 
 export default function ContactPage() {
   const [isSuccess, setIsSuccess] = useState(false);
+  const [whatsapp, setWhatsapp] = useState("0566866805");
+
+  useEffect(() => {
+    fetch("/api/contact-settings")
+      .then((response) => response.json())
+      .then((data: { whatsapp?: string }) => {
+        if (data.whatsapp) setWhatsapp(data.whatsapp);
+      })
+      .catch(() => undefined);
+  }, []);
   
   const sendContact = useSendContact({
     mutation: {
@@ -74,8 +84,8 @@ export default function ContactPage() {
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold mb-1">الهاتف</div>
-                    <a href="tel:+966500000000" className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">+966 50 000 0000</a>
+                    <div className="font-bold mb-1">واتساب التواصل</div>
+                    <a href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">{whatsapp}</a>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">

@@ -15,7 +15,7 @@ type SupplierRequest = {
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; businessName: string | null; referralSource: string | null; createdAt: string };
 type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
-type Settings = { cities: string[]; categories: { id: number; name: string }[] };
+type Settings = { whatsapp: string; cities: string[]; categories: { id: number; name: string }[] };
 
 const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
@@ -159,8 +159,50 @@ function StatsTab({ stats }: { stats: Stats | null }) {
 }
 
 function SettingsTab({ settings, onAction }: { settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
-  const [city, setCity] = useState(""); const [category, setCategory] = useState(""); const [currentPassword, setCurrentPassword] = useState(""); const [newPassword, setNewPassword] = useState("");
-  return <div className="space-y-6"><section className="bg-card border rounded-2xl p-6"><h3 className="text-xl font-bold mb-4">تغيير كلمة مرور اللوحة</h3><div className="grid md:grid-cols-3 gap-3"><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="كلمة المرور الحالية" className="h-11 px-3 rounded-lg border bg-background" /><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="كلمة المرور الجديدة (8 أحرف)" className="h-11 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction("/api/admin/settings/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) }, "تم تغيير كلمة المرور.")} className="rounded-lg bg-primary text-primary-foreground font-bold">تغيير كلمة المرور</button></div></section><section className="bg-card border rounded-2xl p-6"><h3 className="text-xl font-bold mb-4">إدارة المدن المتاحة</h3><div className="flex flex-wrap gap-2 mb-4">{settings?.cities.map((item) => <span key={item} className="rounded-full bg-muted px-3 py-1 text-sm">{item}</span>)}</div><div className="flex gap-2 max-w-md"><input value={city} onChange={(event) => setCity(event.target.value)} placeholder="مدينة جديدة" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction("/api/admin/settings/cities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city }) }, "تم تحديث المدن.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">إضافة</button></div></section><section className="bg-card border rounded-2xl p-6"><h3 className="text-xl font-bold mb-4">إدارة التصنيفات</h3><div className="flex flex-wrap gap-2 mb-4">{settings?.categories.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-sm">{item.name}</span>)}</div><div className="flex gap-2 max-w-md"><input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="تصنيف جديد" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction("/api/admin/settings/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: category }) }, "تمت إضافة التصنيف.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">إضافة</button></div></section></div>;
+  const [city, setCity] = useState("");
+  const [category, setCategory] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  useEffect(() => {
+    if (settings) setWhatsapp(settings.whatsapp);
+  }, [settings]);
+
+  return <div className="space-y-6">
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-2">رقم واتساب التواصل</h3>
+      <p className="text-sm text-muted-foreground mb-4">يظهر هذا الرقم في رسالة نجاح التسجيل وصفحة التواصل.</p>
+      <div className="flex gap-2 max-w-md">
+        <input value={whatsapp} onChange={(event) => setWhatsapp(event.target.value)} dir="ltr" placeholder="05XXXXXXXX" className="flex-1 h-11 px-3 rounded-lg border bg-background" />
+        <button type="button" onClick={() => void onAction("/api/admin/settings/whatsapp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ whatsapp }) }, "تم تحديث رقم الواتساب.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">حفظ</button>
+      </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-4">تغيير كلمة مرور اللوحة</h3>
+      <div className="grid md:grid-cols-3 gap-3">
+        <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="كلمة المرور الحالية" className="h-11 px-3 rounded-lg border bg-background" />
+        <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="كلمة المرور الجديدة (8 أحرف)" className="h-11 px-3 rounded-lg border bg-background" />
+        <button type="button" onClick={() => void onAction("/api/admin/settings/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) }, "تم تغيير كلمة المرور.")} className="rounded-lg bg-primary text-primary-foreground font-bold">تغيير كلمة المرور</button>
+      </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-4">إدارة المدن المتاحة</h3>
+      <div className="flex flex-wrap gap-2 mb-4">{settings?.cities.map((item) => <span key={item} className="rounded-full bg-muted px-3 py-1 text-sm">{item}</span>)}</div>
+      <div className="flex gap-2 max-w-md">
+        <input value={city} onChange={(event) => setCity(event.target.value)} placeholder="مدينة جديدة" className="flex-1 h-10 px-3 rounded-lg border bg-background" />
+        <button type="button" onClick={() => void onAction("/api/admin/settings/cities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city }) }, "تم تحديث المدن.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">إضافة</button>
+      </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-4">إدارة التصنيفات</h3>
+      <div className="flex flex-wrap gap-2 mb-4">{settings?.categories.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-sm">{item.name}</span>)}</div>
+      <div className="flex gap-2 max-w-md">
+        <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="تصنيف جديد" className="flex-1 h-10 px-3 rounded-lg border bg-background" />
+        <button type="button" onClick={() => void onAction("/api/admin/settings/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: category }) }, "تمت إضافة التصنيف.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">إضافة</button>
+      </div>
+    </section>
+  </div>;
 }
 
 function Status({ status }: { status: "pending" | "approved" | "rejected" }) {
