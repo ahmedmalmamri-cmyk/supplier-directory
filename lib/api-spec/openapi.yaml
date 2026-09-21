@@ -192,6 +192,83 @@ paths:
               schema:
                 $ref: "#/components/schemas/RegisterResponse"
         "400": { description: Invalid registration }
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Admin session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Invalid credentials }
+  /admin/logout:
+    post:
+      operationId: adminLogout
+      tags: [admin]
+      responses:
+        "200":
+          description: Admin session cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+  /admin/registrations:
+    get:
+      operationId: listRegistrationInterests
+      tags: [admin]
+      responses:
+        "200":
+          description: Registration requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationInterestList"
+        "401": { description: Admin authentication required }
+  /admin/registrations/{id}/approve:
+    post:
+      operationId: approveRegistration
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Registration approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Admin authentication required }
+        "404": { description: Registration not found }
+  /admin/registrations/{id}/reject:
+    post:
+      operationId: rejectRegistration
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Registration rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Admin authentication required }
+        "404": { description: Registration not found }
 components:
   schemas:
     HealthStatus:
@@ -357,3 +434,29 @@ components:
       properties:
         success: { type: boolean }
         message: { type: string }
+    AdminLoginInput:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, minLength: 1 }
+    AdminResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    RegistrationInterest:
+      type: object
+      required: [id, name, email, region, status, createdAt, reviewedAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        region: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string }
+        reviewedAt: { type: [string, "null"] }
+    RegistrationInterestList:
+      type: array
+      items:
+        $ref: "#/components/schemas/RegistrationInterest"
