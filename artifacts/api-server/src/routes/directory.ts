@@ -44,10 +44,16 @@ const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
   rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified) }));
 
 router.get("/contact-settings", (_req, res): void => {
-  const row = directoryDb
-    .prepare("SELECT value FROM directory_settings WHERE key = 'admin_whatsapp'")
-    .get() as { value: string } | undefined;
-  res.json({ whatsapp: row?.value || "0566866805" });
+  const rows = directoryDb.prepare(`
+    SELECT key, value FROM directory_settings
+    WHERE key IN ('admin_whatsapp', 'admin_email', 'admin_address')
+  `).all() as Array<{ key: string; value: string }>;
+  const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  res.json({
+    whatsapp: settings.admin_whatsapp || "0566866805",
+    email: settings.admin_email || "ahmed.m.almamri@gmail.com",
+    address: settings.admin_address || "الرياض، المملكة العربية السعودية",
+  });
 });
 
 router.get("/home", (_req, res): void => {

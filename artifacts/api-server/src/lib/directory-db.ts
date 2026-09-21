@@ -164,6 +164,16 @@ directoryDb.prepare(`
   VALUES ('admin_whatsapp', ?)
 `).run("0566866805");
 
+directoryDb.prepare(`
+  INSERT OR IGNORE INTO directory_settings (key, value)
+  VALUES ('admin_email', ?)
+`).run("ahmed.m.almamri@gmail.com");
+
+directoryDb.prepare(`
+  INSERT OR IGNORE INTO directory_settings (key, value)
+  VALUES ('admin_address', ?)
+`).run("الرياض، المملكة العربية السعودية");
+
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
   .get() as { count: number };

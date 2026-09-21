@@ -15,7 +15,7 @@ type SupplierRequest = {
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; businessName: string | null; referralSource: string | null; createdAt: string };
 type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
-type Settings = { whatsapp: string; cities: string[]; categories: { id: number; name: string }[] };
+type Settings = { whatsapp: string; email: string; address: string; cities: string[]; categories: { id: number; name: string }[] };
 
 const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
@@ -162,11 +162,17 @@ function SettingsTab({ settings, onAction }: { settings: Settings | null; onActi
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
-    if (settings) setWhatsapp(settings.whatsapp);
+    if (settings) {
+      setWhatsapp(settings.whatsapp);
+      setEmail(settings.email);
+      setAddress(settings.address);
+    }
   }, [settings]);
 
   return <div className="space-y-6">
@@ -176,6 +182,15 @@ function SettingsTab({ settings, onAction }: { settings: Settings | null; onActi
       <div className="flex gap-2 max-w-md">
         <input value={whatsapp} onChange={(event) => setWhatsapp(event.target.value)} dir="ltr" placeholder="05XXXXXXXX" className="flex-1 h-11 px-3 rounded-lg border bg-background" />
         <button type="button" onClick={() => void onAction("/api/admin/settings/whatsapp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ whatsapp }) }, "تم تحديث رقم الواتساب.")} className="rounded-lg bg-primary text-primary-foreground px-4 font-bold">حفظ</button>
+      </div>
+    </section>
+    <section className="bg-card border rounded-2xl p-6">
+      <h3 className="text-xl font-bold mb-2">بيانات التواصل العامة</h3>
+      <p className="text-sm text-muted-foreground mb-4">تظهر هذه البيانات في صفحة «اتصل بنا» للموردين والعملاء.</p>
+      <div className="grid md:grid-cols-2 gap-3">
+        <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" dir="ltr" placeholder="البريد الإلكتروني" className="h-11 px-3 rounded-lg border bg-background" />
+        <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="العنوان" className="h-11 px-3 rounded-lg border bg-background" />
+        <button type="button" onClick={() => void onAction("/api/admin/settings/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, address }) }, "تم تحديث بيانات التواصل.")} className="md:col-span-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-bold">حفظ بيانات التواصل</button>
       </div>
     </section>
     <section className="bg-card border rounded-2xl p-6">

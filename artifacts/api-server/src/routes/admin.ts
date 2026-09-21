@@ -415,9 +415,13 @@ router.get("/admin/settings", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const citiesRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'available_cities'").get() as { value: string } | undefined;
   const whatsappRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'admin_whatsapp'").get() as { value: string } | undefined;
+  const emailRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'admin_email'").get() as { value: string } | undefined;
+  const addressRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'admin_address'").get() as { value: string } | undefined;
   res.json({
     cities: JSON.parse(citiesRow?.value || "[]"),
     whatsapp: whatsappRow?.value || "0566866805",
+    email: emailRow?.value || "ahmed.m.almamri@gmail.com",
+    address: addressRow?.value || "الرياض، المملكة العربية السعودية",
     categories: directoryDb.prepare("SELECT id, name, icon, slug FROM categories ORDER BY id").all(),
   });
 });
@@ -444,6 +448,19 @@ router.post("/admin/settings/whatsapp", (req, res): void => {
   }
   directoryDb.prepare("INSERT OR REPLACE INTO directory_settings (key, value) VALUES ('admin_whatsapp', ?)").run(whatsapp);
   res.json({ success: true, whatsapp, message: "تم تحديث رقم الواتساب." });
+});
+
+router.post("/admin/settings/contact", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const email = typeof req.body.email === "string" ? req.body.email.trim() : "";
+  const address = typeof req.body.address === "string" ? req.body.address.trim() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !address) {
+    res.status(400).json({ error: "أدخل بريداً إلكترونياً صحيحاً وعنواناً." });
+    return;
+  }
+  directoryDb.prepare("INSERT OR REPLACE INTO directory_settings (key, value) VALUES ('admin_email', ?)").run(email);
+  directoryDb.prepare("INSERT OR REPLACE INTO directory_settings (key, value) VALUES ('admin_address', ?)").run(address);
+  res.json({ success: true, email, address, message: "تم تحديث بيانات التواصل." });
 });
 
 router.post("/admin/settings/cities", (req, res): void => {

@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useSendContact } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,12 +20,16 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 export default function ContactPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [whatsapp, setWhatsapp] = useState("0566866805");
+  const [email, setEmail] = useState("ahmed.m.almamri@gmail.com");
+  const [address, setAddress] = useState("الرياض، المملكة العربية السعودية");
 
   useEffect(() => {
     fetch("/api/contact-settings")
       .then((response) => response.json())
-      .then((data: { whatsapp?: string }) => {
+      .then((data: { whatsapp?: string; email?: string; address?: string }) => {
         if (data.whatsapp) setWhatsapp(data.whatsapp);
+        if (data.email) setEmail(data.email);
+        if (data.address) setAddress(data.address);
       })
       .catch(() => undefined);
   }, []);
@@ -76,7 +81,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-bold mb-1">البريد الإلكتروني</div>
-                    <a href="mailto:info@bakery-suppliers.sa" className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">info@bakery-suppliers.sa</a>
+                    <a href={`mailto:${email}`} className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">{email}</a>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">
@@ -94,18 +99,18 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-bold mb-1">العنوان</div>
-                    <div className="text-muted-foreground text-sm">الرياض، المملكة العربية السعودية</div>
+                    <div className="text-muted-foreground text-sm">{address}</div>
                   </div>
                 </li>
               </ul>
             </div>
             
             <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl">
-              <h3 className="font-bold mb-2 text-primary">هل أنت مورد؟</h3>
-              <p className="text-sm text-muted-foreground mb-4">انضم إلى شبكتنا ووسع نطاق أعمالك وقم بالوصول إلى مئات المخابز والمقاهي.</p>
-              <button className="w-full py-2 bg-background border border-primary text-primary rounded-lg font-medium text-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+              <h3 className="font-bold mb-2 text-primary">هل أنت مورد أو صاحب نشاط؟</h3>
+              <p className="text-sm text-muted-foreground mb-4">تواصل معنا، وسنراجع طلب الانضمام ونوافق عليه قبل نشر بياناتك في الدليل.</p>
+              <Link href="/register" className="block w-full py-2 text-center bg-background border border-primary text-primary rounded-lg font-medium text-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                 طلب انضمام كمورد
-              </button>
+              </Link>
             </div>
           </div>
 
