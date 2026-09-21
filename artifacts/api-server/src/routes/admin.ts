@@ -414,7 +414,12 @@ router.get("/admin/stats", (req, res): void => {
 router.get("/admin/settings", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const citiesRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'available_cities'").get() as { value: string } | undefined;
-  res.json({ cities: JSON.parse(citiesRow?.value || "[]"), categories: directoryDb.prepare("SELECT id, name, icon, slug FROM categories ORDER BY id").all() });
+  const whatsappRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'admin_whatsapp'").get() as { value: string } | undefined;
+  res.json({
+    cities: JSON.parse(citiesRow?.value || "[]"),
+    whatsapp: whatsappRow?.value || "0566866805",
+    categories: directoryDb.prepare("SELECT id, name, icon, slug FROM categories ORDER BY id").all(),
+  });
 });
 
 router.post("/admin/settings/password", (req, res): void => {
@@ -428,6 +433,17 @@ router.post("/admin/settings/password", (req, res): void => {
   }
   directoryDb.prepare("UPDATE admin_credentials SET password_hash = ?, updated_at = ? WHERE id = 1").run(hashPassword(newPassword), new Date().toISOString());
   res.json({ success: true, message: "تم تغيير كلمة مرور اللوحة." });
+});
+
+router.post("/admin/settings/whatsapp", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const whatsapp = typeof req.body.whatsapp === "string" ? req.body.whatsapp.trim() : "";
+  if (!/^05\d{8}$/.test(whatsapp)) {
+    res.status(400).json({ error: "أدخل رقم واتساب سعودياً بصيغة 05XXXXXXXX." });
+    return;
+  }
+  directoryDb.prepare("INSERT OR REPLACE INTO directory_settings (key, value) VALUES ('admin_whatsapp', ?)").run(whatsapp);
+  res.json({ success: true, whatsapp, message: "تم تحديث رقم الواتساب." });
 });
 
 router.post("/admin/settings/cities", (req, res): void => {

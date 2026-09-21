@@ -159,15 +159,10 @@ directoryDb.prepare(`
   VALUES ('available_cities', ?)
 `).run(JSON.stringify(["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"]));
 
-const actualSuppliers = [
-  [1, "الشيف العصري", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [2, "عجائن السكر", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [3, "مصادر الحلى", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [4, "ديكور الكيك", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [5, "ملتقى الخبازين", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [6, "الجسر الحديث", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [7, "نجوم حلوى الشرقية", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-] as const;
+directoryDb.prepare(`
+  INSERT OR IGNORE INTO directory_settings (key, value)
+  VALUES ('admin_whatsapp', ?)
+`).run("0566866805");
 
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
@@ -189,39 +184,34 @@ if (categoryCount.count === 0) {
   );
   categories.forEach((row) => insert.run(...row));
 
-  const insertSupplier = directoryDb.prepare(`
-    INSERT INTO suppliers
-      (id, name, city, region, description, phone, whatsapp, is_verified, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  actualSuppliers.forEach((row) => insertSupplier.run(...row));
-
 }
 
-const demoSupplierNames = [
+const seededSupplierNames = [
+  "الشيف العصري", "عجائن السكر", "مصادر الحلى", "ديكور الكيك",
+  "ملتقى الخبازين", "الجسر الحديث", "نجوم حلوى الشرقية",
   "شركة سنابل الدقيق", "مؤسسة مذاق الكاكاو", "روائع التغليف", "بيت المكسرات للتجارة",
   "الخميرة الذهبية", "أساس الحلوى", "زبدة الشرق", "إمداد المخبوزات",
 ];
-const hasDemoSuppliers = directoryDb.prepare(
-  `SELECT COUNT(*) AS count FROM suppliers WHERE name IN (${demoSupplierNames.map(() => "?").join(",")})`,
-).get(...demoSupplierNames) as { count: number };
-const migration = directoryDb.prepare(
+const clearSeededSuppliersMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",
-).get("replace-demo-suppliers") as { name: string } | undefined;
+).get("clear-seeded-suppliers") as { name: string } | undefined;
 
-if (hasDemoSuppliers.count > 0 && !migration) {
+if (!clearSeededSuppliersMigration) {
   directoryDb.exec("BEGIN");
   try {
-    directoryDb.exec("DELETE FROM reviews; DELETE FROM products; DELETE FROM suppliers;");
-    const insertSupplier = directoryDb.prepare(`
-      INSERT INTO suppliers
-        (id, name, city, region, description, phone, whatsapp, is_verified, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    actualSuppliers.forEach((row) => insertSupplier.run(...row));
+    const placeholders = seededSupplierNames.map(() => "?").join(",");
+    const seededIds = directoryDb.prepare(
+      `SELECT id FROM suppliers WHERE name IN (${placeholders})`,
+    ).all(...seededSupplierNames).map((row) => (row as { id: number }).id);
+    if (seededIds.length > 0) {
+      const idPlaceholders = seededIds.map(() => "?").join(",");
+      directoryDb.prepare(`DELETE FROM reviews WHERE supplier_id IN (${idPlaceholders})`).run(...seededIds);
+      directoryDb.prepare(`DELETE FROM products WHERE supplier_id IN (${idPlaceholders})`).run(...seededIds);
+      directoryDb.prepare(`DELETE FROM suppliers WHERE id IN (${idPlaceholders})`).run(...seededIds);
+    }
     directoryDb.prepare(
       "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
-    ).run("replace-demo-suppliers", new Date().toISOString());
+    ).run("clear-seeded-suppliers", new Date().toISOString());
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");

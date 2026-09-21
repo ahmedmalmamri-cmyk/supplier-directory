@@ -43,6 +43,13 @@ const productSelect = `
 const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
   rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified) }));
 
+router.get("/contact-settings", (_req, res): void => {
+  const row = directoryDb
+    .prepare("SELECT value FROM directory_settings WHERE key = 'admin_whatsapp'")
+    .get() as { value: string } | undefined;
+  res.json({ whatsapp: row?.value || "0566866805" });
+});
+
 router.get("/home", (_req, res): void => {
   const categories = directoryDb.prepare(`
     SELECT c.id, c.name, c.icon, c.slug, COUNT(p.id) AS productCount
