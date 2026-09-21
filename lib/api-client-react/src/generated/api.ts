@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminLoginInput,
+  AdminResponse,
   CategoryDetail,
   ContactInput,
   ContactResponse,
@@ -30,6 +32,7 @@ import type {
   ProductDetail,
   RegisterInput,
   RegisterResponse,
+  RegistrationInterestList,
   Review,
   ReviewInput,
   SearchDirectoryParams,
@@ -833,5 +836,362 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRegisterInterestMutationOptions(options));
+    }
+
+export const getAdminLoginUrl = () => {
+
+
+
+
+  return `/api/admin/login`
+}
+
+export const adminLogin = async (adminLoginInput: AdminLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminResponse>(getAdminLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminLoginInput)
+  }
+);}
+
+
+
+
+
+export const getAdminLoginMutationKey = () => ['adminLogin'] as const;
+
+export const getAdminLoginMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,AdminLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,AdminLoginMutationVariables, TContext> => {
+
+const mutationKey = getAdminLoginMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminLogin>>, AdminLoginMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminLogin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminLoginMutationResult = NonNullable<Awaited<ReturnType<typeof adminLogin>>>
+    export type AdminLoginMutationBody = BodyType<AdminLoginInput>
+    export type AdminLoginMutationError = ErrorType<void>
+    export type AdminLoginMutationVariables = {data: BodyType<AdminLoginInput>}
+
+    export const useAdminLogin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,AdminLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminLogin>>,
+        TError,
+        AdminLoginMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminLoginMutationOptions(options));
+    }
+
+export const getAdminLogoutUrl = () => {
+
+
+
+
+  return `/api/admin/logout`
+}
+
+export const adminLogout = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse> => {
+
+  return customFetch<AdminResponse>(getAdminLogoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminLogoutMutationKey = () => ['adminLogout'] as const;
+
+export const getAdminLogoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext> => {
+
+const mutationKey = getAdminLogoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminLogout>>, void> = () => {
+
+
+          return  adminLogout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof adminLogout>>>
+
+    export type AdminLogoutMutationError = ErrorType<unknown>
+
+
+    export const useAdminLogout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminLogout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAdminLogoutMutationOptions(options));
+    }
+
+export const getListRegistrationInterestsUrl = () => {
+
+
+
+
+  return `/api/admin/registrations`
+}
+
+export const listRegistrationInterests = async ( options?: Parameters<typeof customFetch>[1]): Promise<RegistrationInterestList> => {
+
+  return customFetch<RegistrationInterestList>(getListRegistrationInterestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRegistrationInterestsQueryKey = () => {
+    return [
+    `/api/admin/registrations`
+    ] as const;
+    }
+
+
+export const getListRegistrationInterestsQueryOptions = <TData = Awaited<ReturnType<typeof listRegistrationInterests>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRegistrationInterests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRegistrationInterestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRegistrationInterests>>> = ({ signal }) => listRegistrationInterests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRegistrationInterests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRegistrationInterestsQueryResult = NonNullable<Awaited<ReturnType<typeof listRegistrationInterests>>>
+export type ListRegistrationInterestsQueryError = ErrorType<void>
+
+
+
+export function useListRegistrationInterests<TData = Awaited<ReturnType<typeof listRegistrationInterests>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRegistrationInterests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRegistrationInterestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveRegistrationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/registrations/${id}/approve`
+}
+
+export const approveRegistration = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse> => {
+
+  return customFetch<AdminResponse>(getApproveRegistrationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveRegistrationMutationKey = () => ['approveRegistration'] as const;
+
+export const getApproveRegistrationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRegistration>>, TError,ApproveRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveRegistration>>, TError,ApproveRegistrationMutationVariables, TContext> => {
+
+const mutationKey = getApproveRegistrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveRegistration>>, ApproveRegistrationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveRegistration(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof approveRegistration>>>
+
+    export type ApproveRegistrationMutationError = ErrorType<void>
+    export type ApproveRegistrationMutationVariables = {id: number}
+
+    export const useApproveRegistration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRegistration>>, TError,ApproveRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveRegistration>>,
+        TError,
+        ApproveRegistrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveRegistrationMutationOptions(options));
+    }
+
+export const getRejectRegistrationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/registrations/${id}/reject`
+}
+
+export const rejectRegistration = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminResponse> => {
+
+  return customFetch<AdminResponse>(getRejectRegistrationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRejectRegistrationMutationKey = () => ['rejectRegistration'] as const;
+
+export const getRejectRegistrationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRegistration>>, TError,RejectRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectRegistration>>, TError,RejectRegistrationMutationVariables, TContext> => {
+
+const mutationKey = getRejectRegistrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectRegistration>>, RejectRegistrationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectRegistration(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof rejectRegistration>>>
+
+    export type RejectRegistrationMutationError = ErrorType<void>
+    export type RejectRegistrationMutationVariables = {id: number}
+
+    export const useRejectRegistration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRegistration>>, TError,RejectRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectRegistration>>,
+        TError,
+        RejectRegistrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectRegistrationMutationOptions(options));
     }
 

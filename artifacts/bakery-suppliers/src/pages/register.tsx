@@ -68,9 +68,9 @@ export default function RegisterPage() {
             {isSuccess ? (
               <div className="text-center py-10">
                 <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-3">تم تسجيل اهتمامك بنجاح</h2>
+                <h2 className="text-2xl font-bold mb-3">تم إرسال طلبك للمراجعة</h2>
                 <p className="text-muted-foreground mb-6">
-                  سنرسل لك إشعاراً عند توفر الدليل في منطقتك.
+                  سيُراجع المدير الطلب يدوياً قبل ظهور المورد في الدليل.
                 </p>
                 <button type="button" onClick={() => setIsSuccess(false)} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90">
                   تسجيل اهتمام آخر

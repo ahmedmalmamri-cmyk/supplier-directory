@@ -68,6 +68,8 @@ directoryDb.exec(`
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     region TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    reviewed_at TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS directory_migrations (
@@ -75,6 +77,16 @@ directoryDb.exec(`
     applied_at TEXT NOT NULL
   );
 `);
+
+const registrationColumns = directoryDb
+  .prepare("PRAGMA table_info(registration_interests)")
+  .all() as Array<{ name: string }>;
+if (!registrationColumns.some((column) => column.name === "status")) {
+  directoryDb.exec("ALTER TABLE registration_interests ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
+}
+if (!registrationColumns.some((column) => column.name === "reviewed_at")) {
+  directoryDb.exec("ALTER TABLE registration_interests ADD COLUMN reviewed_at TEXT");
+}
 
 const actualSuppliers = [
   [1, "الشيف العصري", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],

@@ -265,8 +265,8 @@ router.post("/register", (req, res): void => {
     return;
   }
   directoryDb.prepare(`
-    INSERT INTO registration_interests (name, email, region, created_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO registration_interests (name, email, region, status, created_at)
+    VALUES (?, ?, ?, 'pending', ?)
   `).run(body.data.name, body.data.email, body.data.region, new Date().toISOString());
   res.status(201).json(RegisterInterestResponse.parse({
     success: true,

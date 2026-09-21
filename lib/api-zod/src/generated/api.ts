@@ -336,3 +336,54 @@ export const RegisterInterestResponse = zod.object({
 })
 
 
+
+
+
+export const AdminLoginBody = zod.object({
+  "password": zod.string().min(1)
+})
+
+export const AdminLoginResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const AdminLogoutResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const ListRegistrationInterestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "region": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.string(),
+  "reviewedAt": zod.string().nullable()
+})
+export const ListRegistrationInterestsResponse = zod.array(ListRegistrationInterestsResponseItem)
+
+
+export const ApproveRegistrationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ApproveRegistrationResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const RejectRegistrationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const RejectRegistrationResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+

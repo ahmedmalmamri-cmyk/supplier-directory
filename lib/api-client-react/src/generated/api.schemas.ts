@@ -162,6 +162,38 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface AdminLoginInput {
+  /** @minLength 1 */
+  password: string;
+}
+
+export interface AdminResponse {
+  success: boolean;
+  message: string;
+}
+
+export type RegistrationInterestStatus = typeof RegistrationInterestStatus[keyof typeof RegistrationInterestStatus];
+
+
+export const RegistrationInterestStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface RegistrationInterest {
+  id: number;
+  name: string;
+  email: string;
+  region: string;
+  status: RegistrationInterestStatus;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export type RegistrationInterestList = RegistrationInterest[];
+
 export type SearchDirectoryParams = {
 q?: string;
 };
