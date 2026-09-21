@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket } from "lucide-react";
 import { useState } from "react";
 
 export function MainLayout({ children }: { children: ReactNode }) {
@@ -21,6 +21,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <Link href="/" className="hover:text-foreground transition-colors">الرئيسية</Link>
               <a href="/#categories" className="hover:text-foreground transition-colors">التصنيفات</a>
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
+              <Link href="/register" className="hover:text-foreground transition-colors">التسجيل</Link>
               <Link href="/contact" className="hover:text-foreground transition-colors">اتصل بنا</Link>
             </nav>
           </div>
@@ -49,6 +50,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Package className="w-4 h-4"/> الرئيسية</Link>
             <a href="/#categories" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><LayoutGrid className="w-4 h-4"/> التصنيفات</a>
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Users className="w-4 h-4"/> الموردين</Link>
+            <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserPlus className="w-4 h-4"/> التسجيل</Link>
+            <Link href="/expansion" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Rocket className="w-4 h-4"/> خطة التوسع</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Mail className="w-4 h-4"/> اتصل بنا</Link>
           </nav>
         </div>
@@ -77,6 +80,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <li><Link href="/suppliers" className="hover:text-foreground">تصفح الموردين</Link></li>
               <li><Link href="/search" className="hover:text-foreground">البحث عن منتجات</Link></li>
               <li><Link href="/about" className="hover:text-foreground">من نحن</Link></li>
+              <li><Link href="/expansion" className="hover:text-foreground">خطة التوسع</Link></li>
             </ul>
           </div>
           <div>
@@ -84,6 +88,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/contact" className="hover:text-foreground flex items-center gap-2"><Mail className="w-3 h-3"/> اتصل بنا</Link></li>
               <li><Link href="/terms" className="hover:text-foreground flex items-center gap-2"><FileText className="w-3 h-3"/> الشروط والأحكام</Link></li>
+              <li><Link href="/register" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> التسجيل</Link></li>
             </ul>
           </div>
         </div>

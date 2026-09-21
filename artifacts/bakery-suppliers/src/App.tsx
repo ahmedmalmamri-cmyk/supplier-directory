@@ -20,6 +20,8 @@ import AboutPage from '@/pages/about';
 import ContactPage from '@/pages/contact';
 import TermsPage from '@/pages/terms';
 import SearchPage from '@/pages/search';
+import RegisterPage from '@/pages/register';
+import ExpansionPage from '@/pages/expansion';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +45,8 @@ function Router() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/search" component={SearchPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/expansion" component={ExpansionPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

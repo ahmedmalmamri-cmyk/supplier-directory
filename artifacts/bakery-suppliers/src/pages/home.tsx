@@ -22,6 +22,13 @@ export default function Home() {
 
   return (
     <MainLayout>
+      <section className="bg-primary text-primary-foreground py-4">
+        <div className="container mx-auto px-4 text-center text-sm md:text-base font-semibold leading-7">
+          <p>الدليل متاح حالياً للمنطقة الشرقية فقط</p>
+          <p className="font-normal">الدمام <span className="mx-1">•</span> الخبر <span className="mx-1">•</span> الظهران <span className="mx-1">•</span> الأحساء <span className="mx-1">•</span> الجبيل</p>
+          <p className="font-normal opacity-90">قريباً: الرياض وجدة وباقي المناطق</p>
+        </div>
+      </section>
       {/* Hero Section */}
       <section className="relative bg-secondary/10 py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 z-0 opacity-40 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.24),transparent_30%),radial-gradient(circle_at_80%_70%,hsl(var(--secondary)/0.2),transparent_32%)]"></div>
