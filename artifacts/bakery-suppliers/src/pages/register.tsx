@@ -12,8 +12,8 @@ type SupplierForm = {
   acceptedData: boolean; acceptedTerms: boolean; acceptedBusiness: boolean; acceptedPublish: boolean;
 };
 type BuyerForm = {
-  fullName: string; phone: string; email: string; city: string; businessType: string;
-  businessName: string; referralSource: string;
+  fullName: string; phone: string; city: string; businessType: string;
+  businessName: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
@@ -27,7 +27,15 @@ const emptySupplier: SupplierForm = {
   categories: [], minOrder: "", description: "", commercialLicense: "", idCard: "", healthCertificate: "",
   acceptedData: false, acceptedTerms: false, acceptedBusiness: false, acceptedPublish: false,
 };
-const emptyBuyer: BuyerForm = { fullName: "", phone: "", email: "", city: "", businessType: "", businessName: "", referralSource: "" };
+const emptyBuyer: BuyerForm = {
+  fullName: "",
+  phone: "",
+  city: "",
+  businessType: "",
+  businessName: "",
+  newsletterWeekly: false,
+  buyersGroup: false,
+};
 
 export default function RegisterPage() {
   const [type, setType] = useState<RegistrationType | null>(null);
@@ -41,7 +49,7 @@ export default function RegisterPage() {
   useEffect(() => saveDraft("supplier", supplier), [supplier]);
   useEffect(() => saveDraft("buyer", buyer), [buyer]);
 
-  const title = type === "supplier" ? "تسجيل مورد" : type === "buyer" ? "تسجيل مشترٍ" : "التسجيل في الدليل";
+  const title = type === "supplier" ? "تسجيل مورد" : type === "buyer" ? "سجّل كمشترٍ (اختياري - دقيقة واحدة)" : "التسجيل في الدليل";
   const updateSupplier = (patch: Partial<SupplierForm>) => setSupplier((current) => ({ ...current, ...patch }));
 
   if (submitted) return <ThankYou requestCode={submitted.code} type={submitted.type} onAgain={() => { setSubmitted(null); setType(null); setStep(0); }} />;
@@ -214,20 +222,37 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
 }
 
 function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { form: BuyerForm; error: string; isSubmitting: boolean; onChange: (patch: Partial<BuyerForm>) => void; onBack: () => void; onSubmit: () => void }) {
+  const businessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"];
   return <section className="max-w-2xl mx-auto bg-card border rounded-3xl p-6 md:p-8 shadow-sm">
     <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground mb-6">تغيير نوع التسجيل</button>
-    <h2 className="text-2xl font-bold mb-2">بيانات المشتري</h2>
-    <p className="text-muted-foreground mb-7">لن يُنشر المشتري في الدليل؛ تُحفظ البيانات للتواصل وتحسين الخدمة.</p>
+    <div className="flex items-start gap-4 mb-7">
+      <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><ShoppingCart className="w-6 h-6" /></div>
+      <div>
+        <h2 className="text-2xl font-bold mb-2">سجّل كمشترٍ</h2>
+        <p className="text-muted-foreground">بيانات بسيطة تساعدنا على ترشيح الموردين المناسبين لك.</p>
+      </div>
+    </div>
     <div className="space-y-5">
       <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} />
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
-      <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" />
       <SelectField label="المدينة *" value={form.city} options={buyerCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
-      <SelectField label="نوع النشاط *" value={form.businessType} options={["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"]} onChange={(value) => onChange({ businessType: value })} placeholder="اختر نوع النشاط" />
-      <Field label="اسم النشاط التجاري (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
-      <Field label="كيف عرفت عن الدليل؟ (اختياري)" value={form.referralSource} onChange={(value) => onChange({ referralSource: value })} />
+      <fieldset>
+        <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {businessTypes.map((businessType) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
+            <input type="radio" name="buyer-business-type" value={businessType} checked={form.businessType === businessType} onChange={() => onChange({ businessType })} className="accent-primary" />
+            <span>{businessType}</span>
+          </label>)}
+        </div>
+      </fieldset>
+      <Field label="اسم النشاط (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
+      <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
+        <p className="text-sm font-bold">خيارات التواصل</p>
+        <CheckField label="أرغب باستقبال نشرة الأسعار الأسبوعية" checked={form.newsletterWeekly} onChange={(value) => onChange({ newsletterWeekly: value })} />
+        <CheckField label="أرغب بالانضمام لمجموعة المشترين" checked={form.buyersGroup} onChange={(value) => onChange({ buyersGroup: value })} />
+      </div>
       {error && <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 p-4 text-sm">{error}</div>}
-      <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري الإرسال..." : "تسجيل كمشترٍ"}</button>
+      <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري التسجيل..." : "تسجيل"}</button>
     </div>
   </section>;
 }

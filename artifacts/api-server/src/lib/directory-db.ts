@@ -145,6 +145,8 @@ directoryDb.exec(`
     business_type TEXT NOT NULL,
     business_name TEXT,
     referral_source TEXT,
+    newsletter_weekly INTEGER NOT NULL DEFAULT 0,
+    buyers_group INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS directory_settings (
@@ -201,6 +203,15 @@ const supplierRequestColumns = directoryDb
   .all() as Array<{ name: string }>;
 if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "accepted_data")) {
   directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN accepted_data INTEGER NOT NULL DEFAULT 0");
+}
+const buyerRequestColumns = directoryDb
+  .prepare("PRAGMA table_info(buyer_requests)")
+  .all() as Array<{ name: string }>;
+if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "newsletter_weekly")) {
+  directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN newsletter_weekly INTEGER NOT NULL DEFAULT 0");
+}
+if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "buyers_group")) {
+  directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN buyers_group INTEGER NOT NULL DEFAULT 0");
 }
 directoryDb.prepare(`
   INSERT OR IGNORE INTO directory_settings (key, value)

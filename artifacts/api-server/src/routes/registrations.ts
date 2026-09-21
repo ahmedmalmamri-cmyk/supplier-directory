@@ -109,6 +109,8 @@ router.post("/buyer-requests", (req, res): void => {
   const email = text(body.email);
   const city = text(body.city);
   const businessType = text(body.businessType);
+  const newsletterWeekly = body.newsletterWeekly === true;
+  const buyersGroup = body.buyersGroup === true;
   if (!fullName || !phoneIsValid(phone) || !city || !buyerBusinessTypes.includes(businessType)) {
     res.status(400).json({ error: "يرجى استكمال الاسم والجوال والمدينة ونوع النشاط." });
     return;
@@ -116,9 +118,21 @@ router.post("/buyer-requests", (req, res): void => {
   const now = new Date().toISOString();
   const result = directoryDb.prepare(`
     INSERT INTO buyer_requests
-      (request_code, full_name, phone, email, city, business_type, business_name, referral_source, created_at)
-    VALUES ('PENDING', ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(fullName, phone, email || null, city, businessType, text(body.businessName) || null, text(body.referralSource) || null, now);
+      (request_code, full_name, phone, email, city, business_type, business_name, referral_source,
+       newsletter_weekly, buyers_group, created_at)
+    VALUES ('PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    fullName,
+    phone,
+    email || null,
+    city,
+    businessType,
+    text(body.businessName) || null,
+    text(body.referralSource) || null,
+    newsletterWeekly ? 1 : 0,
+    buyersGroup ? 1 : 0,
+    now,
+  );
   const id = Number(result.lastInsertRowid);
   const requestCode = nextRequestCode("buyer_requests", id);
   directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, id);
