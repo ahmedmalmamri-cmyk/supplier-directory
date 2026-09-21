@@ -77,9 +77,9 @@ directoryDb.exec(`
 `);
 
 const actualSuppliers = [
-  [1, "النخبة العصري", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [2, "عجمان السكر", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
-  [3, "مصادر حلو", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
+  [1, "الشيف العصري", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
+  [2, "عجائن السكر", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
+  [3, "مصادر الحلى", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
   [4, "ديكور الكيك", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
   [5, "ملتقى الخبازين", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
   [6, "الجسر الحديث", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],
@@ -144,6 +144,23 @@ if (hasDemoSuppliers.count > 0 && !migration) {
     directoryDb.exec("ROLLBACK");
     throw error;
   }
+}
+
+const supplierNameCorrections = [
+  ["النخبة العصري", "الشيف العصري"],
+  ["عجمان السكر", "عجائن السكر"],
+  ["مصادر حلو", "مصادر الحلى"],
+] as const;
+const nameCorrectionMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("correct-supplier-names") as { name: string } | undefined;
+
+if (!nameCorrectionMigration) {
+  const updateSupplierName = directoryDb.prepare("UPDATE suppliers SET name = ? WHERE name = ?");
+  supplierNameCorrections.forEach(([oldName, newName]) => updateSupplierName.run(newName, oldName));
+  directoryDb.prepare(
+    "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
+  ).run("correct-supplier-names", new Date().toISOString());
 }
 
 export function refreshSupplierRatings(supplierId?: number) {
