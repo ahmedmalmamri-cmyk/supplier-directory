@@ -71,7 +71,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <span className="font-bold text-lg">دليل موردي المخابز والحلويات</span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-4">
-              المنصة الأولى في المملكة العربية السعودية التي تجمع بين أصحاب المخابز والحلويات والمقاهي مع أفضل الموردين الموثوقين لضمان جودة الإمدادات.
+              منصة تجمع بين أصحاب المخابز والحلويات والمقاهي والموردين المتخصصين في قطاع الإمدادات.
             </p>
           </div>
           <div>

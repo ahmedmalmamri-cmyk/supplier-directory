@@ -37,7 +37,7 @@ export default function Home() {
             ابحث عن أفضل <span className="text-primary">موردي</span> المخابز والحلويات والمقاهي
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            منصة متخصصة تربط أصحاب الأعمال بالموردين المعتمدين لتوفير أجود المكونات والمعدات في المملكة.
+            منصة متخصصة تربط أصحاب الأعمال بالموردين المتخصصين لتوفير المكونات والمعدات في المملكة.
           </p>
           
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex items-center relative group">
@@ -57,7 +57,7 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mt-12 bg-background/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-border/50">
             <div className="text-center">
               <div className="text-3xl font-bold text-primary mb-1">{homeData.stats.suppliers}+</div>
-              <div className="text-sm text-muted-foreground font-medium">مورد معتمد</div>
+              <div className="text-sm text-muted-foreground font-medium">مورد مسجل</div>
             </div>
             <div className="text-center border-r border-l border-border/50">
               <div className="text-3xl font-bold text-primary mb-1">{homeData.stats.products}+</div>
@@ -140,29 +140,35 @@ export default function Home() {
           أحدث المنتجات
         </h2>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-          {homeData.latestProducts.map((product) => (
-            <Link key={product.id} href={`/product/${product.id}`} className="bg-card border rounded-xl overflow-hidden hover:shadow-md transition-all group flex flex-col">
-              <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-secondary/5 text-secondary">
-                    <Package className="w-12 h-12 opacity-50" />
-                  </div>
-                )}
-              </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="text-xs text-muted-foreground mb-1">{product.categoryName}</div>
-                <h3 className="font-semibold text-sm md:text-base group-hover:text-primary transition-colors line-clamp-2 mb-2">{product.name}</h3>
-                <div className="mt-auto pt-3 flex flex-col gap-1 border-t border-border/50">
-                  <div className="text-xs text-muted-foreground truncate" title={product.supplierName}>{product.supplierName}</div>
-                  <div className="text-xs font-medium">الحد الأدنى: {product.minOrder} {product.unit}</div>
+        {homeData.latestProducts.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            {homeData.latestProducts.map((product) => (
+              <Link key={product.id} href={`/product/${product.id}`} className="bg-card border rounded-xl overflow-hidden hover:shadow-md transition-all group flex flex-col">
+                <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                  {product.imageUrl ? (
+                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-secondary/5 text-secondary">
+                      <Package className="w-12 h-12 opacity-50" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="text-xs text-muted-foreground mb-1">{product.categoryName}</div>
+                  <h3 className="font-semibold text-sm md:text-base group-hover:text-primary transition-colors line-clamp-2 mb-2">{product.name}</h3>
+                  <div className="mt-auto pt-3 flex flex-col gap-1 border-t border-border/50">
+                    <div className="text-xs text-muted-foreground truncate" title={product.supplierName}>{product.supplierName}</div>
+                    <div className="text-xs font-medium">الحد الأدنى: {product.minOrder} {product.unit}</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed bg-muted/20 p-10 text-center text-muted-foreground">
+            ستتم إضافة المنتجات وتفاصيل الموردين قريباً.
+          </div>
+        )}
       </section>
 
     </MainLayout>

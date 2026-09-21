@@ -113,25 +113,6 @@ if (categoryCount.count === 0) {
   `);
   actualSuppliers.forEach((row) => insertSupplier.run(...row));
 
-  const products: readonly never[] = [];
-  const insertProduct = directoryDb.prepare(`
-    INSERT INTO products
-      (id, supplier_id, category_id, name, weight, unit, country_of_origin, ingredients,
-       technical_data, recommended_use, shelf_life, storage_conditions, min_order, price,
-       image_url, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
-  `);
-  products.forEach((row, index) =>
-    insertProduct.run(...row, `2026-09-${String(20 - (index % 18)).padStart(2, "0")}`),
-  );
-
-  const reviews: readonly never[] = [];
-  const insertReview = directoryDb.prepare(
-    "INSERT INTO reviews (supplier_id, reviewer_name, rating, comment, created_at) VALUES (?, ?, ?, ?, ?)",
-  );
-  reviews.forEach((row, index) =>
-    insertReview.run(...row, `2026-09-${String(18 - (index % 14)).padStart(2, "0")}`),
-  );
 }
 
 const demoSupplierNames = [

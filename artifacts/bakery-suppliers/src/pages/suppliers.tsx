@@ -29,7 +29,7 @@ export default function SuppliersPage() {
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-3xl font-bold mb-4">دليل الموردين</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
-            اكتشف وتواصل مع نخبة من الموردين المعتمدين لتوفير احتياجات مخبزك أو مقهاك من مواد خام ومعدات.
+            اكتشف وتواصل مع الموردين المتخصصين لتوفير احتياجات مخبزك أو مقهاك من مواد خام ومعدات.
           </p>
           <div className="max-w-xl mx-auto relative">
             <input 

@@ -85,14 +85,23 @@ export default function SupplierProfilePage() {
                 </div>
                 
                 <div className="flex gap-3">
-                  <a href={`https://wa.me/${supplier.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`مرحباً، وصلت إلى بياناتكم عبر دليل موردي المخابز والحلويات وأرغب في الاستفسار عن منتجاتكم.`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
-                    <MessageSquare className="w-4 h-4" />
-                    واتساب
-                  </a>
-                  <a href={`tel:${supplier.phone}`} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-card hover:bg-muted border px-5 py-2.5 rounded-xl font-medium transition-colors">
-                    <Phone className="w-4 h-4" />
-                    اتصال
-                  </a>
+                  {supplier.whatsapp ? (
+                    <a href={`https://wa.me/${supplier.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`مرحباً، وصلت إلى بياناتكم عبر دليل موردي المخابز والحلويات وأرغب في الاستفسار عن منتجاتكم.`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
+                      <MessageSquare className="w-4 h-4" />
+                      واتساب
+                    </a>
+                  ) : null}
+                  {supplier.phone ? (
+                    <a href={`tel:${supplier.phone}`} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-card hover:bg-muted border px-5 py-2.5 rounded-xl font-medium transition-colors">
+                      <Phone className="w-4 h-4" />
+                      اتصال
+                    </a>
+                  ) : null}
+                  {!supplier.phone && !supplier.whatsapp && (
+                    <span className="text-sm text-muted-foreground bg-muted/40 border rounded-xl px-4 py-2.5">
+                      بيانات التواصل ستُضاف قريباً
+                    </span>
+                  )}
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed max-w-3xl mt-4 md:mt-6 bg-card/50 p-4 rounded-xl border border-border/50">
@@ -250,7 +259,7 @@ export default function SupplierProfilePage() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">رقم الهاتف</div>
-                    <div className="font-medium dir-ltr text-right">{supplier.phone}</div>
+                    <div className="font-medium text-muted-foreground">{supplier.phone || "ستُضاف لاحقاً"}</div>
                   </div>
                 </li>
                 <li className="flex gap-4">
@@ -259,7 +268,7 @@ export default function SupplierProfilePage() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">واتساب</div>
-                    <div className="font-medium dir-ltr text-right">{supplier.whatsapp}</div>
+                    <div className="font-medium text-muted-foreground">{supplier.whatsapp || "ستُضاف لاحقاً"}</div>
                   </div>
                 </li>
                 <li className="flex gap-4">
