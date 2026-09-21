@@ -72,6 +72,57 @@ directoryDb.exec(`
     reviewed_at TEXT,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS supplier_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_code TEXT NOT NULL UNIQUE,
+    business_name TEXT NOT NULL,
+    contact_person TEXT NOT NULL,
+    business_type TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    whatsapp TEXT NOT NULL,
+    email TEXT,
+    website TEXT,
+    city TEXT NOT NULL,
+    address TEXT,
+    delivers_to_other_cities INTEGER NOT NULL DEFAULT 0,
+    other_cities TEXT,
+    categories TEXT NOT NULL,
+    min_order TEXT,
+    description TEXT NOT NULL,
+    commercial_license_url TEXT,
+    id_card_url TEXT,
+    health_certificate_url TEXT,
+    accepted_terms INTEGER NOT NULL DEFAULT 0,
+    accepted_data INTEGER NOT NULL DEFAULT 0,
+    accepted_business INTEGER NOT NULL DEFAULT 0,
+    accepted_publish INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    rejection_reason TEXT,
+    admin_note TEXT,
+    created_at TEXT NOT NULL,
+    reviewed_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS buyer_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_code TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    city TEXT NOT NULL,
+    business_type TEXT NOT NULL,
+    business_name TEXT,
+    referral_source TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS directory_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS admin_credentials (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    password_hash TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS directory_migrations (
     name TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL
@@ -87,6 +138,26 @@ if (!registrationColumns.some((column) => column.name === "status")) {
 if (!registrationColumns.some((column) => column.name === "reviewed_at")) {
   directoryDb.exec("ALTER TABLE registration_interests ADD COLUMN reviewed_at TEXT");
 }
+
+const supplierColumns = directoryDb
+  .prepare("PRAGMA table_info(suppliers)")
+  .all() as Array<{ name: string }>;
+if (!supplierColumns.some((column) => column.name === "request_id")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN request_id INTEGER");
+}
+if (!supplierColumns.some((column) => column.name === "is_active")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
+}
+const supplierRequestColumns = directoryDb
+  .prepare("PRAGMA table_info(supplier_requests)")
+  .all() as Array<{ name: string }>;
+if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "accepted_data")) {
+  directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN accepted_data INTEGER NOT NULL DEFAULT 0");
+}
+directoryDb.prepare(`
+  INSERT OR IGNORE INTO directory_settings (key, value)
+  VALUES ('available_cities', ?)
+`).run(JSON.stringify(["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"]));
 
 const actualSuppliers = [
   [1, "الشيف العصري", "غير محدد", "المنطقة الشرقية", "بيانات المورد قيد الإضافة والتحديث.", "", "", 0, "2026-09-21"],

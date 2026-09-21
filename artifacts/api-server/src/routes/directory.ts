@@ -27,7 +27,8 @@ const router: IRouter = Router();
 const supplierSelect = `
   SELECT s.id, s.name, s.city, s.region, s.description, s.phone, s.whatsapp,
     CAST(s.is_verified AS INTEGER) AS isVerified, s.average_rating AS averageRating,
-    s.created_at AS createdAt, COUNT(DISTINCT p.id) AS productCount
+    s.created_at AS createdAt, s.request_id AS requestId, s.is_active AS isActive,
+    COUNT(DISTINCT p.id) AS productCount
   FROM suppliers s LEFT JOIN products p ON p.supplier_id = s.id
 `;
 const productSelect = `
@@ -36,7 +37,7 @@ const productSelect = `
     p.country_of_origin AS countryOfOrigin, p.min_order AS minOrder, p.price,
     p.image_url AS imageUrl, p.created_at AS createdAt
   FROM products p
-  JOIN suppliers s ON s.id = p.supplier_id
+  JOIN suppliers s ON s.id = p.supplier_id AND s.is_active = 1
   JOIN categories c ON c.id = p.category_id
 `;
 const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
@@ -49,16 +50,16 @@ router.get("/home", (_req, res): void => {
     GROUP BY c.id ORDER BY c.id
   `).all();
   const featuredSuppliers = normalizeSuppliers(directoryDb.prepare(`
-    ${supplierSelect} GROUP BY s.id ORDER BY s.is_verified DESC, s.average_rating DESC LIMIT 6
+    ${supplierSelect} WHERE s.is_active = 1 GROUP BY s.id ORDER BY s.is_verified DESC, s.average_rating DESC LIMIT 6
   `).all() as Record<string, unknown>[]);
   const latestProducts = directoryDb.prepare(`
     ${productSelect} ORDER BY p.created_at DESC, p.id DESC LIMIT 9
   `).all();
   const stats = directoryDb.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM suppliers) AS suppliers,
+      (SELECT COUNT(*) FROM suppliers WHERE is_active = 1) AS suppliers,
       (SELECT COUNT(*) FROM products) AS products,
-      (SELECT COUNT(DISTINCT city) FROM suppliers) AS cities
+      (SELECT COUNT(DISTINCT city) FROM suppliers WHERE is_active = 1 AND city != 'غير محدد') AS cities
   `).get();
   res.json(GetHomeResponse.parse({ categories, featuredSuppliers, latestProducts, stats }));
 });
@@ -71,7 +72,7 @@ router.get("/search", (req, res): void => {
   }
   const term = `%${parsed.data.q ?? ""}%`;
   const suppliers = normalizeSuppliers(directoryDb.prepare(`
-    ${supplierSelect} WHERE s.name LIKE ? OR s.description LIKE ?
+    ${supplierSelect} WHERE s.is_active = 1 AND (s.name LIKE ? OR s.description LIKE ?)
     GROUP BY s.id ORDER BY s.average_rating DESC
   `).all(term, term) as Record<string, unknown>[]);
   const products = directoryDb.prepare(`
@@ -102,7 +103,7 @@ router.get("/categories/:id", (req, res): void => {
     ? "s.average_rating DESC"
     : sort === "alphabetical" ? "p.name ASC" : "p.created_at DESC";
   const values: (string | number)[] = [params.data.id];
-  let filters = "WHERE p.category_id = ?";
+  let filters = "WHERE p.category_id = ? AND s.is_active = 1";
   if (city) { filters += " AND s.city = ?"; values.push(city); }
   if (rating) { filters += " AND s.average_rating >= ?"; values.push(rating); }
   if (minOrder) { filters += " AND p.min_order <= ?"; values.push(minOrder); }
@@ -112,7 +113,7 @@ router.get("/categories/:id", (req, res): void => {
   const suppliers = normalizeSuppliers(directoryDb.prepare(`
     ${supplierSelect}
     JOIN products cp ON cp.supplier_id = s.id
-    WHERE cp.category_id = ?
+    WHERE cp.category_id = ? AND s.is_active = 1
     ${city ? "AND s.city = ?" : ""}
     ${rating ? "AND s.average_rating >= ?" : ""}
     GROUP BY s.id ORDER BY s.average_rating DESC
@@ -122,7 +123,7 @@ router.get("/categories/:id", (req, res): void => {
   ) as Record<string, unknown>[]);
   const cities = directoryDb.prepare(`
     SELECT DISTINCT s.city FROM suppliers s
-    JOIN products p ON p.supplier_id = s.id WHERE p.category_id = ? ORDER BY s.city
+    JOIN products p ON p.supplier_id = s.id WHERE p.category_id = ? AND s.is_active = 1 ORDER BY s.city
   `).all(params.data.id).map((row) => (row as { city: string }).city);
   res.json(FetchCategoryResponse.parse({ category, products, suppliers, cities }));
 });
@@ -135,7 +136,7 @@ router.get("/suppliers", (req, res): void => {
   }
   const { q, city, verified, sort = "rating" } = parsed.data;
   const values: (string | number)[] = [];
-  const clauses: string[] = [];
+  const clauses: string[] = ["s.is_active = 1"];
   if (q) { clauses.push("(s.name LIKE ? OR s.description LIKE ?)"); values.push(`%${q}%`, `%${q}%`); }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (verified !== undefined) { clauses.push("s.is_verified = ?"); values.push(verified ? 1 : 0); }
@@ -144,7 +145,7 @@ router.get("/suppliers", (req, res): void => {
     : sort === "alphabetical" ? "s.name ASC" : "s.average_rating DESC";
   const rows = directoryDb.prepare(`
     ${supplierSelect}
-    ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+    WHERE ${clauses.join(" AND ")}
     GROUP BY s.id ORDER BY ${order}
   `).all(...values) as Record<string, unknown>[];
   res.json(ListSuppliersResponse.parse(normalizeSuppliers(rows)));
@@ -157,7 +158,7 @@ router.get("/suppliers/:id", (req, res): void => {
     return;
   }
   const supplierRows = directoryDb.prepare(`
-    ${supplierSelect} WHERE s.id = ? GROUP BY s.id
+    ${supplierSelect} WHERE s.is_active = 1 AND s.id = ? GROUP BY s.id
   `).all(parsed.data.id) as Record<string, unknown>[];
   const supplier = normalizeSuppliers(supplierRows)[0];
   if (!supplier) {
