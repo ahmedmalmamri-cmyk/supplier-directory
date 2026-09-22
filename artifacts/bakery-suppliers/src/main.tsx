@@ -8,8 +8,8 @@ import './index.css';
 function applyTheme(theme: 'light' | 'dark') {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
+  root.dataset.theme = theme;
   root.style.colorScheme = theme;
-  document.body.classList.toggle('dark', theme === 'dark');
 }
 
 const savedTheme = localStorage.getItem('bakery-theme');
