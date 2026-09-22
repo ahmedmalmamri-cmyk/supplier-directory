@@ -9,7 +9,7 @@ function applyTheme(theme: 'light' | 'dark') {
   const root = document.documentElement;
   root.classList.toggle('dark', theme === 'dark');
   root.dataset.theme = theme;
-  root.style.colorScheme = theme;
+  root.style.colorScheme = theme === 'dark' ? 'only dark' : 'only light';
 }
 
 const savedTheme = localStorage.getItem('bakery-theme');

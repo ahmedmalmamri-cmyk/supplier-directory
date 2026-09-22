@@ -10,7 +10,7 @@ function ThemeToggle() {
     const nextTheme = isDark ? "light" : "dark";
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
     document.documentElement.dataset.theme = nextTheme;
-    document.documentElement.style.colorScheme = nextTheme;
+    document.documentElement.style.colorScheme = nextTheme === "dark" ? "only dark" : "only light";
     localStorage.setItem("bakery-theme", nextTheme);
     setIsDark(nextTheme === "dark");
   };

@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <meta name="color-scheme" content="light dark" />
     <title>دليل موردي المخابز والحلويات</title>
     <meta name="description" content="دليل عربي متخصص للبحث عن موردي المواد الأولية للمخابز ومحلات الحلويات والكافيهات في السعودية ومقارنة منتجاتهم." />
     <meta name="robots" content="index, follow" />
@@ -20,6 +19,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        try {
+          const theme = localStorage.getItem("bakery-theme") === "dark" ? "dark" : "light";
+          const root = document.documentElement;
+          root.classList.toggle("dark", theme === "dark");
+          root.dataset.theme = theme;
+          root.style.colorScheme = theme === "dark" ? "only dark" : "only light";
+        } catch {
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.style.colorScheme = "only light";
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

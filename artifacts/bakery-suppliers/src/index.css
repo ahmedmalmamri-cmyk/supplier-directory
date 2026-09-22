@@ -51,6 +51,7 @@
 }
 
 :root {
+  color-scheme: only light;
   --background: 40 38% 98%;
   --foreground: 24 40% 12%;
   --border: 30 22% 84%;
@@ -85,6 +86,7 @@
 }
 
 .dark, [data-theme="dark"] {
+  color-scheme: only dark;
   --background: 24 18% 8%;
   --foreground: 35 45% 96%;
   --border: 27 16% 25%;
