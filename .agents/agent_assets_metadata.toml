@@ -42,3 +42,31 @@ mtime_ms = 1790098807612
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c234a48d-2669-458f-bed9-23f9cdc6afa1/4f22b6f4-7754-4d65-a7dd-588f103a6a17"
 storage_version_token = "1790098817253741"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "-codyCnGjDDFo7bRQanlq"
+uri = "file://screenshots/bolder-arabic-home.jpg"
+type = "image"
+title = "الصفحة الرئيسية بعد تحسين الخط"
+description = "العناوين والأوصاف والأزرار أصبحت أوضح وأكثر بروزاً وتناسقاً."
+logical_id = "197383d8-3a3b-4f30-ab37-48f8a325e336"
+content_hash = "sha256:536a8c4f81a5c84852722791051ce69bb11512a3df11be4c27e47d9d13cd68a1"
+size = 69777
+mtime_ms = 1790099008870
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/197383d8-3a3b-4f30-ab37-48f8a325e336/1c4f7534-7227-4f0b-b4ec-67b38a734905"
+storage_version_token = "1790099037762325"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "Aav6SlxYHyj_1LJas6K4A"
+uri = "file://screenshots/bolder-arabic-register.jpg"
+type = "image"
+title = "صفحة التسجيل بعد تحسين الخط"
+description = "تحسين وزن الخط وتباعد الأسطر في صفحة التسجيل وبطاقاتها."
+logical_id = "a908335b-9238-49e6-b27e-7847e54414c4"
+content_hash = "sha256:11e1868d242a7deda8263961b82f1f4057f26f826f668a61b6ebc34c6b6b11a9"
+size = 46792
+mtime_ms = 1790099011766
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/a908335b-9238-49e6-b27e-7847e54414c4/4fda6dd3-efb9-4174-847e-e8478704b557"
+storage_version_token = "1790099039136238"
+content_type = "image/jpeg"
