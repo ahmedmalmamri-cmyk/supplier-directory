@@ -90,7 +90,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               </div>
               <span className="font-bold text-lg">دليل موردي المخابز والحلويات</span>
             </Link>
-            <p className="text-muted-foreground text-sm max-w-sm leading-relaxed mb-4">
+             <p className="text-muted-foreground text-sm font-medium max-w-sm leading-7 mb-4">
               منصة تجمع بين أصحاب المخابز والحلويات والمقاهي والموردين المتخصصين في قطاع الإمدادات.
             </p>
           </div>

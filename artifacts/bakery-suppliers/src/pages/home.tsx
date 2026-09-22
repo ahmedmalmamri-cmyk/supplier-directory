@@ -78,13 +78,13 @@ export default function Home() {
            <Link href="/register" className="group rounded-3xl border border-primary/15 bg-card p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm-lg">
              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Wheat className="h-7 w-7" /></div>
              <h2 className="text-2xl font-extrabold">أنا مورد</h2>
-             <p className="mt-2 text-muted-foreground">أريد عرض منتجاتي في الدليل</p>
+             <p className="mt-2 font-medium text-muted-foreground">أريد عرض منتجاتي في الدليل</p>
              <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كمورد <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
            </Link>
            <Link href="/register/buyer" className="group rounded-3xl border border-accent/35 bg-gradient-to-br from-card to-secondary/25 p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-warm-lg">
              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 text-accent"><Store className="h-7 w-7" /></div>
              <h2 className="text-2xl font-extrabold">أنا صاحب عمل</h2>
-             <p className="mt-2 text-muted-foreground">أبحث عن موردين لموادي الأولية</p>
+             <p className="mt-2 font-medium text-muted-foreground">أبحث عن موردين لموادي الأولية</p>
              <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كصاحب عمل <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
            </Link>
          </div>
@@ -106,7 +106,7 @@ export default function Home() {
       <section className="container mx-auto px-4 pb-20 pt-8">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-warm-lg md:px-12 md:py-14">
           <div className="absolute -left-16 -top-20 h-64 w-64 rounded-full border-[32px] border-secondary/20" />
-          <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="mb-2 text-sm font-semibold text-secondary">هل تورد للمخابز والحلويات؟</p><h2 className="text-2xl font-extrabold md:text-3xl">عرّف أصحاب الأعمال بمنتجاتك</h2><p className="mt-2 max-w-xl text-sm leading-7 text-primary-foreground/75">انضم إلى دليل متخصص يساعدك على الوصول إلى العملاء في المنطقة الشرقية.</p></div><div className="flex flex-wrap gap-3"><Link href="/register" data-testid="link-register-supplier" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-6 py-3 font-extrabold text-secondary-foreground transition-transform hover:-translate-y-0.5">سجّل كمورد <ChevronLeft className="h-4 w-4" /></Link><Link href="/register/buyer" data-testid="link-register-business-owner" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary-foreground/30 bg-primary-foreground/10 px-6 py-3 font-extrabold text-primary-foreground transition-colors hover:bg-primary-foreground/20">سجّل كصاحب عمل <ChevronLeft className="h-4 w-4" /></Link></div></div>
+          <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="mb-2 text-sm font-bold text-secondary">هل تورد للمخابز والحلويات؟</p><h2 className="text-2xl font-extrabold md:text-3xl">عرّف أصحاب الأعمال بمنتجاتك</h2><p className="mt-2 max-w-xl text-sm font-medium leading-8 text-primary-foreground/90">انضم إلى دليل متخصص يساعدك على الوصول إلى العملاء في المنطقة الشرقية.</p></div><div className="flex flex-wrap gap-3"><Link href="/register" data-testid="link-register-supplier" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-6 py-3 font-extrabold text-secondary-foreground transition-transform hover:-translate-y-0.5">سجّل كمورد <ChevronLeft className="h-4 w-4" /></Link><Link href="/register/buyer" data-testid="link-register-business-owner" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary-foreground/30 bg-primary-foreground/10 px-6 py-3 font-extrabold text-primary-foreground transition-colors hover:bg-primary-foreground/20">سجّل كصاحب عمل <ChevronLeft className="h-4 w-4" /></Link></div></div>
         </div>
       </section>
     </MainLayout>
