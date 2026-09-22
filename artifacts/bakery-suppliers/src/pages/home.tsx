@@ -14,7 +14,7 @@ function Rating({ value }: { value: number }) {
 }
 
 function ProductStrip({ products }: { products: Array<{ id: number; name: string; imageUrl?: string | null }> }) {
-  if (!products.length) return <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">صور المنتجات ستظهر هنا عند إضافتها</div>;
+  if (!products.length) return <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-border bg-secondary/15 text-xs text-muted-foreground">صور المنتجات ستظهر هنا عند إضافتها</div>;
   return <div className="grid grid-cols-3 gap-2">{products.slice(0, 3).map((product) => <div key={product.id} className="aspect-square overflow-hidden rounded-xl bg-muted" title={product.name}>{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-primary/50"><Package className="h-6 w-6" /></div>}</div>)}</div>;
 }
 
@@ -51,16 +51,16 @@ export default function Home() {
 
   return (
     <MainLayout>
-       <section className="relative isolate overflow-hidden bg-[#f3eadc] dark:bg-[#241812]">
-         <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-25 dark:opacity-70" />
-         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.98)_8%,rgba(250,246,239,.88)_48%,rgba(250,246,239,.45)_100%)] dark:bg-[linear-gradient(90deg,rgba(29,20,16,.96)_8%,rgba(29,20,16,.78)_48%,rgba(29,20,16,.2)_100%)]" />
+       <section className="relative isolate overflow-hidden bg-[#f0e4d2] dark:bg-[#241812]">
+         <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-50 dark:opacity-75" />
+         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.82)_8%,rgba(250,246,239,.62)_48%,rgba(250,246,239,.24)_100%)] dark:bg-[linear-gradient(90deg,rgba(29,20,16,.96)_8%,rgba(29,20,16,.78)_48%,rgba(29,20,16,.2)_100%)]" />
         <div className="container mx-auto px-4 py-24 md:py-32">
            <div className="max-w-2xl animate-rise-in text-right text-foreground dark:text-[#fffaf1]">
-             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary dark:border-[#e1b96a]/40 dark:bg-[#e1b96a]/10 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
+             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card/75 px-4 py-2 text-sm font-semibold text-primary shadow-sm backdrop-blur-sm dark:border-[#e1b96a]/40 dark:bg-[#e1b96a]/10 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
             <h1 className="text-balance text-4xl font-extrabold leading-[1.22] md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
              <p className="mt-4 text-2xl font-semibold text-primary dark:text-[#f2cf8a]">في المنطقة الشرقية</p>
             <form onSubmit={handleSearch} className="relative mt-9 max-w-xl" data-testid="form-home-search">
-               <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border border-border bg-card px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+               <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border border-border/80 bg-card/95 px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 backdrop-blur-sm placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               <button data-testid="button-home-search" type="submit" className="absolute left-2 top-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5"><Search className="h-5 w-5" /></button>
             </form>
           </div>
@@ -68,7 +68,7 @@ export default function Home() {
       </section>
 
       <section className="relative z-10 -mt-7 px-4">
-        <div className="container mx-auto grid max-w-5xl grid-cols-2 overflow-hidden rounded-2xl border border-border bg-card shadow-warm md:grid-cols-4">
+         <div className="container mx-auto grid max-w-5xl grid-cols-2 overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-warm backdrop-blur-sm md:grid-cols-4">
           {statItems.map(({ label, value, Icon }, index) => <div key={label} data-testid={`stat-${label}`} className={`flex items-center gap-3 px-5 py-5 md:px-7 ${index < 3 ? "border-l border-border" : ""}`}><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/30 text-primary"><Icon className="h-5 w-5" /></span><div><div className="text-2xl font-extrabold text-foreground">{value}{typeof value === "number" ? "+" : ""}</div><div className="text-xs font-semibold text-muted-foreground">{label}</div></div></div>)}
         </div>
       </section>
@@ -99,7 +99,7 @@ export default function Home() {
 function SupplierCard({ supplier, products, featured = false }: { supplier: { id: number; name: string; city: string; description: string; averageRating: number; isVerified: boolean }; products: Array<{ id: number; name: string; imageUrl?: string | null }>; featured?: boolean }) {
   const { data: supplierDetails } = useGetSupplier(supplier.id);
   const cardProducts = supplierDetails?.products.slice(0, 3) ?? products.slice(0, 3);
-  return <Link key={supplier.id} href={`/supplier/${supplier.id}`} data-testid={`card-supplier-${supplier.id}`} className={`group flex flex-col overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-warm-lg ${featured ? "border-accent/55 ring-1 ring-accent/20" : "border-border hover:border-primary/30"}`}>
+  return <Link key={supplier.id} href={`/supplier/${supplier.id}`} data-testid={`card-supplier-${supplier.id}`} className={`group flex flex-col overflow-hidden rounded-2xl border p-5 shadow-warm transition-all duration-300 hover:-translate-y-1 hover:shadow-warm-lg ${featured ? "border-accent/55 bg-gradient-to-br from-card via-card to-secondary/25 ring-1 ring-accent/20" : "border-border bg-card hover:border-primary/30"}`}>
     {featured && <div className="mb-4 flex items-center gap-2 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> مورد مميز في الدليل</div>}
     <div className="flex items-start gap-4"><InitialBadge name={supplier.name} featured={featured} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-lg font-extrabold">{supplier.name}</h3>{supplier.isVerified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />}</div><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {supplier.city}</p></div></div>
     <p className="mt-4 line-clamp-2 min-h-12 text-sm leading-6 text-muted-foreground">{supplier.description}</p>
