@@ -70,3 +70,31 @@ mtime_ms = 1790099011766
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/a908335b-9238-49e6-b27e-7847e54414c4/4fda6dd3-efb9-4174-847e-e8478704b557"
 storage_version_token = "1790099039136238"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "WHG8eVxmv1hHFdgVlzzYc"
+uri = "file://screenshots/direct-supplier-registration.jpg"
+type = "image"
+title = "تسجيل المورد مباشرة"
+description = "زر سجّل كمورد يفتح نموذج تسجيل المورد مباشرة دون صفحة الاختيار."
+logical_id = "daa50c4b-1174-49e0-a938-23b0462a1ee4"
+content_hash = "sha256:bec194b8d2104965f3d49cdbee75225a27ca4905410eb59c6b1958c754f0b2aa"
+size = 32644
+mtime_ms = 1790099351094
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/daa50c4b-1174-49e0-a938-23b0462a1ee4/1087668b-411c-482b-997b-ad89fc5fa7d9"
+storage_version_token = "1790099363249169"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "b-fEssOi1uIab9D_hwIIv"
+uri = "file://screenshots/direct-business-owner-registration.jpg"
+type = "image"
+title = "تسجيل صاحب العمل مباشرة"
+description = "زر سجّل كصاحب عمل يفتح نموذج صاحب العمل مباشرة."
+logical_id = "f0e43e31-6ddc-4eed-8541-b71cf23c52b4"
+content_hash = "sha256:e2476f5ab1bac7dd5403f96dd02cf8230cf984a726e3f1238e295bac5d3a12b8"
+size = 32225
+mtime_ms = 1790099353170
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/f0e43e31-6ddc-4eed-8541-b71cf23c52b4/2f1fb953-b224-41f8-aeda-36878b5b7bad"
+storage_version_token = "1790099364538196"
+content_type = "image/jpeg"

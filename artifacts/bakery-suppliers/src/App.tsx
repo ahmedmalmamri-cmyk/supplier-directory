@@ -46,6 +46,7 @@ function Router() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/search" component={SearchPage} />
+         <Route path="/register/supplier" component={() => <RegisterPage defaultType="supplier" />} />
          <Route path="/register/buyer" component={() => <RegisterPage defaultType="buyer" />} />
          <Route path="/register" component={() => <RegisterPage />} />
         <Route path="/expansion" component={ExpansionPage} />

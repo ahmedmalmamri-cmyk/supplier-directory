@@ -139,7 +139,7 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><Sprout className="w-8 h-8" /></div>
           <h3 className="text-2xl font-bold mb-3">أنا مورد أو موزع للمواد الأولية</h3>
           <p className="text-muted-foreground text-lg">أريد عرض منتجاتي في الدليل</p>
-          <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">بدء تسجيل المورد <ChevronLeft className="w-5 h-5" /></span>
+             <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">سجّل كمورد <ChevronLeft className="w-5 h-5" /></span>
         </button>
         <button type="button" onClick={() => onSelect("buyer")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
            <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><Store className="w-8 h-8" /></div>
