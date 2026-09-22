@@ -51,16 +51,16 @@ export default function Home() {
 
   return (
     <MainLayout>
-      <section className="relative isolate overflow-hidden bg-[#28201b]">
-        <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(29,20,16,.96)_8%,rgba(29,20,16,.78)_48%,rgba(29,20,16,.2)_100%)]" />
+       <section className="relative isolate overflow-hidden bg-[#f3eadc] dark:bg-[#241812]">
+         <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-25 dark:opacity-70" />
+         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.98)_8%,rgba(250,246,239,.88)_48%,rgba(250,246,239,.45)_100%)] dark:bg-[linear-gradient(90deg,rgba(29,20,16,.96)_8%,rgba(29,20,16,.78)_48%,rgba(29,20,16,.2)_100%)]" />
         <div className="container mx-auto px-4 py-24 md:py-32">
-          <div className="max-w-2xl animate-rise-in text-right text-[#fffaf1]">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#e1b96a]/40 bg-[#e1b96a]/10 px-4 py-2 text-sm font-semibold text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
+           <div className="max-w-2xl animate-rise-in text-right text-foreground dark:text-[#fffaf1]">
+             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary dark:border-[#e1b96a]/40 dark:bg-[#e1b96a]/10 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
             <h1 className="text-balance text-4xl font-extrabold leading-[1.22] md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
-            <p className="mt-4 text-2xl font-semibold text-[#f2cf8a]">في المنطقة الشرقية</p>
+             <p className="mt-4 text-2xl font-semibold text-primary dark:text-[#f2cf8a]">في المنطقة الشرقية</p>
             <form onSubmit={handleSearch} className="relative mt-9 max-w-xl" data-testid="form-home-search">
-              <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border-0 bg-[#fffaf1] px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+               <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border border-border bg-card px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               <button data-testid="button-home-search" type="submit" className="absolute left-2 top-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5"><Search className="h-5 w-5" /></button>
             </form>
           </div>
