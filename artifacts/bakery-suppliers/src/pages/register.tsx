@@ -186,7 +186,7 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
         <SelectField label="المدينة *" value={form.city} options={supplierCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
         <Field label="العنوان التفصيلي (اختياري)" value={form.address} onChange={(value) => onChange({ address: value })} />
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.deliversToOtherCities} onChange={(event) => onChange({ deliversToOtherCities: event.target.checked })} /> أوصل إلى مدن أخرى</label>
-        {form.deliversToOtherCities && <Field label="اذكر المدن التي توصل إليها" value={form.otherCities} onChange={(value) => onChange({ otherCities: value })} />}
+         {form.deliversToOtherCities && <TextAreaField label="اذكر المدن التي توصل إليها" value={form.otherCities} onChange={(value) => onChange({ otherCities: value })} placeholder="اكتب المدن التي توصل إليها..." />}
       </FormSection>}
       {step === 3 && <FormSection title="معلومات المنتجات" description="اختر كل الفئات التي يتعامل بها نشاطك.">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -288,6 +288,9 @@ function FormSection({ title, description, children }: { title: string; descript
 }
 function Field({ label, value, onChange, dir, type = "text", placeholder, disabled }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean }) {
   return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><input type={type} value={value} dir={dir} disabled={disabled} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60" /></label>;
+}
+function TextAreaField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><textarea value={value} dir="rtl" placeholder={placeholder} rows={3} onChange={(event) => onChange(event.target.value)} className="w-full min-h-28 px-4 py-3 rounded-xl border bg-background leading-7 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y break-words" /></label>;
 }
 function SelectField({ label, value, options, onChange, placeholder }: { label: string; value: string; options: string[]; onChange: (value: string) => void; placeholder: string }) {
   return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary"><option value="">{placeholder}</option>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
