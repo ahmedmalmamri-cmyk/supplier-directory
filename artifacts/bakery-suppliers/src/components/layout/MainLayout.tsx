@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 export function MainLayout({ children }: { children: ReactNode }) {
@@ -23,6 +23,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">التسجيل</Link>
               <Link href="/contact" className="hover:text-foreground transition-colors">اتصل بنا</Link>
+              <Link href="/admin" className="hover:text-foreground transition-colors">الإدارة</Link>
             </nav>
           </div>
 
@@ -53,6 +54,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserPlus className="w-4 h-4"/> التسجيل</Link>
             <Link href="/expansion" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Rocket className="w-4 h-4"/> خطة التوسع</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Mail className="w-4 h-4"/> اتصل بنا</Link>
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> الإدارة</Link>
           </nav>
         </div>
       )}
