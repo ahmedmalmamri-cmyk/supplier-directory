@@ -1,6 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, ShoppingCart, Sprout, UserPlus } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, ShoppingCart, Sprout, Store, UserPlus } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
 type SupplierForm = {
@@ -18,6 +18,7 @@ type BuyerForm = {
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const buyerCities = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة", "بريدة", "تبوك", "أبها", "حائل", "جازان", "نجران", "سكاكا", "عرعر", "الطائف", "ينبع"];
+const buyerBusinessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"];
 const categories = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
 const supplierSteps = ["النشاط", "التواصل", "الموقع", "المنتجات", "الوثائق والإقرار"];
 
@@ -37,8 +38,8 @@ const emptyBuyer: BuyerForm = {
   buyersGroup: false,
 };
 
-export default function RegisterPage() {
-  const [type, setType] = useState<RegistrationType | null>(null);
+export default function RegisterPage({ defaultType }: { defaultType?: RegistrationType } = {}) {
+  const [type, setType] = useState<RegistrationType | null>(defaultType ?? null);
   const [supplier, setSupplier] = useState<SupplierForm>(() => loadDraft("supplier", emptySupplier));
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
   const [step, setStep] = useState(0);
@@ -49,7 +50,7 @@ export default function RegisterPage() {
   useEffect(() => saveDraft("supplier", supplier), [supplier]);
   useEffect(() => saveDraft("buyer", buyer), [buyer]);
 
-  const title = type === "supplier" ? "تسجيل مورد" : type === "buyer" ? "سجّل كمشترٍ (اختياري - دقيقة واحدة)" : "التسجيل في الدليل";
+  const title = type === "supplier" ? "تسجيل مورد" : type === "buyer" ? "تسجيل صاحب عمل" : "التسجيل في الدليل";
   const updateSupplier = (patch: Partial<SupplierForm>) => setSupplier((current) => ({ ...current, ...patch }));
 
   if (submitted) return <ThankYou requestCode={submitted.code} type={submitted.type} onAgain={() => { setSubmitted(null); setType(null); setStep(0); }} />;
@@ -141,10 +142,10 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
           <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">بدء تسجيل المورد <ChevronLeft className="w-5 h-5" /></span>
         </button>
         <button type="button" onClick={() => onSelect("buyer")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><ShoppingCart className="w-8 h-8" /></div>
-          <h3 className="text-2xl font-bold mb-3">أنا مشترٍ</h3>
-          <p className="text-muted-foreground text-lg">أنا صاحب مخبز أو محل حلويات وأبحث عن موردين</p>
-          <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">بدء تسجيل المشتري <ChevronLeft className="w-5 h-5" /></span>
+           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><Store className="w-8 h-8" /></div>
+          <h3 className="text-2xl font-bold mb-3">أنا صاحب عمل</h3>
+          <p className="text-muted-foreground text-lg">أملك مخبز أو محل حلويات أو كافيه</p>
+          <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">سجّل كصاحب عمل <ChevronLeft className="w-5 h-5" /></span>
         </button>
       </div>
     </section>
@@ -225,13 +226,12 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
 }
 
 function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { form: BuyerForm; error: string; isSubmitting: boolean; onChange: (patch: Partial<BuyerForm>) => void; onBack: () => void; onSubmit: () => void }) {
-  const businessTypes = ["مخبز", "مخبز وحلويات", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"];
   return <section className="max-w-2xl mx-auto bg-card border rounded-3xl p-6 md:p-8 shadow-sm">
     <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground mb-6">تغيير نوع التسجيل</button>
     <div className="flex items-start gap-4 mb-7">
       <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><ShoppingCart className="w-6 h-6" /></div>
       <div>
-        <h2 className="text-2xl font-bold mb-2">سجّل كمشترٍ</h2>
+        <h2 className="text-2xl font-bold mb-2">تسجيل صاحب عمل</h2>
         <p className="text-muted-foreground">بيانات بسيطة تساعدنا على ترشيح الموردين المناسبين لك.</p>
       </div>
     </div>
@@ -239,20 +239,20 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
       <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} />
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
       <SelectField label="المدينة *" value={form.city} options={buyerCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
-      <fieldset>
+       <fieldset>
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {businessTypes.map((businessType) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
+           {buyerBusinessTypes.map((businessType) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
             <input type="radio" name="buyer-business-type" value={businessType} checked={form.businessType === businessType} onChange={() => onChange({ businessType })} className="accent-primary" />
             <span>{businessType}</span>
           </label>)}
         </div>
       </fieldset>
-      <Field label="اسم النشاط (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
+       <Field label="اسم النشاط التجاري (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
       <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
         <p className="text-sm font-bold">خيارات التواصل</p>
         <CheckField label="أرغب باستقبال نشرة الأسعار الأسبوعية" checked={form.newsletterWeekly} onChange={(value) => onChange({ newsletterWeekly: value })} />
-        <CheckField label="أرغب بالانضمام لمجموعة المشترين" checked={form.buyersGroup} onChange={(value) => onChange({ buyersGroup: value })} />
+         <CheckField label="أرغب بالانضمام إلى مجموعة أصحاب الأعمال" checked={form.buyersGroup} onChange={(value) => onChange({ buyersGroup: value })} />
       </div>
       {error && <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 p-4 text-sm">{error}</div>}
       <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري التسجيل..." : "تسجيل"}</button>
@@ -275,11 +275,11 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
   const whatsappDigits = whatsapp.replace(/\D/g, "");
   return <MainLayout><div className="container mx-auto px-4 py-20 max-w-2xl text-center">
     <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-6" />
-    <h1 className="text-3xl font-bold mb-4">تم استلام طلبك بنجاح</h1>
-    <p className="text-lg text-muted-foreground leading-8">شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة.</p>
+     <h1 className="text-3xl font-bold mb-4">{type === "buyer" ? "شكراً لك! تم استلام طلبك كصاحب عمل" : "تم استلام طلبك بنجاح"}</h1>
+     <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "سيتم التواصل معك قريباً عبر الواتساب." : "شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة."}</p>
     <div className="my-8 rounded-2xl bg-primary/10 border border-primary/20 p-5"><div className="text-sm text-muted-foreground mb-2">رقم طلبك المرجعي</div><strong dir="ltr" className="text-2xl text-primary">{requestCode}</strong></div>
     <p className="text-sm text-muted-foreground mb-8">في حال لم يتم التواصل خلال 48 ساعة، يمكنك مراسلتنا على <a href={`https://wa.me/${whatsappDigits}`} target="_blank" rel="noreferrer" dir="ltr" className="text-primary font-bold hover:underline">{whatsapp}</a>.</p>
-    <button type="button" onClick={onAgain} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold">تسجيل طلب آخر ({type === "supplier" ? "مورد" : "مشترٍ"})</button>
+     <button type="button" onClick={onAgain} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold">تسجيل طلب آخر ({type === "supplier" ? "مورد" : "صاحب عمل"})</button>
   </div></MainLayout>;
 }
 

@@ -7,7 +7,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-bold mb-4">من نحن</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            المنصة الأولى المخصصة لربط الموردين بقطاع المخابز والحلويات في المملكة.
+             منصة تجمع أصحاب الأعمال في قطاع المخابز والحلويات مع الموردين المتخصصين.
           </p>
         </div>
       </div>

@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "4nGLA7sqvBWhDt-3hnvzl"
+uri = "file://screenshots/home-business-owner-wording-full.jpg"
+type = "image"
+title = "لقطة الصفحة الرئيسية"
+description = "الصفحة الرئيسية بعد توحيد المصطلح إلى صاحب عمل، مع بطاقة أنا صاحب عمل."
+logical_id = "7adcd0ab-6a35-423f-8c60-847c9007c0d0"
+content_hash = "sha256:d2a0617a63dc4e3b3e5edcf5a093bcb3e8a740d3e42a6e7e4a14b361c17b43cf"
+size = 49499
+mtime_ms = 1790098530200
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/7adcd0ab-6a35-423f-8c60-847c9007c0d0/2782187d-8551-455a-b7d9-7c5017ba2975"
+storage_version_token = "1790098545048020"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "dbs8E_BQ3G0363lC4Xvk6"
+uri = "file://screenshots/register-business-owner-wording-full.jpg"
+type = "image"
+title = "لقطة صفحة التسجيل"
+description = "صفحة التسجيل بعد تحديث بطاقة صاحب العمل والنصوص المرتبطة بها."
+logical_id = "0fbbdebf-929e-4f4d-93cd-f66e6c5d1fa1"
+content_hash = "sha256:60ecf0771a7663593c301ed842bde40506b7d8e2f76c66a29e27776303470c52"
+size = 46377
+mtime_ms = 1790098531848
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/0fbbdebf-929e-4f4d-93cd-f66e6c5d1fa1/c20571f9-d3ae-4db0-85af-91318f4b583f"
+storage_version_token = "1790098546369266"
+content_type = "image/jpeg"

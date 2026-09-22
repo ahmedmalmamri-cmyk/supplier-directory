@@ -46,7 +46,8 @@ function Router() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/search" component={SearchPage} />
-        <Route path="/register" component={RegisterPage} />
+         <Route path="/register/buyer" component={() => <RegisterPage defaultType="buyer" />} />
+         <Route path="/register" component={() => <RegisterPage />} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFound} />

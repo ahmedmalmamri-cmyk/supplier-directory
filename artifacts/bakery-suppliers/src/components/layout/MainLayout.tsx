@@ -109,6 +109,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <li><Link href="/contact" className="hover:text-foreground flex items-center gap-2"><Mail className="w-3 h-3"/> اتصل بنا</Link></li>
               <li><Link href="/terms" className="hover:text-foreground flex items-center gap-2"><FileText className="w-3 h-3"/> الشروط والأحكام</Link></li>
               <li><Link href="/register" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> التسجيل</Link></li>
+               <li><Link href="/register/buyer" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> سجّل كصاحب عمل</Link></li>
             </ul>
           </div>
         </div>

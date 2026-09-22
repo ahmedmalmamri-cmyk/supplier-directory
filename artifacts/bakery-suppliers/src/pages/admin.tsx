@@ -21,7 +21,7 @@ type Settings = { whatsapp: string; email: string; address: string; cities: stri
 
 const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
-  { id: "buyers", label: "طلبات المشترين", icon: ShoppingCart },
+  { id: "buyers", label: "طلبات أصحاب الأعمال", icon: ShoppingCart },
   { id: "directory", label: "الموردون المعتمدون", icon: CheckCircle2 },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "settings", label: "الإعدادات", icon: Settings },
@@ -115,7 +115,7 @@ export default function AdminPage() {
           {notice && <div className="mb-5 rounded-xl bg-green-50 border border-green-200 text-green-800 p-3 text-sm">{notice}</div>}
           {error && <div className="mb-5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive p-3 text-sm">{error}</div>}
           {tab === "suppliers" && <SupplierRequestsTab requests={supplierRequests} selected={selectedRequest} onSelect={setSelectedRequest} onAction={act} />}
-          {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب المشتري.")} />}
+          {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب صاحب العمل.")} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
           {tab === "stats" && <StatsTab stats={stats} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
@@ -146,7 +146,7 @@ function DetailGrid({ request }: { request: SupplierRequest }) {
 }
 
 function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; onDelete: (id: number) => void }) {
-  return requests.length === 0 ? <Empty title="لا توجد طلبات مشترين" description="ستظهر تسجيلات المشترين هنا." /> : <div className="overflow-x-auto bg-card border rounded-2xl"><table className="w-full text-sm text-right"><thead className="bg-muted/50"><tr>{["رقم الطلب", "الاسم", "المدينة", "نوع النشاط", "الجوال", "التفضيلات", "التاريخ", ""].map((head) => <th key={head} className="p-4 font-bold whitespace-nowrap">{head}</th>)}</tr></thead><tbody>{requests.map((request) => <tr key={request.id} className="border-t"><td className="p-4" dir="ltr">{request.requestCode}</td><td className="p-4 font-bold">{request.fullName}<div className="text-xs text-muted-foreground">{request.businessName || ""}</div></td><td className="p-4">{request.city}</td><td className="p-4">{request.businessType}</td><td className="p-4" dir="ltr">{request.phone}</td><td className="p-4"><div className="flex flex-wrap gap-1 min-w-44">{request.newsletterWeekly && <span className="rounded-full bg-primary/10 text-primary px-2 py-1 text-xs">نشرة الأسعار</span>}{request.buyersGroup && <span className="rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs">مجموعة المشترين</span>}{!request.newsletterWeekly && !request.buyersGroup && <span className="text-muted-foreground text-xs">لا توجد</span>}</div></td><td className="p-4 whitespace-nowrap">{formatDate(request.createdAt)}</td><td className="p-4"><button type="button" onClick={() => onDelete(request.id)} className="text-red-700 hover:underline font-bold"><Trash2 className="w-4 h-4 inline" /> حذف</button></td></tr>)}</tbody></table></div>;
+  return requests.length === 0 ? <Empty title="لا توجد طلبات أصحاب أعمال" description="ستظهر تسجيلات أصحاب الأعمال هنا." /> : <div className="overflow-x-auto bg-card border rounded-2xl"><table className="w-full text-sm text-right"><thead className="bg-muted/50"><tr>{["رقم الطلب", "الاسم", "المدينة", "نوع النشاط", "الجوال", "التفضيلات", "التاريخ", ""].map((head) => <th key={head} className="p-4 font-bold whitespace-nowrap">{head}</th>)}</tr></thead><tbody>{requests.map((request) => <tr key={request.id} className="border-t"><td className="p-4" dir="ltr">{request.requestCode}</td><td className="p-4 font-bold">{request.fullName}<div className="text-xs text-muted-foreground">{request.businessName || ""}</div></td><td className="p-4">{request.city}</td><td className="p-4">{request.businessType}</td><td className="p-4" dir="ltr">{request.phone}</td><td className="p-4"><div className="flex flex-wrap gap-1 min-w-44">{request.newsletterWeekly && <span className="rounded-full bg-primary/10 text-primary px-2 py-1 text-xs">نشرة الأسعار</span>}{request.buyersGroup && <span className="rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs">مجموعة أصحاب الأعمال</span>}{!request.newsletterWeekly && !request.buyersGroup && <span className="text-muted-foreground text-xs">لا توجد</span>}</div></td><td className="p-4 whitespace-nowrap">{formatDate(request.createdAt)}</td><td className="p-4"><button type="button" onClick={() => onDelete(request.id)} className="text-red-700 hover:underline font-bold"><Trash2 className="w-4 h-4 inline" /> حذف</button></td></tr>)}</tbody></table></div>;
 }
 
 function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
@@ -229,7 +229,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
 }
 
 function StatsTab({ stats }: { stats: Stats | null }) {
-  const cards = [["الطلبات المعلقة", stats?.pendingSupplierRequests ?? 0, Clock3], ["الموردون المعتمدون", stats?.approvedSuppliers ?? 0, Store], ["المشترون", stats?.buyers ?? 0, ShoppingCart], ["المنتجات", stats?.products ?? 0, FileText], ["المدن المغطاة", stats?.cities ?? 0, LayoutDashboard]] as const;
+  const cards = [["الطلبات المعلقة", stats?.pendingSupplierRequests ?? 0, Clock3], ["الموردون المعتمدون", stats?.approvedSuppliers ?? 0, Store], ["أصحاب الأعمال", stats?.buyers ?? 0, ShoppingCart], ["المنتجات", stats?.products ?? 0, FileText], ["المدن المغطاة", stats?.cities ?? 0, LayoutDashboard]] as const;
   return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{cards.map(([label, value, Icon]) => <div key={label} className="bg-card border rounded-2xl p-6"><Icon className="w-6 h-6 text-primary mb-4" /><div className="text-3xl font-bold">{value}</div><div className="text-muted-foreground mt-1">{label}</div></div>)}</div>;
 }
 

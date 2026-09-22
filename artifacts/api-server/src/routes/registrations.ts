@@ -10,7 +10,7 @@ mkdirSync(uploadsDir, { recursive: true });
 
 const eastCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const supplierBusinessTypes = ["منتج / مصنع", "موزع", "مستورد", "تاجر جملة", "أخرى"];
-const buyerBusinessTypes = ["مخبز", "مخبز وحلويات", "محل حلويات", "كافيه", "مطعم", "فندق", "تاجر تجزئة", "أخرى"];
+const buyerBusinessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"];
 const categoryNames = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
 
 function text(value: unknown) {
@@ -145,7 +145,7 @@ router.post("/buyer-requests", (req, res): void => {
   const id = Number(result.lastInsertRowid);
   const requestCode = nextRequestCode("buyer_requests", id);
   directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, id);
-  res.status(201).json({ success: true, requestId: id, requestCode, message: "تم تسجيل بيانات المشتري بنجاح." });
+   res.status(201).json({ success: true, requestId: id, requestCode, message: "تم تسجيل بيانات صاحب العمل بنجاح." });
 });
 
 export default router;

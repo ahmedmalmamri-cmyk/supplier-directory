@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, Package, Search, ShieldCheck, Star, Users, Wheat, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, Package, Search, ShieldCheck, Star, Store, Users, Wheat, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useGetHome, useGetSupplier, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -72,6 +72,23 @@ export default function Home() {
           {statItems.map(({ label, value, Icon }, index) => <div key={label} data-testid={`stat-${label}`} className={`flex items-center gap-3 px-5 py-5 md:px-7 ${index < 3 ? "border-l border-border" : ""}`}><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/30 text-primary"><Icon className="h-5 w-5" /></span><div><div className="text-2xl font-extrabold text-foreground">{value}{typeof value === "number" ? "+" : ""}</div><div className="text-xs font-semibold text-muted-foreground">{label}</div></div></div>)}
         </div>
       </section>
+
+       <section className="container mx-auto px-4 pt-16">
+         <div className="grid gap-5 md:grid-cols-2">
+           <Link href="/register" className="group rounded-3xl border border-primary/15 bg-card p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm-lg">
+             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Wheat className="h-7 w-7" /></div>
+             <h2 className="text-2xl font-extrabold">أنا مورد</h2>
+             <p className="mt-2 text-muted-foreground">أريد عرض منتجاتي في الدليل</p>
+             <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كمورد <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
+           </Link>
+           <Link href="/register/buyer" className="group rounded-3xl border border-accent/35 bg-gradient-to-br from-card to-secondary/25 p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-warm-lg">
+             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 text-accent"><Store className="h-7 w-7" /></div>
+             <h2 className="text-2xl font-extrabold">أنا صاحب عمل</h2>
+             <p className="mt-2 text-muted-foreground">أبحث عن موردين لموادي الأولية</p>
+             <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كصاحب عمل <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
+           </Link>
+         </div>
+       </section>
 
       <section className="container mx-auto px-4 pb-8 pt-20">
         <div className="mb-8 flex items-end justify-between gap-4">

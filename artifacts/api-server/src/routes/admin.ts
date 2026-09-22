@@ -319,10 +319,10 @@ router.delete("/admin/buyer-requests/:id", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const result = directoryDb.prepare("DELETE FROM buyer_requests WHERE id = ?").run(Number(req.params.id));
   if (!result.changes) {
-    res.status(404).json({ error: "طلب المشتري غير موجود" });
+    res.status(404).json({ error: "طلب صاحب العمل غير موجود" });
     return;
   }
-  res.json({ success: true, message: "تم حذف طلب المشتري." });
+  res.json({ success: true, message: "تم حذف طلب صاحب العمل." });
 });
 
 router.get("/admin/suppliers", (req, res): void => {
