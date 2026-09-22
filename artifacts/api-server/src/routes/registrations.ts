@@ -77,7 +77,7 @@ router.post("/supplier-requests", (req, res): void => {
   if (!businessName || !contactPerson || !supplierBusinessTypes.includes(businessType) ||
       !phoneIsValid(phone) || !phoneIsValid(whatsapp) || !eastCities.includes(city) ||
       categories.length === 0 || categories.some((item) => !categoryNames.includes(item)) ||
-      wordCount(description) < 100 || wordCount(description) > 300 ||
+       wordCount(description) < 20 || wordCount(description) > 300 ||
       !acceptedTerms || !acceptedData || !acceptedBusiness || !acceptedPublish ||
       (deliversToOtherCities && !otherCities)) {
     res.status(400).json({ error: "يرجى استكمال بيانات المورد والتأكد من صحة الجوال والإقرارات." });

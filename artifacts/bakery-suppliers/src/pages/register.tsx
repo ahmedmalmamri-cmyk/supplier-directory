@@ -188,7 +188,7 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.deliversToOtherCities} onChange={(event) => onChange({ deliversToOtherCities: event.target.checked })} /> أوصل إلى مدن أخرى</label>
          {form.deliversToOtherCities && <TextAreaField label="اذكر المدن التي توصل إليها" value={form.otherCities} onChange={(value) => onChange({ otherCities: value })} placeholder="اكتب المدن التي توصل إليها..." />}
       </FormSection>}
-      {step === 3 && <FormSection title="معلومات المنتجات" description="اختر كل الفئات التي يتعامل بها نشاطك.">
+       {step === 3 && <FormSection title="معلومات المنتجات" description="اختر كل الفئات التي يتعامل بها نشاطك.">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {categories.map((category) => <label key={category} className="flex items-center gap-2 rounded-xl border p-3 text-sm cursor-pointer hover:border-primary">
             <input type="checkbox" checked={form.categories.includes(category)} onChange={(event) => onChange({ categories: event.target.checked ? [...form.categories, category] : form.categories.filter((item) => item !== category) })} />
@@ -197,9 +197,9 @@ function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onB
         </div>
         <Field label="الحد الأدنى للطلب (اختياري)" value={form.minOrder} onChange={(value) => onChange({ minOrder: value })} placeholder="مثال: 10 كراتين" />
         <div>
-          <label className="block text-sm font-bold mb-2">نبذة عن النشاط * (100-300 كلمة)</label>
+           <label className="block text-sm font-bold mb-2">نبذة عن النشاط * (20-300 كلمة)</label>
           <textarea value={form.description} onChange={(event) => onChange({ description: event.target.value })} rows={8} placeholder="عرّف بنشاطك، سنوات الخبرة، وما يميزك" className="w-full px-4 py-3 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y" />
-          <p className="text-xs text-muted-foreground mt-1">عدد الكلمات: {wordCount(form.description)} من 100 إلى 300</p>
+           <p className="text-xs text-muted-foreground mt-1">عدد الكلمات: {wordCount(form.description)} من 20 إلى 300</p>
         </div>
       </FormSection>}
       {step === 4 && <FormSection title="الوثائق والإقرار" description="رفع الوثائق اختياري، لكنه يساعد في الحصول على شارة موثق بعد الموافقة.">
@@ -307,7 +307,7 @@ function validateSupplierStep(form: SupplierForm, step: number) {
   if (step === 1 && !isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 058 020 6951.";
   if (step === 1 && !isSaudiPhone(form.whatsapp)) return form.sameWhatsapp ? "تحقق من رقم الجوال." : "أدخل رقم الواتساب أو فعّل خيار «رقم الواتساب نفس رقم الجوال».";
   if (step === 2 && (!form.city || (form.deliversToOtherCities && !form.otherCities))) return "اختر المدينة وأكمل مدن التوصيل.";
-  if (step === 3 && (!form.categories.length || wordCount(form.description) < 100 || wordCount(form.description) > 300)) return "اختر فئة واحدة على الأقل واكتب نبذة من 100 إلى 300 كلمة.";
+   if (step === 3 && (!form.categories.length || wordCount(form.description) < 20 || wordCount(form.description) > 300)) return "اختر فئة واحدة على الأقل واكتب نبذة من 20 إلى 300 كلمة.";
   return "";
 }
 function validateSupplier(form: SupplierForm) {
