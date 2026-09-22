@@ -434,8 +434,8 @@ router.post("/admin/suppliers/:id/products", (req, res): void => {
     res.status(400).json({ error: "اسم المنتج والتصنيف والصورة مطلوبة." });
     return;
   }
-  if (!/^https?:\/\/|^\/uploads\//i.test(imageUrl)) {
-    res.status(400).json({ error: "أدخل رابط صورة صالحاً يبدأ بـ https://." });
+  if (!/^https?:\/\/|^\/(?:api\/)?uploads\//i.test(imageUrl)) {
+    res.status(400).json({ error: "أدخل رابط صورة صالحاً يبدأ بـ https:// أو ارفع صورة من الجهاز." });
     return;
   }
   const supplier = directoryDb.prepare("SELECT id FROM suppliers WHERE id = ?").get(Number(req.params.id));
