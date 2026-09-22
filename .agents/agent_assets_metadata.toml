@@ -28,3 +28,17 @@ mtime_ms = 1790098531848
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/0fbbdebf-929e-4f4d-93cd-f66e6c5d1fa1/c20571f9-d3ae-4db0-85af-91318f4b583f"
 storage_version_token = "1790098546369266"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "hG-2jdvsWqrhhj6tE-LJD"
+uri = "file://screenshots/home-registration-options-cta.jpg"
+type = "image"
+title = "خيارات التسجيل في الصفحة الرئيسية"
+description = "الشريط السفلي يعرض الآن زري سجّل كمورد وسجّل كصاحب عمل معاً."
+logical_id = "c234a48d-2669-458f-bed9-23f9cdc6afa1"
+content_hash = "sha256:3256dabb9655766f806d3262456ea03b79fdb6a282b41fa2e49263d9388f704f"
+size = 68707
+mtime_ms = 1790098807612
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c234a48d-2669-458f-bed9-23f9cdc6afa1/4f22b6f4-7754-4d65-a7dd-588f103a6a17"
+storage_version_token = "1790098817253741"
+content_type = "image/jpeg"
