@@ -98,3 +98,17 @@ mtime_ms = 1790099353170
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/f0e43e31-6ddc-4eed-8541-b71cf23c52b4/2f1fb953-b224-41f8-aeda-36878b5b7bad"
 storage_version_token = "1790099364538196"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "RVj3bzUtPOy9HsQf2zFdP"
+uri = "file://screenshots/admin-product-image-upload.jpg"
+type = "image"
+title = "رفع صور المنتجات من لوحة الإدارة"
+description = "تمت إضافة اختيار صورة من الجهاز مع الحفاظ على خيار رابط الصورة."
+logical_id = "03597f82-85f3-4875-8155-ac1fa205cd96"
+content_hash = "sha256:af7d97aa5357bd7eff2a3c9e582860450bc4d02a7852285cbc1e059e7e98e236"
+size = 37812
+mtime_ms = 1790116483981
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/03597f82-85f3-4875-8155-ac1fa205cd96/89895ff2-b228-41c6-ab35-f2effbe00c8d"
+storage_version_token = "1790116508428610"
+content_type = "image/jpeg"

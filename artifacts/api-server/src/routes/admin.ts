@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import {
   AdminLoginBody,
   AdminLoginResponse,
@@ -10,6 +12,8 @@ import { directoryDb } from "../lib/directory-db";
 const router: IRouter = Router();
 const adminCookieName = "bakery_admin_session";
 const sessionDurationSeconds = 60 * 60 * 8;
+const uploadsDir = path.resolve(process.cwd(), "uploads");
+mkdirSync(uploadsDir, { recursive: true });
 
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -42,6 +46,18 @@ function requireAdmin(req: Request, res: Response) {
   if (isAdminAuthenticated(req)) return true;
   res.status(401).json({ error: "تسجيل دخول المدير مطلوب" });
   return false;
+}
+
+function saveProductImage(dataUrl: unknown) {
+  if (typeof dataUrl !== "string" || !dataUrl.trim()) throw new Error("اختر صورة المنتج أولاً.");
+  const match = dataUrl.trim().match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) throw new Error("صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WebP.");
+  const data = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+  if (data.length > 5 * 1024 * 1024) throw new Error("حجم الصورة يتجاوز 5 ميجابايت.");
+  const extension = match[1] === "image/jpeg" ? "jpg" : match[1].split("/")[1];
+  const filename = `product-${randomUUID()}.${extension}`;
+  writeFileSync(path.join(uploadsDir, filename), data);
+  return `/api/uploads/${filename}`;
 }
 
 function hashPassword(password: string) {
@@ -342,6 +358,16 @@ router.get("/admin/suppliers", (req, res): void => {
     isActive: Boolean((row as { isActive: number }).isActive),
     isFeatured: Boolean((row as { isFeatured: number }).isFeatured),
   })));
+});
+
+router.post("/admin/product-images", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const imageUrl = saveProductImage((req.body as Record<string, unknown>).dataUrl);
+    res.status(201).json({ imageUrl });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "تعذر رفع الصورة." });
+  }
 });
 
 router.patch("/admin/suppliers/:id", (req, res): void => {

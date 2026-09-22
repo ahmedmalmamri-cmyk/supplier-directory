@@ -78,13 +78,15 @@ export default function AdminPage() {
 
   useEffect(() => { if (isAuthenticated) void refresh(); }, [isAuthenticated]);
 
-  const act = async (path: string, init?: RequestInit, successMessage?: string) => {
+  const act = async (path: string, init?: RequestInit, successMessage?: string): Promise<boolean> => {
     try {
       await adminFetch(path, init);
       setNotice(successMessage || "تم تنفيذ العملية.");
       await refresh();
+      return true;
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "تعذر تنفيذ العملية.");
+      return false;
     }
   };
 
@@ -134,7 +136,7 @@ function LoginCard({ login }: { login: ReturnType<typeof useAdminLogin> }) {
   return <div className="max-w-md mx-auto bg-card border rounded-3xl p-6 md:p-8 shadow-sm"><div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5"><ShieldCheck className="w-7 h-7" /></div><h2 className="text-2xl font-bold mb-2">دخول المدير</h2><p className="text-sm text-muted-foreground mb-6">أدخل كلمة المرور لعرض وإدارة جميع الطلبات.</p><form onSubmit={(event) => { event.preventDefault(); login.mutate({ data: { password } }); }} className="space-y-4"><input type="text" name="username" autoComplete="username" tabIndex={-1} aria-hidden="true" className="hidden" /><label className="block"><span className="text-sm font-bold block mb-2">كلمة المرور</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></label><button type="submit" disabled={login.isPending || !password} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2"><LogIn className="w-4 h-4" />{login.isPending ? "جاري التحقق..." : "دخول"}</button>{login.isError && <p className="text-sm text-destructive text-center">كلمة المرور غير صحيحة.</p>}</form></div>;
 }
 
-function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { requests: SupplierRequest[]; selected: SupplierRequest | null; onSelect: (item: SupplierRequest | null) => void; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
+function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { requests: SupplierRequest[]; selected: SupplierRequest | null; onSelect: (item: SupplierRequest | null) => void; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
   const [rejectReason, setRejectReason] = useState("");
   const [note, setNote] = useState("");
   return <div className="space-y-5">{requests.length === 0 ? <Empty title="لا توجد طلبات موردين" description="ستظهر طلبات التسجيل الجديدة هنا." /> : requests.map((request) => <article key={request.id} className="bg-card border rounded-2xl p-5"><div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 mb-3"><span className="text-xs font-bold text-muted-foreground" dir="ltr">{request.requestCode}</span><h3 className="text-xl font-bold">{request.businessName}</h3><Status status={request.status} /></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-muted-foreground"><span>المدينة: {request.city}</span><span>النشاط: {request.businessType}</span><span dir="ltr" className="text-right">{request.phone}</span><span>{formatDate(request.createdAt)}</span></div></div><div className="flex flex-wrap gap-2 shrink-0"><button type="button" onClick={() => onSelect(selected?.id === request.id ? null : request)} className="rounded-xl border px-3 py-2 text-sm font-bold hover:bg-muted"><FileText className="w-4 h-4 inline ml-1" /> عرض التفاصيل</button>{request.status === "pending" && <><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-green-600 text-white px-3 py-2 text-sm font-bold hover:bg-green-700"><CheckCircle2 className="w-4 h-4 inline ml-1" /> موافقة</button><button type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-red-200 text-red-700 px-3 py-2 text-sm font-bold hover:bg-red-50"><XCircle className="w-4 h-4 inline ml-1" /> رفض</button></>}</div></div>{request.status === "pending" && rejectReason !== "" && <div className="mt-4 flex flex-col sm:flex-row gap-2"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-red-600 text-white px-4 font-bold">تأكيد الرفض</button></div>}{selected?.id === request.id && <div className="mt-5 border-t pt-5 space-y-4"><DetailGrid request={request} /><div><label className="block text-sm font-bold mb-2">طلب معلومات إضافية</label><div className="flex gap-2"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ما المعلومات المطلوبة؟" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/request-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, "تم حفظ طلب المعلومات.")} className="rounded-lg border px-4 font-bold">حفظ</button></div></div></div>}</article>)}</div>;
@@ -149,8 +151,9 @@ function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; on
   return requests.length === 0 ? <Empty title="لا توجد طلبات أصحاب أعمال" description="ستظهر تسجيلات أصحاب الأعمال هنا." /> : <div className="overflow-x-auto bg-card border rounded-2xl"><table className="w-full text-sm text-right"><thead className="bg-muted/50"><tr>{["رقم الطلب", "الاسم", "المدينة", "نوع النشاط", "الجوال", "التفضيلات", "التاريخ", ""].map((head) => <th key={head} className="p-4 font-bold whitespace-nowrap">{head}</th>)}</tr></thead><tbody>{requests.map((request) => <tr key={request.id} className="border-t"><td className="p-4" dir="ltr">{request.requestCode}</td><td className="p-4 font-bold">{request.fullName}<div className="text-xs text-muted-foreground">{request.businessName || ""}</div></td><td className="p-4">{request.city}</td><td className="p-4">{request.businessType}</td><td className="p-4" dir="ltr">{request.phone}</td><td className="p-4"><div className="flex flex-wrap gap-1 min-w-44">{request.newsletterWeekly && <span className="rounded-full bg-primary/10 text-primary px-2 py-1 text-xs">نشرة الأسعار</span>}{request.buyersGroup && <span className="rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs">مجموعة أصحاب الأعمال</span>}{!request.newsletterWeekly && !request.buyersGroup && <span className="text-muted-foreground text-xs">لا توجد</span>}</div></td><td className="p-4 whitespace-nowrap">{formatDate(request.createdAt)}</td><td className="p-4"><button type="button" onClick={() => onDelete(request.id)} className="text-red-700 hover:underline font-bold"><Trash2 className="w-4 h-4 inline" /> حذف</button></td></tr>)}</tbody></table></div>;
 }
 
-function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
-  const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string; imageUrl: string } | null>(null);
+function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
+  const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string; imageUrl: string; imageDataUrl: string } | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [editing, setEditing] = useState<Pick<Supplier, "id" | "name" | "city" | "description" | "phone" | "whatsapp"> | null>(null);
   const [orderEditor, setOrderEditor] = useState<{ supplierId: number; products: AdminProduct[] } | null>(null);
   const [draggingProductId, setDraggingProductId] = useState<number | null>(null);
@@ -183,6 +186,33 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
     setDraggingProductId(null);
   };
 
+  const saveProduct = async () => {
+    if (!newProduct) return;
+    setSavingProduct(true);
+    try {
+      let imageUrl = newProduct.imageUrl.trim();
+      if (newProduct.imageDataUrl) {
+        const uploaded = await adminFetch<{ imageUrl: string }>("/api/admin/product-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: newProduct.imageDataUrl }),
+        });
+        imageUrl = uploaded.imageUrl;
+      }
+      if (!imageUrl) throw new Error("اختر صورة المنتج أو أدخل رابطاً لها.");
+      const saved = await onAction(`/api/admin/suppliers/${newProduct.supplierId}/products`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProduct.name, categoryId: newProduct.categoryId, imageUrl }),
+      }, "تمت إضافة المنتج.");
+      if (saved) setNewProduct(null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "تعذر رفع الصورة وإضافة المنتج.");
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   return <div className="space-y-4">
     {suppliers.map((supplier) => <article key={supplier.id} className="rounded-2xl border bg-card p-5">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -192,7 +222,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
-          <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
+           <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "", imageDataUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>
           <button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/pause`, { method: "POST" }, supplier.isActive ? "تم إيقاف المورد." : "تم إعادة تفعيل المورد.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{supplier.isActive ? "إيقاف مؤقت" : "تفعيل"}</button>
           <button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">حذف</button>
@@ -210,12 +240,14 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
 
       {newProduct?.supplierId === supplier.id && <div className="mt-4 space-y-4 border-t pt-4">
         <div className="rounded-xl border border-accent/40 bg-accent/10 p-4"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 h-5 w-5 shrink-0 text-accent" /><div><p className="font-extrabold text-accent-foreground">اختر أفضل 3 منتجات لديك بعناية</p><p className="mt-1 text-xs leading-6 text-muted-foreground">ستظهر المنتجات الأولى في واجهة المورد. استخدم ترتيب المنتجات لتحديد الأولوية.</p></div></div></div>
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.3fr_auto]">
+         <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.3fr_auto]">
           <input data-testid={`input-product-name-${supplier.id}`} value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} placeholder="اسم المنتج" className="h-11 rounded-lg border bg-background px-3" />
           <select data-testid={`select-product-category-${supplier.id}`} value={newProduct.categoryId} onChange={(event) => setNewProduct({ ...newProduct, categoryId: event.target.value })} className="h-11 rounded-lg border bg-background px-3"><option value="">التصنيف</option>{settings?.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-          <label className={`flex h-11 items-center gap-2 rounded-lg border px-3 text-sm ${newProduct.imageUrl ? "border-primary bg-primary/5" : "border-accent bg-accent/10"}`}><ImagePlus className="h-4 w-4 text-primary" /><span className="sr-only">صورة المنتج مطلوبة</span><input data-testid={`input-product-image-${supplier.id}`} type="url" required value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} placeholder="رابط صورة المنتج *" className="min-w-0 flex-1 bg-transparent outline-none" /></label>
-          <button data-testid={`button-save-product-${supplier.id}`} type="button" disabled={!newProduct.name.trim() || !newProduct.categoryId || !newProduct.imageUrl.trim()} onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newProduct.name, categoryId: newProduct.categoryId, imageUrl: newProduct.imageUrl }) }, "تمت إضافة المنتج.").then(() => setNewProduct(null))} className="h-11 rounded-lg bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">حفظ المنتج</button>
+           <label className={`flex h-11 items-center gap-2 rounded-lg border px-3 text-sm ${newProduct.imageDataUrl ? "border-primary bg-primary/5" : "border-accent bg-accent/10"}`}><ImagePlus className="h-4 w-4 text-primary" /><span className="min-w-0 flex-1 truncate">{newProduct.imageDataUrl ? "تم اختيار الصورة" : "اختر صورة من الجهاز"}</span><input data-testid={`input-product-image-${supplier.id}`} type="file" accept="image/jpeg,image/png,image/webp" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; try { const imageDataUrl = await prepareProductImage(file); setNewProduct({ ...newProduct, imageDataUrl, imageUrl: "" }); } catch (error) { window.alert(error instanceof Error ? error.message : "تعذر تجهيز الصورة."); } }} className="sr-only" /></label>
+           <button data-testid={`button-save-product-${supplier.id}`} type="button" disabled={savingProduct || !newProduct.name.trim() || !newProduct.categoryId || (!newProduct.imageUrl.trim() && !newProduct.imageDataUrl)} onClick={() => void saveProduct()} className="h-11 rounded-lg bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">{savingProduct ? "جاري الرفع..." : "حفظ المنتج"}</button>
         </div>
+         {newProduct.imageDataUrl && <div className="flex items-center gap-3 rounded-xl border bg-muted/20 p-3"><img src={newProduct.imageDataUrl} alt="معاينة صورة المنتج" className="h-16 w-16 rounded-lg object-cover" /><span className="text-sm font-medium">ستُضغط الصورة تلقائياً قبل حفظها.</span></div>}
+         <div className="flex items-center gap-2 text-xs text-muted-foreground"><span>أو</span><input type="url" value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value, imageDataUrl: "" })} placeholder="الصق رابط صورة عامة" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-3" /></div>
         <div className="flex justify-end"><button type="button" onClick={() => setNewProduct(null)} className="rounded-lg border px-4 py-2 text-sm font-bold">إلغاء</button></div>
       </div>}
 
@@ -233,7 +265,7 @@ function StatsTab({ stats }: { stats: Stats | null }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{cards.map(([label, value, Icon]) => <div key={label} className="bg-card border rounded-2xl p-6"><Icon className="w-6 h-6 text-primary mb-4" /><div className="text-3xl font-bold">{value}</div><div className="text-muted-foreground mt-1">{label}</div></div>)}</div>;
 }
 
-function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | null; suppliers: Supplier[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
+function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | null; suppliers: Supplier[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
   const [city, setCity] = useState("");
   const [category, setCategory] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -351,4 +383,42 @@ function Status({ status }: { status: "pending" | "approved" | "rejected" }) {
 function Info({ label, value }: { label: string; value: string }) { return <div><strong>{label}:</strong> <span className="text-muted-foreground">{value}</span></div>; }
 function Empty({ title, description }: { title: string; description: string }) { return <div className="rounded-2xl border border-dashed bg-muted/20 p-12 text-center"><UserRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" /><h2 className="font-bold text-lg mb-2">{title}</h2><p className="text-muted-foreground">{description}</p></div>; }
 function formatDate(value: string) { return new Date(value).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" }); }
+function prepareProductImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      reject(new Error("اختر صورة بصيغة JPG أو PNG أو WebP."));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      reject(new Error("حجم الصورة الأصلي يجب ألا يتجاوز 10 ميجابايت."));
+      return;
+    }
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      const maxDimension = 1600;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        if (!blob) {
+          reject(new Error("تعذر تجهيز الصورة."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("تعذر قراءة الصورة."));
+        reader.readAsDataURL(blob);
+      }, "image/webp", 0.82);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("تعذر فتح الصورة."));
+    };
+    image.src = objectUrl;
+  });
+}
 async function adminFetch<T>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { ...init, credentials: "same-origin", headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers } }); const result = await response.json(); if (!response.ok) throw new Error(result.error || "تعذر تنفيذ الطلب."); return result as T; }
