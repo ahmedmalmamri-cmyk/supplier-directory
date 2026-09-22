@@ -84,7 +84,7 @@ export default function RegisterPage() {
               try {
                 const response = await postRegistration("/api/supplier-requests", {
                   businessName: supplier.businessName, contactPerson: supplier.contactPerson, businessType: supplier.businessType,
-                  phone: supplier.phone, whatsapp: supplier.whatsapp, email: supplier.email, website: supplier.website,
+                  phone: normalizeSaudiPhone(supplier.phone), whatsapp: normalizeSaudiPhone(supplier.whatsapp), email: supplier.email, website: supplier.website,
                   city: supplier.city, address: supplier.address, deliversToOtherCities: supplier.deliversToOtherCities,
                   otherCities: supplier.otherCities, categories: supplier.categories, minOrder: supplier.minOrder,
                   description: supplier.description, commercialLicense: supplier.commercialLicense,
@@ -110,8 +110,11 @@ export default function RegisterPage() {
               const validation = validateBuyer(buyer);
               if (validation) { setError(validation); return; }
               setIsSubmitting(true);
-              try {
-                const response = await postRegistration("/api/buyer-requests", buyer);
+               try {
+                 const response = await postRegistration("/api/buyer-requests", {
+                   ...buyer,
+                   phone: normalizeSaudiPhone(buyer.phone),
+                 });
                 setSubmitted({ code: response.requestCode, type: "buyer" });
                 localStorage.removeItem("bakery-buyer-registration-draft");
               } catch (submitError) {
@@ -298,7 +301,8 @@ function FileField({ label, value, onChange }: { label: string; value: string; o
 
 function validateSupplierStep(form: SupplierForm, step: number) {
   if (step === 0 && (!form.businessName || !form.contactPerson || !form.businessType)) return "أكمل معلومات النشاط قبل المتابعة.";
-  if (step === 1 && (!/^05\d{8}$/.test(form.phone) || !/^05\d{8}$/.test(form.whatsapp))) return "أدخل رقم الجوال والواتساب بصيغة 05XXXXXXXX.";
+  if (step === 1 && !isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 058 020 6951.";
+  if (step === 1 && !isSaudiPhone(form.whatsapp)) return form.sameWhatsapp ? "تحقق من رقم الجوال." : "أدخل رقم الواتساب أو فعّل خيار «رقم الواتساب نفس رقم الجوال».";
   if (step === 2 && (!form.city || (form.deliversToOtherCities && !form.otherCities))) return "اختر المدينة وأكمل مدن التوصيل.";
   if (step === 3 && (!form.categories.length || wordCount(form.description) < 100 || wordCount(form.description) > 300)) return "اختر فئة واحدة على الأقل واكتب نبذة من 100 إلى 300 كلمة.";
   return "";
@@ -307,8 +311,19 @@ function validateSupplier(form: SupplierForm) {
   return validateSupplierStep(form, 0) || validateSupplierStep(form, 1) || validateSupplierStep(form, 2) || validateSupplierStep(form, 3) || (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish ? "وافق على جميع الإقرارات قبل الإرسال." : "");
 }
 function validateBuyer(form: BuyerForm) {
-  if (!form.fullName || !/^05\d{8}$/.test(form.phone) || !form.city || !form.businessType) return "أكمل الحقول المطلوبة وأدخل الجوال بصيغة 05XXXXXXXX.";
+  if (!form.fullName || !isSaudiPhone(form.phone) || !form.city || !form.businessType) return "أكمل الحقول المطلوبة وأدخل الجوال بصيغة صحيحة، مثل 058 020 6951.";
   return "";
+}
+function normalizeSaudiPhone(value: string) {
+  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+  const westernDigits = value.replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)));
+  const digits = westernDigits.replace(/\D/g, "");
+  if (digits.startsWith("00966")) return `0${digits.slice(5)}`;
+  if (digits.startsWith("966")) return `0${digits.slice(3)}`;
+  return digits;
+}
+function isSaudiPhone(value: string) {
+  return /^05\d{8}$/.test(normalizeSaudiPhone(value));
 }
 function wordCount(value: string) { return value.trim().split(/\s+/).filter(Boolean).length; }
 async function readFile(file: File) { return new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }

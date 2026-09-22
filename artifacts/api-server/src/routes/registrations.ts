@@ -17,8 +17,17 @@ function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeSaudiPhone(value: string) {
+  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+  const westernDigits = value.replace(/[٠-٩]/g, (digit) => String(arabicDigits.indexOf(digit)));
+  const digits = westernDigits.replace(/\D/g, "");
+  if (digits.startsWith("00966")) return `0${digits.slice(5)}`;
+  if (digits.startsWith("966")) return `0${digits.slice(3)}`;
+  return digits;
+}
+
 function phoneIsValid(value: string) {
-  return /^05\d{8}$/.test(value);
+  return /^05\d{8}$/.test(normalizeSaudiPhone(value));
 }
 
 function wordCount(value: string) {
@@ -49,8 +58,8 @@ router.post("/supplier-requests", (req, res): void => {
   const businessName = text(body.businessName);
   const contactPerson = text(body.contactPerson);
   const businessType = text(body.businessType);
-  const phone = text(body.phone);
-  const whatsapp = text(body.whatsapp);
+  const phone = normalizeSaudiPhone(text(body.phone));
+  const whatsapp = normalizeSaudiPhone(text(body.whatsapp));
   const email = text(body.email);
   const website = text(body.website);
   const city = text(body.city);
@@ -105,7 +114,7 @@ router.post("/supplier-requests", (req, res): void => {
 router.post("/buyer-requests", (req, res): void => {
   const body = req.body as Record<string, unknown>;
   const fullName = text(body.fullName);
-  const phone = text(body.phone);
+  const phone = normalizeSaudiPhone(text(body.phone));
   const email = text(body.email);
   const city = text(body.city);
   const businessType = text(body.businessType);
