@@ -36,7 +36,7 @@ const productSelect = `
   SELECT p.id, p.supplier_id AS supplierId, s.name AS supplierName,
     p.category_id AS categoryId, c.name AS categoryName, p.name, p.weight, p.unit,
     p.country_of_origin AS countryOfOrigin, p.min_order AS minOrder, p.price,
-    p.image_url AS imageUrl, p.created_at AS createdAt
+     p.image_url AS imageUrl, p.sort_order AS sortOrder, p.created_at AS createdAt
   FROM products p
   JOIN suppliers s ON s.id = p.supplier_id AND s.is_active = 1
   JOIN categories c ON c.id = p.category_id
@@ -95,7 +95,8 @@ router.get("/home", (_req, res): void => {
     SELECT
       (SELECT COUNT(*) FROM suppliers WHERE is_active = 1) AS suppliers,
       (SELECT COUNT(*) FROM products) AS products,
-      (SELECT COUNT(DISTINCT city) FROM suppliers WHERE is_active = 1 AND city != 'غير محدد') AS cities
+      (SELECT COUNT(DISTINCT city) FROM suppliers WHERE is_active = 1 AND city != 'غير محدد') AS cities,
+      (SELECT COUNT(*) FROM reviews) AS reviews
   `).get();
   res.json(GetHomeResponse.parse({ categories, featuredSuppliers, latestProducts, stats }));
 });
@@ -202,8 +203,8 @@ router.get("/suppliers/:id", (req, res): void => {
     return;
   }
   const products = directoryDb.prepare(`
-    ${productSelect} WHERE p.supplier_id = ? ORDER BY p.created_at DESC
-  `).all(parsed.data.id);
+    ${productSelect} WHERE p.supplier_id = ? ORDER BY p.sort_order ASC, p.created_at DESC, p.id DESC
+   `).all(parsed.data.id);
   const reviews = directoryDb.prepare(`
     SELECT id, supplier_id AS supplierId, reviewer_name AS reviewerName,
       rating, comment, created_at AS createdAt

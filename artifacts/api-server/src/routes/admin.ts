@@ -403,8 +403,13 @@ router.post("/admin/suppliers/:id/products", (req, res): void => {
   const body = req.body as Record<string, unknown>;
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const categoryId = Number(body.categoryId);
-  if (!name || !Number.isInteger(categoryId)) {
-    res.status(400).json({ error: "اسم المنتج والتصنيف مطلوبان." });
+  const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+  if (!name || !Number.isInteger(categoryId) || !imageUrl) {
+    res.status(400).json({ error: "اسم المنتج والتصنيف والصورة مطلوبة." });
+    return;
+  }
+  if (!/^https?:\/\/|^\/uploads\//i.test(imageUrl)) {
+    res.status(400).json({ error: "أدخل رابط صورة صالحاً يبدأ بـ https://." });
     return;
   }
   const supplier = directoryDb.prepare("SELECT id FROM suppliers WHERE id = ?").get(Number(req.params.id));
@@ -435,16 +440,59 @@ router.post("/admin/suppliers/:id/products", (req, res): void => {
     });
     return;
   }
+  const nextSortOrder = (directoryDb.prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 AS sortOrder FROM products WHERE supplier_id = ?").get(Number(req.params.id)) as { sortOrder: number }).sortOrder;
   const result = directoryDb.prepare(`
     INSERT INTO products
       (supplier_id, category_id, name, weight, unit, country_of_origin, ingredients,
-       technical_data, recommended_use, shelf_life, storage_conditions, min_order, price, image_url, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, '', '', '', '', '', ?, ?, NULL, ?)
+       technical_data, recommended_use, shelf_life, storage_conditions, min_order, price, image_url, sort_order, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, '', '', '', '', '', ?, ?, ?, ?, ?)
   `).run(
     Number(req.params.id), categoryId, name, String(body.weight || ""), String(body.unit || "وحدة"),
-    String(body.countryOfOrigin || "السعودية"), Number(body.minOrder) || 1, body.price == null ? null : Number(body.price), new Date().toISOString(),
+    String(body.countryOfOrigin || "السعودية"), Number(body.minOrder) || 1, body.price == null ? null : Number(body.price), imageUrl, nextSortOrder, new Date().toISOString(),
   );
   res.status(201).json({ success: true, productId: Number(result.lastInsertRowid), message: "تمت إضافة المنتج." });
+});
+
+router.get("/admin/suppliers/:id/products", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  const supplier = directoryDb.prepare("SELECT id FROM suppliers WHERE id = ?").get(supplierId);
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود" });
+    return;
+  }
+  res.json(directoryDb.prepare(`
+    SELECT id, name, image_url AS imageUrl, sort_order AS sortOrder
+    FROM products WHERE supplier_id = ? ORDER BY sort_order, created_at, id
+  `).all(supplierId));
+});
+
+router.patch("/admin/suppliers/:id/products/order", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  const productIds = Array.isArray(req.body.productIds)
+    ? req.body.productIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isInteger(id))
+    : [];
+  if (!productIds.length || new Set(productIds).size !== productIds.length) {
+    res.status(400).json({ error: "قائمة ترتيب المنتجات غير صالحة." });
+    return;
+  }
+  const existing = directoryDb.prepare("SELECT id FROM products WHERE supplier_id = ?").all(supplierId) as Array<{ id: number }>;
+  const existingIds = new Set(existing.map((product) => product.id));
+  if (productIds.length !== existingIds.size || productIds.some((id: number) => !existingIds.has(id))) {
+    res.status(400).json({ error: "يجب إرسال جميع منتجات المورد بالترتيب الجديد." });
+    return;
+  }
+  directoryDb.exec("BEGIN");
+  try {
+    const update = directoryDb.prepare("UPDATE products SET sort_order = ? WHERE id = ? AND supplier_id = ?");
+    productIds.forEach((productId: number, index: number) => update.run(index, productId, supplierId));
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  res.json({ success: true, message: "تم حفظ ترتيب المنتجات." });
 });
 
 router.post("/admin/suppliers/:id/subscription", (req, res): void => {

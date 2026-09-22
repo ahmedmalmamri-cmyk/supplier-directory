@@ -52,7 +52,8 @@ export const GetHomeResponse = zod.object({
   "stats": zod.object({
   "suppliers": zod.number().int(),
   "products": zod.number().int(),
-  "cities": zod.number().int()
+  "cities": zod.number().int(),
+  "reviews": zod.number().int()
 })
 })
 

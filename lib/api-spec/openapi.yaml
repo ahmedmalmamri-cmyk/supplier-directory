@@ -378,11 +378,12 @@ components:
           $ref: "#/components/schemas/Stats"
     Stats:
       type: object
-      required: [suppliers, products, cities]
+      required: [suppliers, products, cities, reviews]
       properties:
         suppliers: { type: integer }
         products: { type: integer }
         cities: { type: integer }
+        reviews: { type: integer }
     SearchResults:
       type: object
       required: [suppliers, products]

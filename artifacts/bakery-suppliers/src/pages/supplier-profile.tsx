@@ -1,300 +1,80 @@
-import { MainLayout } from "@/components/layout/MainLayout";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useGetSupplier, useAddReview, getGetSupplierQueryKey } from "@workspace/api-client-react";
-import { Link, useRoute } from "wouter";
-import { MapPin, Phone, MessageSquare, Star, CheckCircle2, ShieldCheck, Package } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronLeft, MapPin, MessageCircle, Package, Phone, ShieldCheck, Star } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Link, useRoute } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useAddReview, useGetSupplier, getGetSupplierQueryKey } from "@workspace/api-client-react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const reviewSchema = z.object({
   reviewerName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
-  rating: z.number().min(1, "الرجاء اختيار التقييم").max(5),
+  rating: z.coerce.number().min(1, "الرجاء اختيار التقييم").max(5),
   comment: z.string().min(3, "التعليق قصير جداً").max(500),
 });
-
 type ReviewFormValues = z.infer<typeof reviewSchema>;
+
+function Stars({ rating, large = false }: { rating: number; large?: boolean }) {
+  return <span className={`inline-flex items-center gap-0.5 ${large ? "text-lg" : "text-sm"} text-accent`} aria-label={`التقييم ${rating} من 5`}>{Array.from({ length: 5 }).map((_, index) => <Star key={index} className={`${large ? "h-5 w-5" : "h-4 w-4"} ${index < Math.round(rating) ? "fill-current" : "text-border"}`} />)}</span>;
+}
+
+function LogoBadge({ name, verified }: { name: string; verified: boolean }) {
+  return <div className="relative shrink-0"><div className="flex h-24 w-24 items-center justify-center rounded-full border-8 border-background bg-secondary text-4xl font-extrabold text-primary shadow-warm md:h-32 md:w-32 md:text-5xl">{name.slice(0, 1)}</div>{verified && <span className="absolute bottom-0 left-0 flex h-8 w-8 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground"><ShieldCheck className="h-4 w-4" /></span>}</div>;
+}
 
 export default function SupplierProfilePage() {
   const [, params] = useRoute("/supplier/:id");
-  const supplierId = params?.id ? parseInt(params.id) : null;
+  const supplierId = params?.id ? Number(params.id) : null;
   const queryClient = useQueryClient();
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const { data: supplier, isLoading, error } = useGetSupplier(supplierId ?? 0, { query: { enabled: !!supplierId, queryKey: getGetSupplierQueryKey(supplierId ?? 0) } });
+  const form = useForm<ReviewFormValues>({ resolver: zodResolver(reviewSchema), defaultValues: { reviewerName: "", rating: 5, comment: "" } });
+  const addReview = useAddReview({ mutation: { onSuccess: () => { setIsReviewOpen(false); form.reset(); if (supplierId) void queryClient.invalidateQueries({ queryKey: getGetSupplierQueryKey(supplierId) }); } } });
 
-  const { data: supplier, isLoading, error } = useGetSupplier(supplierId!, {
-    query: { enabled: !!supplierId, queryKey: getGetSupplierQueryKey(supplierId!) }
-  });
-
-  const addReview = useAddReview({
-    mutation: {
-      onSuccess: () => {
-        setIsReviewOpen(false);
-        form.reset();
-        queryClient.invalidateQueries({ queryKey: getGetSupplierQueryKey(supplierId!) });
-      }
-    }
-  });
-
-  const form = useForm<ReviewFormValues>({
-    resolver: zodResolver(reviewSchema),
-    defaultValues: {
-      reviewerName: "",
-      rating: 5,
-      comment: "",
-    }
-  });
-
-  const onSubmit = (data: ReviewFormValues) => {
-    if (supplierId) {
-      addReview.mutate({ id: supplierId, data });
-    }
-  };
-
-  if (!supplierId) return <MainLayout><div className="text-center p-12 text-destructive">معرف المورد غير صحيح</div></MainLayout>;
+  if (!supplierId) return <MainLayout><EmptyState title="معرف المورد غير صحيح" description="الرابط الذي وصلت منه غير مكتمل." /></MainLayout>;
   if (isLoading) return <MainLayout><LoadingSpinner className="min-h-[60vh]" /></MainLayout>;
-  if (error || !supplier) return <MainLayout><div className="text-center p-12 text-destructive">حدث خطأ في تحميل بيانات المورد.</div></MainLayout>;
+  if (error || !supplier) return <MainLayout><EmptyState title="تعذر تحميل بيانات المورد" description="حاول تحديث الصفحة أو العودة إلى قائمة الموردين." /></MainLayout>;
 
-  return (
-    <MainLayout>
-      <div className="bg-gradient-to-b from-secondary/10 to-background border-b pt-12 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-card border-4 border-background shadow-lg flex items-center justify-center text-primary text-4xl md:text-5xl font-bold shrink-0 -mt-20 md:-mt-0 relative">
-              {supplier.name.substring(0,1)}
-              {supplier.isVerified && (
-                <div className="absolute -bottom-2 -left-2 bg-green-500 text-white p-1 rounded-full border-2 border-background" title="مورد موثق">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              )}
-            </div>
-            
-            <div className="flex-1">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
-                    {supplier.name}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-3 md:gap-6 mt-3 text-muted-foreground text-sm">
-                    <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4"/> {supplier.city}، {supplier.region}</span>
-                    <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-500 fill-amber-500"/> {supplier.averageRating.toFixed(1)} تقييم</span>
-                    <span>انضم {new Date(supplier.createdAt).toLocaleDateString('ar-SA')}</span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-3">
-                  {supplier.whatsapp ? (
-                    <a href={`https://wa.me/${supplier.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`مرحباً، وصلت إلى بياناتكم عبر دليل موردي المخابز والحلويات وأرغب في الاستفسار عن منتجاتكم.`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
-                      <MessageSquare className="w-4 h-4" />
-                      واتساب
-                    </a>
-                  ) : null}
-                  {supplier.phone ? (
-                    <a href={`tel:${supplier.phone}`} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-card hover:bg-muted border px-5 py-2.5 rounded-xl font-medium transition-colors">
-                      <Phone className="w-4 h-4" />
-                      اتصال
-                    </a>
-                  ) : null}
-                  {!supplier.phone && !supplier.whatsapp && (
-                    <span className="text-sm text-muted-foreground bg-muted/40 border rounded-xl px-4 py-2.5">
-                      بيانات التواصل ستُضاف قريباً
-                    </span>
-                  )}
-                </div>
-              </div>
-              <p className="text-muted-foreground leading-relaxed max-w-3xl mt-4 md:mt-6 bg-card/50 p-4 rounded-xl border border-border/50">
-                {supplier.description}
-              </p>
-            </div>
-          </div>
+  const whatsappText = "للاستفسار عن باقي المنتجات، تواصل معنا مباشرة";
+  const whatsappHref = supplier.whatsapp ? `https://wa.me/${supplier.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappText)}` : undefined;
+  const submitReview = (values: ReviewFormValues) => addReview.mutate({ id: supplierId, data: values });
+
+  return <MainLayout>
+    <section className="border-b border-border bg-[linear-gradient(135deg,hsl(var(--secondary)/.24),hsl(var(--background))_55%)]">
+      <div className="container mx-auto px-4 pb-14 pt-8 md:pb-16 md:pt-12">
+        <Link href="/suppliers" data-testid="link-back-suppliers" className="mb-9 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary"><ArrowRight className="h-4 w-4" /> العودة إلى دليل الموردين</Link>
+        <div className="flex flex-col gap-7 md:flex-row md:items-center">
+          <LogoBadge name={supplier.name} verified={supplier.isVerified} />
+          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 data-testid="text-supplier-name" className="text-3xl font-extrabold md:text-5xl">{supplier.name}</h1>{supplier.isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> مورد موثق</span>}</div><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground"><span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" /> {supplier.city}، {supplier.region}</span><span className="inline-flex items-center gap-1.5"><Stars rating={supplier.averageRating} /> <b className="text-foreground">{supplier.averageRating.toFixed(1)}</b> تقييم</span></div></div>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row"><a data-testid="button-supplier-whatsapp" href={whatsappHref} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-extrabold transition-transform hover:-translate-y-0.5 ${whatsappHref ? "bg-[#287d56] text-white" : "pointer-events-none bg-muted text-muted-foreground"}`}><MessageCircle className="h-5 w-5" /> تواصل عبر واتساب</a>{supplier.phone && <a data-testid="button-supplier-phone" href={`tel:${supplier.phone}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-bold hover:border-primary"><Phone className="h-4 w-4" /> اتصال</a>}</div>
         </div>
+        <p className="mt-8 max-w-3xl rounded-2xl border border-border/70 bg-card/70 p-5 text-sm leading-8 text-muted-foreground">{supplier.description || "نبذة المورد ستُضاف قريباً."}</p>
       </div>
+    </section>
 
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          <div className="lg:col-span-2 space-y-10">
-            {/* Products */}
-            <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Package className="w-6 h-6 text-primary" />
-                منتجات المورد ({supplier.products.length})
-              </h2>
-              {supplier.products.length === 0 ? (
-                <div className="text-center p-8 bg-muted/20 border border-dashed rounded-xl">لا توجد منتجات مضافة بعد.</div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {supplier.products.map(product => (
-                    <Link key={product.id} href={`/product/${product.id}`} className="bg-card border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all group flex flex-col">
-                      <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        ) : (
-                          <Package className="w-8 h-8 text-muted-foreground opacity-30" />
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <div className="text-[10px] text-muted-foreground mb-1">{product.categoryName}</div>
-                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">{product.name}</h3>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </section>
+    <div className="container mx-auto grid grid-cols-1 gap-10 px-4 py-12 lg:grid-cols-[1fr_330px]">
+      <main className="min-w-0">
+        <section data-testid="section-supplier-products"><div className="mb-6 flex items-end justify-between gap-4"><div><p className="mb-1 text-xs font-bold uppercase tracking-[.16em] text-primary">كتالوج المورد</p><h2 className="text-2xl font-extrabold md:text-3xl">أبرز المنتجات</h2></div><span className="rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">{supplier.products.length} منتجات</span></div>
+          {supplier.products.length ? <div className="grid grid-cols-2 gap-4 md:grid-cols-3">{supplier.products.map((product) => <Link key={product.id} href={`/product/${product.id}`} data-testid={`card-supplier-product-${product.id}`} className="group overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm"><div className="aspect-square overflow-hidden bg-muted">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-primary/40"><Package className="h-10 w-10" /></div>}</div><div className="p-4"><p className="mb-1 text-[11px] font-bold text-muted-foreground">{product.categoryName}</p><h3 className="line-clamp-2 text-sm font-extrabold group-hover:text-primary">{product.name}</h3><p className="mt-2 text-xs text-muted-foreground">الحد الأدنى: {product.minOrder} {product.unit}</p></div></Link>)}</div> : <EmptyState title="لا توجد منتجات منشورة بعد" description="سيتم عرض المنتجات هنا عند إضافتها إلى ملف المورد." compact />}
+        </section>
 
-            {/* Reviews */}
-            <section>
-              <div className="flex items-center justify-between mb-6 border-b pb-4">
-                <h2 className="text-2xl font-bold">التقييمات والآراء</h2>
-                <button 
-                  onClick={() => setIsReviewOpen(!isReviewOpen)} 
-                  className="text-sm font-medium text-primary bg-primary/10 px-4 py-2 rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  أضف تقييمك
-                </button>
-              </div>
+        <section className="mt-16" data-testid="section-supplier-reviews"><div className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-4"><div><p className="mb-1 text-xs font-bold uppercase tracking-[.16em] text-accent">تجارب أصحاب الأعمال</p><h2 className="text-2xl font-extrabold md:text-3xl">التقييمات والآراء</h2></div><button data-testid="button-open-review" type="button" onClick={() => setIsReviewOpen((open) => !open)} className="inline-flex items-center gap-1 rounded-xl bg-primary/10 px-4 py-2.5 text-sm font-extrabold text-primary hover:bg-primary/15">{isReviewOpen ? "إغلاق النموذج" : "أضف تقييمك"} <ChevronLeft className="h-4 w-4" /></button></div>
+          {isReviewOpen && <div className="mb-7 rounded-2xl border border-border bg-card p-5 shadow-warm"><h3 className="mb-4 text-lg font-extrabold">كيف كانت تجربتك مع {supplier.name}؟</h3><Form {...form}><form onSubmit={form.handleSubmit(submitReview)} className="space-y-4"><div className="grid gap-4 md:grid-cols-2"><FormField control={form.control} name="reviewerName" render={({ field }) => <FormItem><FormLabel>الاسم</FormLabel><FormControl><input data-testid="input-reviewer-name" {...field} className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" placeholder="اسمك الكريم" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="rating" render={({ field }) => <FormItem><FormLabel>التقييم</FormLabel><FormControl><select data-testid="select-review-rating" {...field} onChange={(event) => field.onChange(Number(event.target.value))} className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary"><option value="5">ممتاز — 5 من 5</option><option value="4">جيد جداً — 4 من 5</option><option value="3">جيد — 3 من 5</option><option value="2">مقبول — 2 من 5</option><option value="1">يحتاج تحسين — 1 من 5</option></select></FormControl><FormMessage /></FormItem>} /></div><FormField control={form.control} name="comment" render={({ field }) => <FormItem><FormLabel>التعليق</FormLabel><FormControl><textarea data-testid="textarea-review-comment" {...field} rows={4} className="w-full resize-none rounded-xl border border-input bg-background p-3 outline-none focus:border-primary" placeholder="شارك ملاحظتك مع أصحاب المخابز والحلويات..." /></FormControl><FormMessage /></FormItem>} /><button data-testid="button-submit-review" type="submit" disabled={addReview.isPending} className="rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground disabled:opacity-60">{addReview.isPending ? "جاري النشر..." : "نشر التقييم"}</button></form></Form></div>}
+          {supplier.reviews.length ? <div className="space-y-4">{supplier.reviews.map((review) => <article key={review.id} className="rounded-2xl border border-border bg-card p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-extrabold">{review.reviewerName}</h3><p className="mt-1 text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString("ar-SA")}</p></div><Stars rating={review.rating} /></div><p className="mt-4 text-sm leading-7 text-muted-foreground">{review.comment}</p></article>)}</div> : <EmptyState title="لا توجد تقييمات حتى الآن" description="كن أول من يشارك تجربته مع هذا المورد." compact />}</section>
+      </main>
 
-              {isReviewOpen && (
-                <div className="bg-card border rounded-xl p-6 mb-8 shadow-sm">
-                  <h3 className="font-bold text-lg mb-4">تقييم تجربتك مع {supplier.name}</h3>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="reviewerName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>الاسم</FormLabel>
-                              <FormControl>
-                                <input {...field} className="w-full h-10 px-3 rounded-md border bg-background text-sm" placeholder="اسمك الكريم" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="rating"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>التقييم (من 5)</FormLabel>
-                              <FormControl>
-                                <select 
-                                  {...field} 
-                                  onChange={e => field.onChange(Number(e.target.value))}
-                                  className="w-full h-10 px-3 rounded-md border bg-background text-sm"
-                                >
-                                  <option value={5}>⭐⭐⭐⭐⭐ (ممتاز)</option>
-                                  <option value={4}>⭐⭐⭐⭐ (جيد جداً)</option>
-                                  <option value={3}>⭐⭐⭐ (جيد)</option>
-                                  <option value={2}>⭐⭐ (مقبول)</option>
-                                  <option value={1}>⭐ (سيء)</option>
-                                </select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <FormField
-                        control={form.control}
-                        name="comment"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>التعليق</FormLabel>
-                            <FormControl>
-                              <textarea {...field} rows={4} className="w-full p-3 rounded-md border bg-background text-sm resize-none" placeholder="اكتب تجربتك مع المورد..." />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex justify-end gap-2 pt-2">
-                        <button type="button" onClick={() => setIsReviewOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-md transition-colors">إلغاء</button>
-                        <button type="submit" disabled={addReview.isPending} className="px-6 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
-                          {addReview.isPending ? "جاري الحفظ..." : "نشر التقييم"}
-                        </button>
-                      </div>
-                    </form>
-                  </Form>
-                </div>
-              )}
+      <aside><div className="sticky top-24 rounded-2xl border border-border bg-card p-6 shadow-warm"><h2 className="border-b border-border pb-4 text-lg font-extrabold">بيانات التواصل</h2><div className="space-y-5 pt-5"><ContactLine icon={<MapPin className="h-5 w-5" />} label="المدينة" value={`${supplier.city}، ${supplier.region}`} /><ContactLine icon={<Phone className="h-5 w-5" />} label="الهاتف" value={supplier.phone || "ستُضاف لاحقاً"} /><ContactLine icon={<MessageCircle className="h-5 w-5" />} label="واتساب" value={supplier.whatsapp || "ستُضاف لاحقاً"} /></div>{whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[#287d56] px-4 py-3 text-center text-sm font-extrabold text-white"><MessageCircle className="h-4 w-4" /> للاستفسار عن باقي المنتجات</a>}<div className="mt-7 flex gap-3 rounded-xl bg-secondary/20 p-4 text-xs leading-6 text-muted-foreground"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p>ننصح دائماً بالتأكد من جودة المنتج وشروط التوريد قبل الطلب بكميات كبيرة.</p></div></div></aside>
+    </div>
+  </MainLayout>;
+}
 
-              {supplier.reviews.length === 0 ? (
-                <div className="text-center p-8 bg-muted/20 border border-dashed rounded-xl">لا توجد تقييمات حتى الآن. كن أول من يقيم!</div>
-              ) : (
-                <div className="space-y-4">
-                  {supplier.reviews.map(review => (
-                    <div key={review.id} className="bg-card border rounded-xl p-5">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <div className="font-bold">{review.reviewerName}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{new Date(review.createdAt).toLocaleDateString('ar-SA')}</div>
-                        </div>
-                        <div className="flex text-amber-500">
-                          {Array.from({length: 5}).map((_, i) => (
-                            <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-amber-500' : 'text-muted/30 fill-transparent'}`} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm mt-3 leading-relaxed">{review.comment}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
+function ContactLine({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/25 text-primary">{icon}</span><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-sm font-bold">{value}</p></div></div>;
+}
 
-          <div className="lg:col-span-1">
-            <div className="bg-card border rounded-2xl p-6 sticky top-24 shadow-sm">
-              <h3 className="font-bold text-lg mb-6 border-b pb-3">معلومات التواصل</h3>
-              <ul className="space-y-6">
-                <li className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-primary shrink-0">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">رقم الهاتف</div>
-                    <div className="font-medium text-muted-foreground">{supplier.phone || "ستُضاف لاحقاً"}</div>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366] shrink-0">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">واتساب</div>
-                    <div className="font-medium text-muted-foreground">{supplier.whatsapp || "ستُضاف لاحقاً"}</div>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-primary shrink-0">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">العنوان</div>
-                    <div className="font-medium">{supplier.city}، {supplier.region}</div>
-                  </div>
-                </li>
-              </ul>
-              
-              <div className="mt-8 pt-6 border-t border-dashed">
-                <div className="bg-green-50 text-green-800 p-4 rounded-xl flex items-start gap-3 border border-green-200">
-                  <ShieldCheck className="w-5 h-5 mt-0.5 shrink-0" />
-                  <p className="text-xs leading-relaxed">
-                    هذا المورد موثق في منصتنا. ننصح دائماً بالتأكد من جودة المنتجات قبل الطلب بكميات كبيرة.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </MainLayout>
-  );
+function EmptyState({ title, description, compact = false }: { title: string; description: string; compact?: boolean }) {
+  return <div className={`rounded-2xl border border-dashed border-border bg-muted/20 text-center ${compact ? "p-9" : "mx-auto min-h-[50vh] max-w-xl p-12"}`}><Package className="mx-auto mb-3 h-9 w-9 text-primary/50" /><h2 className="font-extrabold">{title}</h2><p className="mt-2 text-sm text-muted-foreground">{description}</p></div>;
 }

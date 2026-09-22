@@ -78,6 +78,7 @@ directoryDb.exec(`
     min_order INTEGER NOT NULL,
     price REAL,
     image_url TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS reviews (
@@ -212,6 +213,12 @@ if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => colu
 }
 if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "buyers_group")) {
   directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN buyers_group INTEGER NOT NULL DEFAULT 0");
+}
+const productColumns = directoryDb
+  .prepare("PRAGMA table_info(products)")
+  .all() as Array<{ name: string }>;
+if (productColumns.length > 0 && !productColumns.some((column) => column.name === "sort_order")) {
+  directoryDb.exec("ALTER TABLE products ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
 }
 directoryDb.prepare(`
   INSERT OR IGNORE INTO directory_settings (key, value)

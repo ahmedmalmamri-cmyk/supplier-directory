@@ -95,6 +95,7 @@ export interface Stats {
   suppliers: number;
   products: number;
   cities: number;
+  reviews: number;
 }
 
 export interface HomeData {

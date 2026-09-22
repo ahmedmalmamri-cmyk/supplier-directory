@@ -51,66 +51,66 @@
 }
 
 :root {
-  --background: 30 15% 12%;
-  --foreground: 40 30% 96%;
-  --border: 30 13% 24%;
-  --card: 30 14% 15%;
-  --card-foreground: 40 30% 96%;
-  --card-border: 30 13% 24%;
-  --popover: 30 14% 15%;
-  --popover-foreground: 40 30% 96%;
-  --popover-border: 30 13% 24%;
-  --primary: 43 82% 52%;
-  --primary-foreground: 30 18% 10%;
-  --secondary: 30 13% 23%;
-  --secondary-foreground: 40 30% 96%;
-  --muted: 30 13% 20%;
-  --muted-foreground: 35 12% 70%;
-  --accent: 43 75% 25%;
-  --accent-foreground: 40 30% 96%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 0 0% 100%;
-  --input: 30 13% 27%;
-  --ring: 43 82% 52%;
-  --chart-1: 43 82% 52%;
-  --chart-2: 30 35% 48%;
-  --chart-3: 15 40% 50%;
-  --chart-4: 200 30% 40%;
-  --chart-5: 100 20% 50%;
+  --background: 34 46% 97%;
+  --foreground: 25 28% 18%;
+  --border: 31 25% 86%;
+  --card: 38 50% 99%;
+  --card-foreground: 25 28% 18%;
+  --card-border: 31 25% 86%;
+  --popover: 38 50% 99%;
+  --popover-foreground: 25 28% 18%;
+  --popover-border: 31 25% 86%;
+  --primary: 13 57% 39%;
+  --primary-foreground: 38 50% 99%;
+  --secondary: 39 74% 76%;
+  --secondary-foreground: 25 35% 20%;
+  --muted: 34 32% 92%;
+  --muted-foreground: 25 12% 47%;
+  --accent: 42 72% 43%;
+  --accent-foreground: 38 50% 99%;
+  --destructive: 2 62% 45%;
+  --destructive-foreground: 38 50% 99%;
+  --input: 31 25% 81%;
+  --ring: 13 57% 39%;
+  --chart-1: 13 57% 39%;
+  --chart-2: 42 72% 43%;
+  --chart-3: 27 63% 55%;
+  --chart-4: 155 27% 38%;
+  --chart-5: 201 31% 40%;
 
   --app-font-sans: 'Cairo', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: 0.75rem;
+  --radius: 1rem;
 }
 
 .dark {
-  --background: 30 15% 12%;
-  --foreground: 40 30% 96%;
-  --border: 30 13% 24%;
-  --card: 30 14% 15%;
-  --card-foreground: 40 30% 96%;
-  --card-border: 30 13% 24%;
-  --popover: 30 14% 15%;
-  --popover-foreground: 40 30% 96%;
-  --popover-border: 30 13% 24%;
-  --primary: 43 82% 52%;
-  --primary-foreground: 30 18% 10%;
-  --secondary: 30 13% 23%;
-  --secondary-foreground: 40 30% 96%;
-  --muted: 30 13% 20%;
-  --muted-foreground: 35 12% 70%;
-  --accent: 43 75% 25%;
-  --accent-foreground: 40 30% 96%;
-  --destructive: 0 60% 40%;
-  --destructive-foreground: 0 0% 100%;
-  --input: 30 13% 27%;
-  --ring: 43 82% 52%;
-  --chart-1: 43 82% 52%;
-  --chart-2: 30 35% 48%;
-  --chart-3: 15 40% 50%;
-  --chart-4: 200 30% 40%;
-  --chart-5: 100 20% 50%;
+  --background: 25 24% 13%;
+  --foreground: 35 40% 95%;
+  --border: 25 17% 28%;
+  --card: 25 20% 17%;
+  --card-foreground: 35 40% 95%;
+  --card-border: 25 17% 28%;
+  --popover: 25 20% 17%;
+  --popover-foreground: 35 40% 95%;
+  --popover-border: 25 17% 28%;
+  --primary: 14 61% 58%;
+  --primary-foreground: 25 24% 13%;
+  --secondary: 38 34% 30%;
+  --secondary-foreground: 35 40% 95%;
+  --muted: 25 18% 23%;
+  --muted-foreground: 31 16% 72%;
+  --accent: 42 69% 55%;
+  --accent-foreground: 25 24% 13%;
+  --destructive: 2 62% 52%;
+  --destructive-foreground: 35 40% 95%;
+  --input: 25 17% 32%;
+  --ring: 14 61% 58%;
+  --chart-1: 14 61% 58%;
+  --chart-2: 42 69% 55%;
+  --chart-3: 27 63% 55%;
+  --chart-4: 155 27% 52%;
+  --chart-5: 201 31% 58%;
 }
 
 @layer base {
@@ -123,8 +123,20 @@
   body {
     @apply font-sans antialiased bg-background text-foreground selection:bg-primary/20;
     background-image:
-      radial-gradient(circle at 85% 10%, hsl(var(--primary) / 0.08), transparent 28rem),
-      radial-gradient(circle at 10% 80%, hsl(var(--secondary) / 0.16), transparent 30rem);
+      radial-gradient(circle at 88% 6%, hsl(var(--secondary) / 0.2), transparent 26rem),
+      radial-gradient(circle at 8% 82%, hsl(var(--primary) / 0.06), transparent 30rem);
     background-attachment: fixed;
   }
 }
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .shadow-warm { box-shadow: 0 18px 45px hsl(24 28% 20% / 0.1); }
+  .shadow-warm-lg { box-shadow: 0 28px 70px hsl(24 28% 20% / 0.18); }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise-in { animation: rise-in 0.65s ease-out both; }

@@ -1,7 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useAdminLogin, useAdminLogout } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
-import { CheckCircle2, Clock3, FileText, LayoutDashboard, LogIn, LogOut, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, UserRound, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, FileText, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, UserRound, XCircle } from "lucide-react";
 
 type Tab = "suppliers" | "buyers" | "directory" | "stats" | "settings";
 type SupplierRequest = {
@@ -14,6 +14,7 @@ type SupplierRequest = {
 };
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; businessName: string | null; referralSource: string | null; newsletterWeekly: boolean; buyersGroup: boolean; createdAt: string };
 type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number; planId: number; planName: string | null; maxProductsAllowed: number; isFeatured: boolean };
+type AdminProduct = { id: number; name: string; imageUrl: string | null; sortOrder: number };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
 type Plan = { id: number; name: string; slug: string; priceMonthly: number; maxProducts: number; maxImagesPerProduct: number; hasVerifiedBadge: boolean; hasFeaturedListing: boolean; hasBanner: boolean; hasAnalytics: boolean; hasPrioritySupport: boolean; description: string; isActive: boolean; displayOrder: number };
 type Settings = { whatsapp: string; email: string; address: string; cities: string[]; categories: { id: number; name: string }[]; plans: Plan[] };
@@ -149,9 +150,82 @@ function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; on
 }
 
 function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<void> }) {
-  const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string } | null>(null);
+  const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string; imageUrl: string } | null>(null);
   const [editing, setEditing] = useState<Pick<Supplier, "id" | "name" | "city" | "description" | "phone" | "whatsapp"> | null>(null);
-  return <div className="space-y-4">{suppliers.map((supplier) => <article key={supplier.id} className="bg-card border rounded-2xl p-5"><div className="flex flex-col md:flex-row md:items-center justify-between gap-4"><div><div className="flex items-center gap-2"><h3 className="text-lg font-bold">{supplier.name}</h3>{supplier.isVerified && <Status status="approved" />}{!supplier.isActive && <span className="text-xs rounded-full bg-muted px-2 py-1">موقوف</span>}</div><p className="text-sm text-muted-foreground mt-2">{supplier.city} · منتجات: {supplier.productCount}</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button><button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="w-4 h-4 inline ml-1" /> إضافة منتج</button><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/pause`, { method: "POST" }, supplier.isActive ? "تم إيقاف المورد." : "تم إعادة تفعيل المورد.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{supplier.isActive ? "إيقاف مؤقت" : "تفعيل"}</button><button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-red-200 text-red-700 px-3 py-2 text-sm font-bold">حذف</button></div></div>{editing?.id === supplier.id && <div className="mt-4 border-t pt-4 grid md:grid-cols-2 gap-3"><input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} placeholder="اسم المورد" className="h-10 px-3 rounded-lg border bg-background" /><input value={editing.city} onChange={(event) => setEditing({ ...editing, city: event.target.value })} placeholder="المدينة" className="h-10 px-3 rounded-lg border bg-background" /><input value={editing.phone} onChange={(event) => setEditing({ ...editing, phone: event.target.value })} placeholder="الجوال" className="h-10 px-3 rounded-lg border bg-background" /><input value={editing.whatsapp} onChange={(event) => setEditing({ ...editing, whatsapp: event.target.value })} placeholder="الواتساب" className="h-10 px-3 rounded-lg border bg-background" /><textarea value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} placeholder="الوصف" className="md:col-span-2 px-3 py-2 rounded-lg border bg-background" /><div className="md:col-span-2 flex gap-2"><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing) }, "تم تحديث المورد.")} className="rounded-lg bg-primary text-primary-foreground px-4 py-2 font-bold">حفظ التعديل</button><button type="button" onClick={() => setEditing(null)} className="rounded-lg border px-4 py-2">إلغاء</button></div></div>}{newProduct?.supplierId === supplier.id && <div className="mt-4 border-t pt-4 grid md:grid-cols-4 gap-3"><input value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} placeholder="اسم المنتج" className="h-10 px-3 rounded-lg border bg-background" /><select value={newProduct.categoryId} onChange={(event) => setNewProduct({ ...newProduct, categoryId: event.target.value })} className="h-10 px-3 rounded-lg border bg-background"><option value="">التصنيف</option>{settings?.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newProduct.name, categoryId: newProduct.categoryId }) }, "تمت إضافة المنتج.")} className="h-10 rounded-lg bg-primary text-primary-foreground font-bold">حفظ المنتج</button><button type="button" onClick={() => setNewProduct(null)} className="h-10 rounded-lg border">إلغاء</button></div>}</article>)}</div>;
+  const [orderEditor, setOrderEditor] = useState<{ supplierId: number; products: AdminProduct[] } | null>(null);
+  const [draggingProductId, setDraggingProductId] = useState<number | null>(null);
+  const [orderLoading, setOrderLoading] = useState<number | null>(null);
+
+  const openOrderEditor = async (supplierId: number) => {
+    setOrderLoading(supplierId);
+    try {
+      const products = await adminFetch<AdminProduct[]>(`/api/admin/suppliers/${supplierId}/products`);
+      setOrderEditor({ supplierId, products });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "تعذر تحميل المنتجات.");
+    } finally {
+      setOrderLoading(null);
+    }
+  };
+
+  const moveProduct = (targetId: number) => {
+    if (!draggingProductId || draggingProductId === targetId) return;
+    setOrderEditor((current) => {
+      if (!current) return current;
+      const products = [...current.products];
+      const sourceIndex = products.findIndex((product) => product.id === draggingProductId);
+      const targetIndex = products.findIndex((product) => product.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      const [moved] = products.splice(sourceIndex, 1);
+      products.splice(targetIndex, 0, moved);
+      return { ...current, products };
+    });
+    setDraggingProductId(null);
+  };
+
+  return <div className="space-y-4">
+    {suppliers.map((supplier) => <article key={supplier.id} className="rounded-2xl border bg-card p-5">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <div className="flex items-center gap-2"><h3 className="text-lg font-bold">{supplier.name}</h3>{supplier.isVerified && <Status status="approved" />}{!supplier.isActive && <span className="rounded-full bg-muted px-2 py-1 text-xs">موقوف</span>}</div>
+          <p className="mt-2 text-sm text-muted-foreground">{supplier.city} · منتجات: {supplier.productCount}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
+          <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
+          <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>
+          <button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/pause`, { method: "POST" }, supplier.isActive ? "تم إيقاف المورد." : "تم إعادة تفعيل المورد.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{supplier.isActive ? "إيقاف مؤقت" : "تفعيل"}</button>
+          <button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">حذف</button>
+        </div>
+      </div>
+
+      {editing?.id === supplier.id && <div className="mt-4 grid gap-3 border-t pt-4 md:grid-cols-2">
+        <input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} placeholder="اسم المورد" className="h-10 rounded-lg border bg-background px-3" />
+        <input value={editing.city} onChange={(event) => setEditing({ ...editing, city: event.target.value })} placeholder="المدينة" className="h-10 rounded-lg border bg-background px-3" />
+        <input value={editing.phone} onChange={(event) => setEditing({ ...editing, phone: event.target.value })} placeholder="الجوال" className="h-10 rounded-lg border bg-background px-3" />
+        <input value={editing.whatsapp} onChange={(event) => setEditing({ ...editing, whatsapp: event.target.value })} placeholder="الواتساب" className="h-10 rounded-lg border bg-background px-3" />
+        <textarea value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} placeholder="الوصف" className="rounded-lg border bg-background px-3 py-2 md:col-span-2" />
+        <div className="flex gap-2 md:col-span-2"><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing) }, "تم تحديث المورد.")} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground">حفظ التعديل</button><button type="button" onClick={() => setEditing(null)} className="rounded-lg border px-4 py-2">إلغاء</button></div>
+      </div>}
+
+      {newProduct?.supplierId === supplier.id && <div className="mt-4 space-y-4 border-t pt-4">
+        <div className="rounded-xl border border-accent/40 bg-accent/10 p-4"><div className="flex items-start gap-3"><GripVertical className="mt-0.5 h-5 w-5 shrink-0 text-accent" /><div><p className="font-extrabold text-accent-foreground">اختر أفضل 3 منتجات لديك بعناية</p><p className="mt-1 text-xs leading-6 text-muted-foreground">ستظهر المنتجات الأولى في واجهة المورد. استخدم ترتيب المنتجات لتحديد الأولوية.</p></div></div></div>
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.3fr_auto]">
+          <input data-testid={`input-product-name-${supplier.id}`} value={newProduct.name} onChange={(event) => setNewProduct({ ...newProduct, name: event.target.value })} placeholder="اسم المنتج" className="h-11 rounded-lg border bg-background px-3" />
+          <select data-testid={`select-product-category-${supplier.id}`} value={newProduct.categoryId} onChange={(event) => setNewProduct({ ...newProduct, categoryId: event.target.value })} className="h-11 rounded-lg border bg-background px-3"><option value="">التصنيف</option>{settings?.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+          <label className={`flex h-11 items-center gap-2 rounded-lg border px-3 text-sm ${newProduct.imageUrl ? "border-primary bg-primary/5" : "border-accent bg-accent/10"}`}><ImagePlus className="h-4 w-4 text-primary" /><span className="sr-only">صورة المنتج مطلوبة</span><input data-testid={`input-product-image-${supplier.id}`} type="url" required value={newProduct.imageUrl} onChange={(event) => setNewProduct({ ...newProduct, imageUrl: event.target.value })} placeholder="رابط صورة المنتج *" className="min-w-0 flex-1 bg-transparent outline-none" /></label>
+          <button data-testid={`button-save-product-${supplier.id}`} type="button" disabled={!newProduct.name.trim() || !newProduct.categoryId || !newProduct.imageUrl.trim()} onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newProduct.name, categoryId: newProduct.categoryId, imageUrl: newProduct.imageUrl }) }, "تمت إضافة المنتج.").then(() => setNewProduct(null))} className="h-11 rounded-lg bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">حفظ المنتج</button>
+        </div>
+        <div className="flex justify-end"><button type="button" onClick={() => setNewProduct(null)} className="rounded-lg border px-4 py-2 text-sm font-bold">إلغاء</button></div>
+      </div>}
+
+      {orderEditor?.supplierId === supplier.id && <div className="mt-4 space-y-3 border-t pt-4">
+        <div className="flex items-center justify-between gap-3"><p className="font-bold">ترتيب المنتجات حسب الأهمية</p><button type="button" onClick={() => setOrderEditor(null)} className="text-sm text-muted-foreground hover:text-foreground">إغلاق</button></div>
+        {!orderEditor.products.length ? <p className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">لا توجد منتجات لترتيبها.</p> : orderEditor.products.map((product, index) => <div key={product.id} draggable onDragStart={() => setDraggingProductId(product.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveProduct(product.id)} className={`flex cursor-grab items-center gap-3 rounded-xl border bg-background p-3 active:cursor-grabbing ${draggingProductId === product.id ? "opacity-50" : ""}`}><GripVertical className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="w-6 text-center text-sm font-bold text-muted-foreground">{index + 1}</span><div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <Package className="m-3 h-6 w-6 text-muted-foreground" />}</div><span className="font-bold">{product.name}</span></div>)}
+        {!!orderEditor.products.length && <div className="flex justify-end"><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/products/order`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productIds: orderEditor.products.map((product) => product.id) }) }, "تم حفظ ترتيب المنتجات.")} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground">حفظ الترتيب</button></div>}
+      </div>}
+    </article>)}
+  </div>;
 }
 
 function StatsTab({ stats }: { stats: Stats | null }) {
@@ -213,11 +287,11 @@ function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | n
             <div className="text-sm mt-4 space-y-1">
               <div>المنتجات: {plan.maxProducts}</div>
               <div>الصور لكل منتج: {plan.maxImagesPerProduct}</div>
-              <div>{plan.hasVerifiedBadge ? "✓ شارة موثق" : "— بدون شارة موثق"}</div>
-              <div>{plan.hasFeaturedListing ? "✓ ظهور مميز" : "— ظهور عادي"}</div>
-              <div>{plan.hasBanner ? "✓ بانر إعلاني" : "— بدون بانر إعلاني"}</div>
-              <div>{plan.hasAnalytics ? "✓ إحصائيات" : "— بدون إحصائيات"}</div>
-              <div>{plan.hasPrioritySupport ? "✓ دعم أولوي" : "— دعم عادي"}</div>
+              <div>{plan.hasVerifiedBadge ? "شارة موثق متاحة" : "بدون شارة موثق"}</div>
+              <div>{plan.hasFeaturedListing ? "ظهور مميز متاح" : "ظهور عادي"}</div>
+              <div>{plan.hasBanner ? "بانر إعلاني متاح" : "بدون بانر إعلاني"}</div>
+              <div>{plan.hasAnalytics ? "إحصائيات متاحة" : "بدون إحصائيات"}</div>
+              <div>{plan.hasPrioritySupport ? "دعم أولوي متاح" : "دعم عادي"}</div>
             </div>
           </article>
         ))}
