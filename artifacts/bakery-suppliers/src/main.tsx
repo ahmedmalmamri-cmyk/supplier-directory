@@ -5,14 +5,15 @@ import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
 
-function useLightAppearance() {
+function applyTheme(theme: 'light' | 'dark') {
   const root = document.documentElement;
-  root.classList.remove('dark');
-  root.style.colorScheme = 'light';
-  document.body.classList.remove('dark');
+  root.classList.toggle('dark', theme === 'dark');
+  root.style.colorScheme = theme;
+  document.body.classList.toggle('dark', theme === 'dark');
 }
 
-useLightAppearance();
+const savedTheme = localStorage.getItem('bakery-theme');
+applyTheme(savedTheme === 'dark' ? 'dark' : 'light');
 
 createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.

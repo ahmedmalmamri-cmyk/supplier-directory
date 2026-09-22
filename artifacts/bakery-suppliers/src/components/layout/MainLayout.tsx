@@ -1,7 +1,24 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck, Moon, Sun } from "lucide-react";
 import { useState } from "react";
+
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  const toggleTheme = () => {
+    const nextTheme = isDark ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    document.documentElement.style.colorScheme = nextTheme;
+    document.body.classList.toggle("dark", nextTheme === "dark");
+    localStorage.setItem("bakery-theme", nextTheme);
+    setIsDark(nextTheme === "dark");
+  };
+
+  return <button type="button" onClick={toggleTheme} aria-label={isDark ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={isDark ? "الوضع النهاري" : "الوضع الليلي"} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+  </button>;
+}
 
 export function MainLayout({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -35,6 +52,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Link href="/search" className="p-2 text-muted-foreground hover:bg-muted rounded-md sm:hidden">
               <Search className="w-5 h-5" />
             </Link>
+            <ThemeToggle />
             <button 
               className="p-2 text-muted-foreground hover:bg-muted rounded-md md:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
