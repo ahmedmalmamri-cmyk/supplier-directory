@@ -2,7 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, CakeSlice, CheckCircle2, ChevronLeft, ChevronRight, Coffee, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
+import { Building2, CakeSlice, CheckCircle2, ChevronLeft, ChevronRight, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
 type SupplierForm = {
@@ -257,7 +257,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
        <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} autoComplete="name" />
        <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />
          <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" placeholder="name@example.com" />
-       <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="8 أحرف على الأقل" />
+        <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="8 أحرف على الأقل" showPasswordToggle />
        <fieldset>
          <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
          <div className="grid grid-cols-2 gap-3">
@@ -322,8 +322,19 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
 function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return <div className="space-y-5"><h2 className="text-2xl font-bold">{title}</h2><p className="text-sm text-muted-foreground -mt-3">{description}</p>{children}</div>;
 }
-function Field({ label, value, onChange, dir, type = "text", placeholder, disabled, autoComplete }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean; autoComplete?: string }) {
-  return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><input type={type} value={value} dir={dir} disabled={disabled} autoComplete={autoComplete} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60" /></label>;
+function Field({ label, value, onChange, dir, type = "text", placeholder, disabled, autoComplete, showPasswordToggle }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean; autoComplete?: string; showPasswordToggle?: boolean }) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const canTogglePassword = showPasswordToggle && type === "password";
+  const inputType = canTogglePassword && isPasswordVisible ? "text" : type;
+  return <label className="block">
+    <span className="text-sm font-bold block mb-2">{label}</span>
+    <div className="relative">
+      <input type={inputType} value={value} dir={dir} disabled={disabled} autoComplete={autoComplete} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className={`w-full h-12 px-4 ${canTogglePassword ? "pl-12" : ""} rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60`} />
+      {canTogglePassword && <button type="button" onClick={() => setIsPasswordVisible((visible) => !visible)} aria-label={isPasswordVisible ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+        {isPasswordVisible ? <EyeOff className="w-5 h-5" aria-hidden="true" /> : <Eye className="w-5 h-5" aria-hidden="true" />}
+      </button>}
+    </div>
+  </label>;
 }
 function TextAreaField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><textarea value={value} dir="rtl" placeholder={placeholder} rows={3} onChange={(event) => onChange(event.target.value)} className="w-full min-h-28 px-4 py-3 rounded-xl border bg-background leading-7 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y break-words" /></label>;
