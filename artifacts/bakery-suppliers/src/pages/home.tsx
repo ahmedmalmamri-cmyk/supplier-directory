@@ -37,6 +37,8 @@ export default function Home() {
   const featured = (homeData?.featuredSuppliers ?? []).slice(0, 3);
   const featuredIds = new Set(featured.map((supplier) => supplier.id));
   const otherSuppliers = allSuppliers.filter((supplier) => !featuredIds.has(supplier.id));
+  const directorySuppliers = featured.length ? otherSuppliers : allSuppliers;
+  const showDirectorySection = featured.length === 0 || suppliersLoading || Boolean(suppliersError) || directorySuppliers.length > 0;
   const statItems: Array<{ label: string; value: number | string; Icon: LucideIcon }> = [
     { label: "الموردون", value: homeData?.stats.suppliers ?? 0, Icon: Building2 },
     { label: "المدن", value: homeData?.stats.cities ?? 0, Icon: MapPin },
@@ -110,10 +112,10 @@ export default function Home() {
          </div>
       </section>
 
-      <section className="container mx-auto px-4 py-12">
-         <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">دليل المنطقة</p><h2 className="text-3xl font-extrabold md:text-4xl">بقية الموردين</h2><p className="mt-2 text-sm text-muted-foreground">قارن بين الموردين واعثر على الأنسب لاحتياجك.</p></div><Link href="/suppliers" data-testid="link-all-suppliers" className="flex items-center gap-1 text-sm font-bold text-primary hover:gap-2">تصفح القائمة <ArrowLeft className="h-4 w-4" /></Link></div>
-         {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : otherSuppliers.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{otherSuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون آخرون في الدليل حالياً." />}
-      </section>
+       {showDirectorySection && <section className="container mx-auto px-4 py-12">
+         <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">دليل المنطقة</p><h2 className="text-3xl font-extrabold md:text-4xl">{featured.length ? "بقية الموردين" : "كل الموردين"}</h2><p className="mt-2 text-sm text-muted-foreground">قارن بين الموردين واعثر على الأنسب لاحتياجك.</p></div><Link href="/suppliers" data-testid="link-all-suppliers" className="flex items-center gap-1 text-sm font-bold text-primary hover:gap-2">تصفح القائمة <ArrowLeft className="h-4 w-4" /></Link></div>
+         {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : directorySuppliers.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{directorySuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون معتمدون في الدليل حالياً." />}
+       </section>}
 
       <section className="container mx-auto px-4 pb-20 pt-8">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-warm-lg md:px-12 md:py-14">
