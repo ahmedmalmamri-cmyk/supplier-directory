@@ -334,7 +334,9 @@ export function refreshSupplierRatings(supplierId?: number) {
       (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE supplier_id = suppliers.id),
       0
     )
-    ${where}
+    ${where}${where ? " AND" : " WHERE"} EXISTS (
+      SELECT 1 FROM reviews WHERE supplier_id = suppliers.id
+    )
   `);
   supplierId ? statement.run(supplierId) : statement.run();
 }
