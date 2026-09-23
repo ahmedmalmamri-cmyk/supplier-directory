@@ -348,7 +348,7 @@ export const registerBuyerBodyOtherBusinessTypeMax = 80;
 
 export const registerBuyerBodyJobTitleMax = 80;
 
-export const registerBuyerBodyPasswordMin = 8;
+export const registerBuyerBodyPasswordMin = 6;
 export const registerBuyerBodyPasswordMax = 128;
 
 

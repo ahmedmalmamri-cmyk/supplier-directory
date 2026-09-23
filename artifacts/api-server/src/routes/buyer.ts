@@ -137,7 +137,7 @@ router.post("/buyer/register", (req, res): void => {
       !city || !buyerBusinessTypes.includes(businessType) || isOwner === null ||
       (businessType === "آخر" && (otherBusinessType.length < 2 || otherBusinessType.length > 80)) ||
       (!isOwner && (jobTitle.length < 2 || jobTitle.length > 80)) ||
-      password.length < 8 || password.length > 128) {
+      password.length < 6 || password.length > 128) {
     res.status(400).json({ error: "أكمل بيانات التسجيل. البريد الإلكتروني اختياري، لكنه مطلوب للاشتراك في النشرة الأسبوعية." });
     return;
   }

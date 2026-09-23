@@ -544,7 +544,7 @@ components:
         otherBusinessType: { type: string, maxLength: 80 }
         isOwner: { type: boolean }
         jobTitle: { type: string, maxLength: 80 }
-        password: { type: string, minLength: 8, maxLength: 128 }
+        password: { type: string, minLength: 6, maxLength: 128 }
         newsletterWeekly: { type: boolean }
         buyersGroup: { type: boolean }
     BuyerLoginInput:

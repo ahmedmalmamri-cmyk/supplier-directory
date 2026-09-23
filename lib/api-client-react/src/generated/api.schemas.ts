@@ -217,7 +217,7 @@ export interface BuyerRegisterInput {
   /** @maxLength 80 */
   jobTitle?: string;
   /**
-     * @minLength 8
+     * @minLength 6
      * @maxLength 128
      */
   password: string;
