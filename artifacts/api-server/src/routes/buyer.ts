@@ -4,7 +4,7 @@ import { directoryDb } from "../lib/directory-db";
 import { clearBuyerSession, getBuyerIdFromRequest, setBuyerSession } from "../lib/buyer-auth";
 
 const router: IRouter = Router();
-const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "فندق", "أسر منتجة", "آخر"];
+const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";

@@ -539,7 +539,7 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         city: { type: string }
-        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "فندق", "أسر منتجة", "آخر"] }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
         businessName: { type: string, maxLength: 120 }
         otherBusinessType: { type: string, maxLength: 80 }
         isOwner: { type: boolean }

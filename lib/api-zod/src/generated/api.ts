@@ -356,7 +356,7 @@ export const RegisterBuyerBody = zod.object({
   "phone": zod.string(),
   "email": zod.string().email(),
   "city": zod.string(),
-  "businessType": zod.enum(['مخبز', 'محل حلويات', 'مخبز وحلويات', 'كافيه', 'مطعم', 'فندق', 'أسر منتجة', 'آخر']),
+  "businessType": zod.enum(['مخبز', 'محل حلويات', 'مخبز وحلويات', 'كافيه', 'مطعم', 'أسرة منتجة', 'أسر منتجة', 'فندق', 'آخر']),
   "businessName": zod.string().max(registerBuyerBodyBusinessNameMax).optional(),
   "otherBusinessType": zod.string().max(registerBuyerBodyOtherBusinessTypeMax).optional(),
   "isOwner": zod.boolean(),

@@ -2,7 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, ShoppingCart, Sprout, Store, UserPlus } from "lucide-react";
+import { Building2, CakeSlice, CheckCircle2, ChevronLeft, ChevronRight, Coffee, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
 type SupplierForm = {
@@ -20,7 +20,15 @@ type BuyerForm = {
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const buyerCities = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة", "بريدة", "تبوك", "أبها", "حائل", "جازان", "نجران", "سكاكا", "عرعر", "الطائف", "ينبع"];
-const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "فندق", "أسر منتجة", "آخر"];
+const buyerBusinessTypes = [
+  { value: "مخبز", icon: Wheat },
+  { value: "محل حلويات", icon: CakeSlice },
+  { value: "كافيه", icon: Coffee },
+  { value: "مطعم", icon: Utensils },
+  { value: "أسرة منتجة", icon: Factory },
+  { value: "فندق", icon: Hotel },
+  { value: "آخر", icon: Building2 },
+];
 const categories = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
 const supplierSteps = ["النشاط", "التواصل", "الموقع", "المنتجات", "الوثائق والإقرار"];
 
@@ -267,13 +275,14 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
        <fieldset>
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-           {buyerBusinessTypes.map((businessType) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
+           {buyerBusinessTypes.map(({ value: businessType, icon: BusinessIcon }) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
              <input type="radio" name="buyer-business-type" value={businessType} checked={form.businessType === businessType} onChange={() => onChange({ businessType, ...(businessType === "آخر" ? {} : { otherBusinessType: "" }) })} className="accent-primary" />
-            <span>{businessType}</span>
+             <BusinessIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+             <span>{businessType}</span>
           </label>)}
         </div>
       </fieldset>
-       {form.businessType === "آخر" && <Field label="اذكر نوع النشاط *" value={form.otherBusinessType} onChange={(value) => onChange({ otherBusinessType: value })} placeholder="مثال: أسر منتجة" />}
+       {form.businessType === "آخر" && <TextAreaField label="اذكر نوع النشاط *" value={form.otherBusinessType} onChange={(value) => onChange({ otherBusinessType: value })} placeholder="مثال: تموينات، سوبرماركت، محل بقالة، موزع..." />}
        <Field label="اسم النشاط التجاري (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
       <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
         <p className="text-sm font-bold">خيارات التواصل</p>
