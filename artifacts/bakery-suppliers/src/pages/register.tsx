@@ -257,7 +257,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
        <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} autoComplete="name" />
        <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />
          <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" placeholder="name@example.com" />
-          <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="6 خانات (أرقام أو إنجليزي)" showPasswordToggle />
+          <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="لا تقل عن ٦" showPasswordToggle />
        <fieldset>
          <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
          <div className="grid grid-cols-2 gap-3">
