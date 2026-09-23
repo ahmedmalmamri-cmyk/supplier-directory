@@ -271,7 +271,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
            </label>
          </div>
        </fieldset>
-       {form.isOwner === false && <Field label="المسمى الوظيفي *" value={form.jobTitle} onChange={(value) => onChange({ jobTitle: value })} placeholder="مثال: مدير المشتريات" />}
+        {form.isOwner === false && <Field label="المسمى الوظيفي أو الصفة في المنشأة *" value={form.jobTitle} onChange={(value) => onChange({ jobTitle: value })} placeholder="مثال: مسؤول مشتريات، شيف، مدير فرع..." />}
       <SelectField label="المدينة *" value={form.city} options={buyerCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
        <fieldset>
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
