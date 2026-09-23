@@ -4,7 +4,7 @@ export type BuyerUser = {
   id: number;
   fullName: string;
   phone: string;
-  email: string;
+  email: string | null;
   city: string;
   businessType: string;
   businessName: string | null;

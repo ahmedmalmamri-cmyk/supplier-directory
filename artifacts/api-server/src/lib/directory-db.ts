@@ -157,7 +157,7 @@ directoryDb.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
     phone TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     city TEXT NOT NULL,
     business_type TEXT NOT NULL,
     business_name TEXT,
@@ -252,7 +252,7 @@ if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => colu
 }
 const buyerUserColumns = directoryDb
   .prepare("PRAGMA table_info(buyer_users)")
-  .all() as Array<{ name: string }>;
+  .all() as Array<{ name: string; notnull: number }>;
 if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "is_owner")) {
   directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 1");
 }
@@ -261,6 +261,38 @@ if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.nam
 }
 if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "other_business_type")) {
   directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN other_business_type TEXT");
+}
+const buyerEmailColumn = buyerUserColumns.find((column) => column.name === "email");
+if (buyerEmailColumn?.notnull === 1) {
+  directoryDb.exec(`
+    PRAGMA foreign_keys = OFF;
+    BEGIN;
+    CREATE TABLE buyer_users_optional_email (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      phone TEXT NOT NULL UNIQUE,
+      email TEXT UNIQUE,
+      city TEXT NOT NULL,
+      business_type TEXT NOT NULL,
+      business_name TEXT,
+      other_business_type TEXT,
+      is_owner INTEGER NOT NULL DEFAULT 1,
+      job_title TEXT,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      last_login TEXT
+    );
+    INSERT INTO buyer_users_optional_email
+      (id, full_name, phone, email, city, business_type, business_name, other_business_type,
+       is_owner, job_title, password_hash, created_at, last_login)
+    SELECT id, full_name, phone, email, city, business_type, business_name, other_business_type,
+      is_owner, job_title, password_hash, created_at, last_login
+    FROM buyer_users;
+    DROP TABLE buyer_users;
+    ALTER TABLE buyer_users_optional_email RENAME TO buyer_users;
+    COMMIT;
+    PRAGMA foreign_keys = ON;
+  `);
 }
 const productColumns = directoryDb
   .prepare("PRAGMA table_info(products)")

@@ -493,7 +493,7 @@ components:
       required: [name, email, subject, message]
       properties:
         name: { type: string, minLength: 2, maxLength: 80 }
-        email: { type: string, format: email }
+        email: { type: [string, "null"], format: email }
         subject: { type: string, minLength: 2, maxLength: 120 }
         message: { type: string, minLength: 5, maxLength: 1000 }
     ContactResponse:
@@ -533,11 +533,11 @@ components:
         lastLogin: { type: [string, "null"] }
     BuyerRegisterInput:
       type: object
-      required: [fullName, phone, email, city, businessType, isOwner, password]
+      required: [fullName, phone, city, businessType, isOwner, password]
       properties:
         fullName: { type: string, minLength: 2, maxLength: 80 }
         phone: { type: string }
-        email: { type: string, format: email }
+        email: { type: string, format: email, maxLength: 160 }
         city: { type: string }
         businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
         businessName: { type: string, maxLength: 120 }

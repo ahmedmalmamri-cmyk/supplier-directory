@@ -49,7 +49,7 @@ type BuyerRow = {
   id: number;
   fullName: string;
   phone: string;
-  email: string;
+  email: string | null;
   city: string;
   businessType: string;
   businessName: string | null;
@@ -130,12 +130,15 @@ router.post("/buyer/register", (req, res): void => {
   const jobTitle = text(body.jobTitle);
   const password = typeof body.password === "string" ? body.password : "";
 
-  if (fullName.length < 2 || fullName.length > 80 || !isSaudiPhone(phone) || !email.includes("@") ||
+  const hasInvalidEmail = Boolean(email && (email.length > 160 || !email.includes("@")));
+  const wantsNewsletter = body.newsletterWeekly === true;
+  if (fullName.length < 2 || fullName.length > 80 || !isSaudiPhone(phone) || hasInvalidEmail ||
+      (wantsNewsletter && !email) ||
       !city || !buyerBusinessTypes.includes(businessType) || isOwner === null ||
       (businessType === "آخر" && (otherBusinessType.length < 2 || otherBusinessType.length > 80)) ||
       (!isOwner && (jobTitle.length < 2 || jobTitle.length > 80)) ||
       password.length < 8 || password.length > 128) {
-    res.status(400).json({ error: "أكمل بيانات التسجيل، وحدد صفتك الوظيفية وأدخل المسمى الوظيفي عند الحاجة." });
+    res.status(400).json({ error: "أكمل بيانات التسجيل. البريد الإلكتروني اختياري، لكنه مطلوب للاشتراك في النشرة الأسبوعية." });
     return;
   }
 
@@ -145,14 +148,14 @@ router.post("/buyer/register", (req, res): void => {
       INSERT INTO buyer_users
         (full_name, phone, email, city, business_type, business_name, other_business_type, is_owner, job_title, password_hash, created_at, last_login)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(fullName, phone, email, city, businessType, businessName || null, businessType === "آخر" ? otherBusinessType : null, isOwner ? 1 : 0, isOwner ? null : jobTitle, hashPassword(password), now, now);
+    `).run(fullName, phone, email || null, city, businessType, businessName || null, businessType === "آخر" ? otherBusinessType : null, isOwner ? 1 : 0, isOwner ? null : jobTitle, hashPassword(password), now, now);
     const buyerId = Number(result.lastInsertRowid);
     const requestResult = directoryDb.prepare(`
       INSERT INTO buyer_requests
         (request_code, full_name, phone, email, city, business_type, business_name, other_business_type,
          is_owner, job_title, referral_source, newsletter_weekly, buyers_group, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(`TEMP-${randomUUID()}`, fullName, phone, email, city, businessType, businessName || null, businessType === "آخر" ? otherBusinessType : null, isOwner ? 1 : 0, isOwner ? null : jobTitle, null, body.newsletterWeekly === true ? 1 : 0, body.buyersGroup === true ? 1 : 0, now);
+    `).run(`TEMP-${randomUUID()}`, fullName, phone, email || null, city, businessType, businessName || null, businessType === "آخر" ? otherBusinessType : null, isOwner ? 1 : 0, isOwner ? null : jobTitle, null, wantsNewsletter ? 1 : 0, body.buyersGroup === true ? 1 : 0, now);
     const requestId = Number(requestResult.lastInsertRowid);
     const requestCode = nextRequestCode(requestId);
     directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, requestId);
@@ -189,7 +192,7 @@ router.post("/buyer/login", (req, res): void => {
       is_owner AS isOwner, job_title AS jobTitle,
       password_hash AS passwordHash,
       created_at AS createdAt, last_login AS lastLogin
-    FROM buyer_users WHERE phone = ? OR email = ? LIMIT 1
+    FROM buyer_users WHERE phone = ? OR (email IS NOT NULL AND email = ?) LIMIT 1
   `).get(normalizedPhone, normalizedEmail) as BuyerRow | undefined;
   if (!buyer || !verifyPassword(password, buyer.passwordHash)) {
     res.status(401).json({ error: "بيانات الدخول غير صحيحة." });
