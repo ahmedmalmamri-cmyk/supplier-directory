@@ -501,11 +501,11 @@ export function refreshSupplierRatings(supplierId?: number) {
     UPDATE suppliers
     SET average_rating = COALESCE(
       (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE supplier_id = suppliers.id),
+      google_rating,
+      average_rating,
       0
     )
-    ${where}${where ? " AND" : " WHERE"} EXISTS (
-      SELECT 1 FROM reviews WHERE supplier_id = suppliers.id
-    )
+    ${where}
   `);
   supplierId ? statement.run(supplierId) : statement.run();
 }
