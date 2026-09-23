@@ -495,6 +495,25 @@ if (!nameCorrectionMigration) {
   ).run("correct-supplier-names", new Date().toISOString());
 }
 
+const restoreSupplierRatingFallbacksMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("restore-supplier-rating-fallbacks") as { name: string } | undefined;
+if (!restoreSupplierRatingFallbacksMigration) {
+  directoryDb.prepare(`
+    UPDATE suppliers
+    SET average_rating = 4.2
+    WHERE name IN ('ديكور الكيك', 'مركز ديكور الكيك (CDC)')
+      AND google_rating IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM reviews WHERE reviews.supplier_id = suppliers.id
+      )
+      AND average_rating = 0
+  `).run();
+  directoryDb.prepare(
+    "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
+  ).run("restore-supplier-rating-fallbacks", new Date().toISOString());
+}
+
 export function refreshSupplierRatings(supplierId?: number) {
   const where = supplierId ? "WHERE id = ?" : "";
   const statement = directoryDb.prepare(`
