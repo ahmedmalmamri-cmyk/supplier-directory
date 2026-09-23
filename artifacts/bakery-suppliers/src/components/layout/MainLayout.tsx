@@ -15,7 +15,7 @@ function ThemeToggle() {
     setIsDark(nextTheme === "dark");
   };
 
-  return <button type="button" onClick={toggleTheme} aria-label={isDark ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={isDark ? "الوضع النهاري" : "الوضع الليلي"} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+  return <button type="button" onClick={toggleTheme} aria-label={isDark ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"} title={isDark ? "الوضع النهاري" : "الوضع الليلي"} className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/80 text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground md:h-10 md:w-10 md:rounded-xl">
     {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
   </button>;
 }
@@ -25,8 +25,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4 md:h-16">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
@@ -49,15 +49,16 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <Search className="w-4 h-4" />
               <span>بحث عن منتج أو مورد...</span>
             </Link>
-            <Link href="/search" className="p-2 text-muted-foreground hover:bg-muted rounded-md sm:hidden">
-              <Search className="w-5 h-5" />
+            <Link href="/search" aria-label="البحث" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted sm:hidden">
+              <Search className="h-5 w-5" />
             </Link>
             <ThemeToggle />
             <button 
-              className="p-2 text-muted-foreground hover:bg-muted rounded-md md:hidden"
+              aria-label={isMobileMenuOpen ? "إغلاق القائمة" : "فتح القائمة"}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted md:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
