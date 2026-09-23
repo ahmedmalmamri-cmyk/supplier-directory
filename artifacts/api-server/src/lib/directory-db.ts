@@ -145,6 +145,7 @@ directoryDb.exec(`
     city TEXT NOT NULL,
     business_type TEXT NOT NULL,
     business_name TEXT,
+    other_business_type TEXT,
     is_owner INTEGER NOT NULL DEFAULT 1,
     job_title TEXT,
     referral_source TEXT,
@@ -160,6 +161,7 @@ directoryDb.exec(`
     city TEXT NOT NULL,
     business_type TEXT NOT NULL,
     business_name TEXT,
+    other_business_type TEXT,
     is_owner INTEGER NOT NULL DEFAULT 1,
     job_title TEXT,
     password_hash TEXT NOT NULL,
@@ -245,6 +247,9 @@ if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => colu
 if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "job_title")) {
   directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN job_title TEXT");
 }
+if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "other_business_type")) {
+  directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN other_business_type TEXT");
+}
 const buyerUserColumns = directoryDb
   .prepare("PRAGMA table_info(buyer_users)")
   .all() as Array<{ name: string }>;
@@ -253,6 +258,9 @@ if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.nam
 }
 if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "job_title")) {
   directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN job_title TEXT");
+}
+if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "other_business_type")) {
+  directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN other_business_type TEXT");
 }
 const productColumns = directoryDb
   .prepare("PRAGMA table_info(products)")

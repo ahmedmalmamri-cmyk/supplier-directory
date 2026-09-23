@@ -320,7 +320,8 @@ router.get("/admin/buyer-requests", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   res.json(directoryDb.prepare(`
     SELECT id, request_code AS requestCode, full_name AS fullName, phone, email, city,
-      business_type AS businessType, business_name AS businessName,
+      business_type AS businessType, other_business_type AS otherBusinessType,
+      business_name AS businessName,
       referral_source AS referralSource, newsletter_weekly AS newsletterWeekly,
       buyers_group AS buyersGroup, created_at AS createdAt
     FROM buyer_requests ORDER BY created_at DESC, id DESC

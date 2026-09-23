@@ -15,12 +15,12 @@ type SupplierForm = {
 };
 type BuyerForm = {
   fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
-  businessName: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
+  businessName: string; otherBusinessType: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const buyerCities = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة", "بريدة", "تبوك", "أبها", "حائل", "جازان", "نجران", "سكاكا", "عرعر", "الطائف", "ينبع"];
-const buyerBusinessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"];
+const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "فندق", "أسر منتجة", "آخر"];
 const categories = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
 const supplierSteps = ["النشاط", "التواصل", "الموقع", "المنتجات", "الوثائق والإقرار"];
 
@@ -38,6 +38,7 @@ const emptyBuyer: BuyerForm = {
   city: "",
   businessType: "",
   businessName: "",
+  otherBusinessType: "",
   isOwner: null,
   jobTitle: "",
   newsletterWeekly: false,
@@ -247,7 +248,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
       <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} />
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
        <Field label="البريد الإلكتروني *" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" placeholder="name@example.com" />
-       <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" placeholder="8 أحرف على الأقل" />
+       <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="8 أحرف على الأقل" />
        <fieldset>
          <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
          <div className="grid grid-cols-2 gap-3">
@@ -267,11 +268,12 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
            {buyerBusinessTypes.map((businessType) => <label key={businessType} className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.businessType === businessType ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
-            <input type="radio" name="buyer-business-type" value={businessType} checked={form.businessType === businessType} onChange={() => onChange({ businessType })} className="accent-primary" />
+             <input type="radio" name="buyer-business-type" value={businessType} checked={form.businessType === businessType} onChange={() => onChange({ businessType, ...(businessType === "آخر" ? {} : { otherBusinessType: "" }) })} className="accent-primary" />
             <span>{businessType}</span>
           </label>)}
         </div>
       </fieldset>
+       {form.businessType === "آخر" && <Field label="اذكر نوع النشاط *" value={form.otherBusinessType} onChange={(value) => onChange({ otherBusinessType: value })} placeholder="مثال: أسر منتجة" />}
        <Field label="اسم النشاط التجاري (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
       <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
         <p className="text-sm font-bold">خيارات التواصل</p>
@@ -310,8 +312,8 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
 function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return <div className="space-y-5"><h2 className="text-2xl font-bold">{title}</h2><p className="text-sm text-muted-foreground -mt-3">{description}</p>{children}</div>;
 }
-function Field({ label, value, onChange, dir, type = "text", placeholder, disabled }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean }) {
-  return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><input type={type} value={value} dir={dir} disabled={disabled} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60" /></label>;
+function Field({ label, value, onChange, dir, type = "text", placeholder, disabled, autoComplete }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean; autoComplete?: string }) {
+  return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><input type={type} value={value} dir={dir} disabled={disabled} autoComplete={autoComplete} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60" /></label>;
 }
 function TextAreaField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="block"><span className="text-sm font-bold block mb-2">{label}</span><textarea value={value} dir="rtl" placeholder={placeholder} rows={3} onChange={(event) => onChange(event.target.value)} className="w-full min-h-28 px-4 py-3 rounded-xl border bg-background leading-7 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y break-words" /></label>;
@@ -339,6 +341,7 @@ function validateSupplier(form: SupplierForm) {
 }
 function validateBuyer(form: BuyerForm) {
   if (!form.fullName || !isSaudiPhone(form.phone) || !form.email.includes("@") || form.password.length < 8 || !form.city || !form.businessType || form.isOwner === null) return "أكمل الحقول المطلوبة وحدد هل أنت صاحب العمل.";
+  if (form.businessType === "آخر" && (form.otherBusinessType.trim().length < 2 || form.otherBusinessType.trim().length > 80)) return "اذكر نوع النشاط عند اختيار «آخر».";
   if (form.isOwner === false && (form.jobTitle.trim().length < 2 || form.jobTitle.trim().length > 80)) return "أدخل المسمى الوظيفي عند اختيار «لا».";
   return "";
 }

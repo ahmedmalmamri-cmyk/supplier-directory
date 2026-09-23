@@ -342,6 +342,8 @@ export const registerBuyerBodyFullNameMax = 80;
 
 export const registerBuyerBodyBusinessNameMax = 120;
 
+export const registerBuyerBodyOtherBusinessTypeMax = 80;
+
 export const registerBuyerBodyJobTitleMax = 80;
 
 export const registerBuyerBodyPasswordMin = 8;
@@ -354,8 +356,9 @@ export const RegisterBuyerBody = zod.object({
   "phone": zod.string(),
   "email": zod.string().email(),
   "city": zod.string(),
-  "businessType": zod.enum(['مخبز', 'محل حلويات', 'كافيه', 'مطعم', 'فندق', 'آخر']),
+  "businessType": zod.enum(['مخبز', 'محل حلويات', 'مخبز وحلويات', 'كافيه', 'مطعم', 'فندق', 'أسر منتجة', 'آخر']),
   "businessName": zod.string().max(registerBuyerBodyBusinessNameMax).optional(),
+  "otherBusinessType": zod.string().max(registerBuyerBodyOtherBusinessTypeMax).optional(),
   "isOwner": zod.boolean(),
   "jobTitle": zod.string().max(registerBuyerBodyJobTitleMax).optional(),
   "password": zod.string().min(registerBuyerBodyPasswordMin).max(registerBuyerBodyPasswordMax),
@@ -375,6 +378,7 @@ export const RegisterBuyerResponse = zod.object({
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
+  "otherBusinessType": zod.string().nullable(),
   "isOwner": zod.boolean(),
   "jobTitle": zod.string().nullable(),
   "createdAt": zod.string(),
@@ -403,6 +407,7 @@ export const LoginBuyerResponse = zod.object({
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
+  "otherBusinessType": zod.string().nullable(),
   "isOwner": zod.boolean(),
   "jobTitle": zod.string().nullable(),
   "createdAt": zod.string(),
@@ -426,6 +431,7 @@ export const GetBuyerMeResponse = zod.object({
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
+  "otherBusinessType": zod.string().nullable(),
   "isOwner": zod.boolean(),
   "jobTitle": zod.string().nullable(),
   "createdAt": zod.string(),

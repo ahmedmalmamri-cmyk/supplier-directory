@@ -172,6 +172,8 @@ export interface BuyerUser {
   businessType: string;
   /** @nullable */
   businessName: string | null;
+  /** @nullable */
+  otherBusinessType: string | null;
   isOwner: boolean;
   /** @nullable */
   jobTitle: string | null;
@@ -186,9 +188,11 @@ export type BuyerRegisterInputBusinessType = typeof BuyerRegisterInputBusinessTy
 export const BuyerRegisterInputBusinessType = {
   مخبز: 'مخبز',
   محل_حلويات: 'محل حلويات',
+  مخبز_وحلويات: 'مخبز وحلويات',
   كافيه: 'كافيه',
   مطعم: 'مطعم',
   فندق: 'فندق',
+  أسر_منتجة: 'أسر منتجة',
   آخر: 'آخر',
 } as const;
 
@@ -204,6 +208,8 @@ export interface BuyerRegisterInput {
   businessType: BuyerRegisterInputBusinessType;
   /** @maxLength 120 */
   businessName?: string;
+  /** @maxLength 80 */
+  otherBusinessType?: string;
   isOwner: boolean;
   /** @maxLength 80 */
   jobTitle?: string;
