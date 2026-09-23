@@ -192,6 +192,86 @@ paths:
               schema:
                 $ref: "#/components/schemas/RegisterResponse"
         "400": { description: Invalid registration }
+  /buyer/register:
+    post:
+      operationId: registerBuyer
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerRegisterInput"
+      responses:
+        "201":
+          description: Buyer account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerAuthResponse"
+        "400": { description: Invalid registration }
+        "409": { description: Phone or email already used }
+  /buyer/login:
+    post:
+      operationId: loginBuyer
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerLoginInput"
+      responses:
+        "200":
+          description: Buyer session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerAuthResponse"
+        "401": { description: Invalid credentials }
+  /buyer/logout:
+    post:
+      operationId: logoutBuyer
+      tags: [buyer]
+      responses:
+        "200":
+          description: Buyer session cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicSuccessResponse"
+  /buyer/me:
+    get:
+      operationId: getBuyerMe
+      tags: [buyer]
+      responses:
+        "200":
+          description: Current buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerMeResponse"
+        "401": { description: Buyer authentication required }
+  /buyer/contact:
+    post:
+      operationId: createBuyerContactLog
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerContactInput"
+      responses:
+        "201":
+          description: Contact log created and WhatsApp URL prepared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerContactResponse"
+        "400": { description: Invalid contact input }
+        "401": { description: Buyer authentication required }
+        "404": { description: Supplier not found }
   /admin/login:
     post:
       operationId: adminLogin
@@ -430,6 +510,70 @@ components:
         email: { type: string, format: email }
         region: { type: string, enum: ["المنطقة الشرقية"] }
     RegisterResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    BuyerUser:
+      type: object
+      required: [id, fullName, phone, email, city, businessType, businessName, createdAt, lastLogin]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        city: { type: string }
+        businessType: { type: string }
+        businessName: { type: [string, "null"] }
+        createdAt: { type: string }
+        lastLogin: { type: [string, "null"] }
+    BuyerRegisterInput:
+      type: object
+      required: [fullName, phone, email, city, businessType, password]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string }
+        email: { type: string, format: email }
+        city: { type: string }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"] }
+        businessName: { type: string, maxLength: 120 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        newsletterWeekly: { type: boolean }
+        buyersGroup: { type: boolean }
+    BuyerLoginInput:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string }
+        password: { type: string, minLength: 1 }
+    BuyerAuthResponse:
+      type: object
+      required: [success, message, user]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        user: { $ref: "#/components/schemas/BuyerUser" }
+    BuyerMeResponse:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/BuyerUser" }
+    BuyerContactInput:
+      type: object
+      required: [supplierId]
+      properties:
+        supplierId: { type: integer }
+        message: { type: string, maxLength: 1000 }
+    BuyerContactResponse:
+      type: object
+      required: [success, messageId, message, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        messageId: { type: string }
+        message: { type: string }
+        whatsappUrl: { type: string, format: uri }
+    BasicSuccessResponse:
       type: object
       required: [success, message]
       properties:

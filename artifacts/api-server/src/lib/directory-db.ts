@@ -150,6 +150,27 @@ directoryDb.exec(`
     buyers_group INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS buyer_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    city TEXT NOT NULL,
+    business_type TEXT NOT NULL,
+    business_name TEXT,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_login TEXT
+  );
+  CREATE TABLE IF NOT EXISTS contact_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+    message TEXT NOT NULL,
+    message_id TEXT NOT NULL UNIQUE,
+    sent_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'read'))
+  );
   CREATE TABLE IF NOT EXISTS directory_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
