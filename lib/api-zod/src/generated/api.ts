@@ -352,6 +352,8 @@ export const registerBuyerBodyPasswordMin = 6;
 export const registerBuyerBodyPasswordMax = 128;
 
 
+export const registerBuyerBodyPasswordRegExp = new RegExp('^[A-Za-z0-9]+$');
+
 
 export const RegisterBuyerBody = zod.object({
   "fullName": zod.string().min(registerBuyerBodyFullNameMin).max(registerBuyerBodyFullNameMax),
@@ -363,7 +365,7 @@ export const RegisterBuyerBody = zod.object({
   "otherBusinessType": zod.string().max(registerBuyerBodyOtherBusinessTypeMax).optional(),
   "isOwner": zod.boolean(),
   "jobTitle": zod.string().max(registerBuyerBodyJobTitleMax).optional(),
-  "password": zod.string().min(registerBuyerBodyPasswordMin).max(registerBuyerBodyPasswordMax),
+  "password": zod.string().min(registerBuyerBodyPasswordMin).max(registerBuyerBodyPasswordMax).regex(registerBuyerBodyPasswordRegExp),
   "newsletterWeekly": zod.boolean().optional(),
   "buyersGroup": zod.boolean().optional()
 })

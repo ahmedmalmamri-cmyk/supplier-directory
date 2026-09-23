@@ -219,6 +219,7 @@ export interface BuyerRegisterInput {
   /**
      * @minLength 6
      * @maxLength 128
+     * @pattern ^[A-Za-z0-9]+$
      */
   password: string;
   newsletterWeekly?: boolean;

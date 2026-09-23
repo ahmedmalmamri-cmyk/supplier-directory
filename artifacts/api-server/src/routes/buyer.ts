@@ -137,8 +137,8 @@ router.post("/buyer/register", (req, res): void => {
       !city || !buyerBusinessTypes.includes(businessType) || isOwner === null ||
       (businessType === "آخر" && (otherBusinessType.length < 2 || otherBusinessType.length > 80)) ||
       (!isOwner && (jobTitle.length < 2 || jobTitle.length > 80)) ||
-      password.length < 6 || password.length > 128) {
-    res.status(400).json({ error: "أكمل بيانات التسجيل. كلمة المرور يجب ألا تقل عن 6 أحرف، والبريد الإلكتروني اختياري لكنه مطلوب للاشتراك في النشرة الأسبوعية." });
+      password.length < 6 || password.length > 128 || !/^[A-Za-z0-9]+$/.test(password)) {
+    res.status(400).json({ error: "أكمل بيانات التسجيل. كلمة المرور يجب أن تكون 6 خانات على الأقل، أرقام أو أحرف إنجليزية فقط." });
     return;
   }
 

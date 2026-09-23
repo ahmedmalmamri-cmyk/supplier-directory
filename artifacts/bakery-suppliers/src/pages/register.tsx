@@ -257,7 +257,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
        <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} autoComplete="name" />
        <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />
          <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" placeholder="name@example.com" />
-         <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="6 أحرف على الأقل، والأرقام اختيارية" showPasswordToggle />
+          <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="6 خانات على الأقل: أرقام أو أحرف إنجليزية" showPasswordToggle />
        <fieldset>
          <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
          <div className="grid grid-cols-2 gap-3">
@@ -365,7 +365,7 @@ function validateBuyer(form: BuyerForm) {
   if (!form.fullName.trim()) return "أدخل الاسم الكامل.";
   if (!isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 05XXXXXXXX.";
   if (email && (email.length > 160 || !email.includes("@"))) return "أدخل بريداً إلكترونياً صحيحاً أو اترك الحقل فارغاً.";
-  if (form.password.length < 6) return "أدخل كلمة مرور من 6 أحرف على الأقل، والأرقام اختيارية.";
+  if (form.password.length < 6 || !/^[A-Za-z0-9]+$/.test(form.password)) return "أدخل كلمة مرور من 6 خانات على الأقل، أرقام أو أحرف إنجليزية فقط.";
   if (form.isOwner === null) return "حدد هل أنت صاحب العمل: نعم أو لا.";
   if (!form.city) return "اختر المدينة.";
   if (!form.businessType) return "اختر نوع النشاط.";
