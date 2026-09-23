@@ -351,8 +351,13 @@ function validateSupplier(form: SupplierForm) {
 }
 function validateBuyer(form: BuyerForm) {
   const email = form.email.trim();
+  if (!form.fullName.trim()) return "أدخل الاسم الكامل.";
+  if (!isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 05XXXXXXXX.";
   if (email && (email.length > 160 || !email.includes("@"))) return "أدخل بريداً إلكترونياً صحيحاً أو اترك الحقل فارغاً.";
-  if (!form.fullName || !isSaudiPhone(form.phone) || form.password.length < 8 || !form.city || !form.businessType || form.isOwner === null) return "أكمل الحقول المطلوبة وحدد هل أنت صاحب العمل.";
+  if (form.password.length < 8) return "أدخل كلمة مرور من 8 أحرف على الأقل.";
+  if (form.isOwner === null) return "حدد هل أنت صاحب العمل: نعم أو لا.";
+  if (!form.city) return "اختر المدينة.";
+  if (!form.businessType) return "اختر نوع النشاط.";
   if (form.newsletterWeekly && !email) return "أدخل البريد الإلكتروني للاشتراك في النشرة الأسبوعية، أو ألغِ اختيار النشرة.";
   if (form.businessType === "آخر" && (form.otherBusinessType.trim().length < 2 || form.otherBusinessType.trim().length > 80)) return "اذكر نوع النشاط عند اختيار «آخر».";
   if (form.isOwner === false && (form.jobTitle.trim().length < 2 || form.jobTitle.trim().length > 80)) return "أدخل المسمى الوظيفي عند اختيار «لا».";
