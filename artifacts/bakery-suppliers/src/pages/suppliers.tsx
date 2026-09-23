@@ -95,10 +95,11 @@ export default function SuppliersPage() {
                       <MapPin className="w-3.5 h-3.5" />
                       {supplier.city}
                     </div>
-                    <div className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 px-2 py-1 rounded-md font-medium">
+                     <div className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 px-2 py-1 rounded-md font-medium">
                       <Star className="w-3.5 h-3.5 fill-amber-500" />
-                      {supplier.averageRating.toFixed(1)}
+                       {(supplier.googleRating ?? supplier.averageRating).toFixed(1)}
                     </div>
+                     {supplier.googleCategory && <div className="flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 px-2 py-1 rounded-md font-medium">{supplier.googleCategory}</div>}
                     <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md">
                       منتجات: {supplier.productCount || 0}
                     </div>

@@ -13,7 +13,7 @@ type SupplierRequest = {
   createdAt: string; reviewedAt: string | null;
 };
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; referralSource: string | null; newsletterWeekly: boolean; buyersGroup: boolean; createdAt: string };
-type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number; planId: number; planName: string | null; maxProductsAllowed: number; isFeatured: boolean };
+type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; address: string | null; website: string | null; googleCategory: string | null; googleRating: number | null; googleReviewCount: number | null; hoursNote: string | null; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number; planId: number; planName: string | null; maxProductsAllowed: number; isFeatured: boolean };
 type BuyerReport = { id: number; contactLogId: number; buyerId: number; supplierId: number; reason: string; note: string | null; status: "open" | "reviewed" | "dismissed" | "actioned"; adminNote: string | null; createdAt: string; reviewedAt: string | null; buyerName: string; buyerPhone: string; businessName: string | null; buyerCity: string; buyerStatus: BuyerStatus; supplierName: string; messageId: string; contactedAt: string };
 type BuyerStatus = "active" | "under_review" | "restricted" | "suspended" | "blocked";
 type BuyerModerationUser = { id: number; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; moderationStatus: BuyerStatus; moderationReason: string | null; moderationUpdatedAt: string | null; createdAt: string; reportCount: number };
@@ -266,7 +266,8 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <div className="flex items-center gap-2"><h3 className="text-lg font-bold">{supplier.name}</h3>{supplier.isVerified && <Status status="approved" />}{!supplier.isActive && <span className="rounded-full bg-muted px-2 py-1 text-xs">موقوف</span>}</div>
-          <p className="mt-2 text-sm text-muted-foreground">{supplier.city} · منتجات: {supplier.productCount}</p>
+           <p className="mt-2 text-sm text-muted-foreground">{supplier.city} · منتجات: {supplier.productCount}</p>
+           {(supplier.googleCategory || supplier.googleRating) && <p className="mt-2 text-xs font-bold text-primary">{supplier.googleCategory || "مورد"}{supplier.googleRating ? ` · تقييم Google: ${supplier.googleRating.toFixed(1)}${supplier.googleReviewCount ? ` (${supplier.googleReviewCount})` : ""}` : ""}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>

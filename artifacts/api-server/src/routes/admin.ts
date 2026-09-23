@@ -348,6 +348,9 @@ router.get("/admin/suppliers", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   res.json(directoryDb.prepare(`
     SELECT id, name, city, region, description, phone, whatsapp,
+      address, website, google_category AS googleCategory,
+      google_rating AS googleRating, google_review_count AS googleReviewCount,
+      hours_note AS hoursNote,
       is_verified AS isVerified, is_active AS isActive, request_id AS requestId,
       average_rating AS averageRating, created_at AS createdAt,
       plan_id AS planId, max_products_allowed AS maxProductsAllowed,
