@@ -243,7 +243,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
         <p className="text-muted-foreground">بيانات بسيطة تساعدنا على ترشيح الموردين المناسبين لك.</p>
       </div>
     </div>
-     <div className="space-y-5">
+      <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="space-y-5">
       <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} />
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
        <Field label="البريد الإلكتروني *" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" placeholder="name@example.com" />
@@ -279,8 +279,8 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
          <CheckField label="أرغب بالانضمام إلى مجموعة أصحاب الأعمال" checked={form.buyersGroup} onChange={(value) => onChange({ buyersGroup: value })} />
       </div>
       {error && <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 p-4 text-sm">{error}</div>}
-      <button type="button" onClick={onSubmit} disabled={isSubmitting} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري التسجيل..." : "تسجيل"}</button>
-    </div>
+       <button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري التسجيل..." : "تسجيل"}</button>
+     </form>
   </section>;
 }
 
