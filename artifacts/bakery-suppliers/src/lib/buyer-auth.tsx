@@ -8,6 +8,8 @@ export type BuyerUser = {
   city: string;
   businessType: string;
   businessName: string | null;
+  isOwner: boolean;
+  jobTitle: string | null;
   createdAt: string;
   lastLogin: string | null;
 };

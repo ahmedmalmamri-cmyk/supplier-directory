@@ -517,7 +517,7 @@ components:
         message: { type: string }
     BuyerUser:
       type: object
-      required: [id, fullName, phone, email, city, businessType, businessName, createdAt, lastLogin]
+      required: [id, fullName, phone, email, city, businessType, businessName, isOwner, jobTitle, createdAt, lastLogin]
       properties:
         id: { type: integer }
         fullName: { type: string }
@@ -526,11 +526,13 @@ components:
         city: { type: string }
         businessType: { type: string }
         businessName: { type: [string, "null"] }
+        isOwner: { type: boolean }
+        jobTitle: { type: [string, "null"] }
         createdAt: { type: string }
         lastLogin: { type: [string, "null"] }
     BuyerRegisterInput:
       type: object
-      required: [fullName, phone, email, city, businessType, password]
+      required: [fullName, phone, email, city, businessType, isOwner, password]
       properties:
         fullName: { type: string, minLength: 2, maxLength: 80 }
         phone: { type: string }
@@ -538,6 +540,8 @@ components:
         city: { type: string }
         businessType: { type: string, enum: ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"] }
         businessName: { type: string, maxLength: 120 }
+        isOwner: { type: boolean }
+        jobTitle: { type: string, maxLength: 80 }
         password: { type: string, minLength: 8, maxLength: 128 }
         newsletterWeekly: { type: boolean }
         buyersGroup: { type: boolean }

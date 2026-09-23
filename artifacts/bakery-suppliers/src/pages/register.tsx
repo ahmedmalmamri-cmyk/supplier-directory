@@ -15,7 +15,7 @@ type SupplierForm = {
 };
 type BuyerForm = {
   fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
-  businessName: string; newsletterWeekly: boolean; buyersGroup: boolean;
+  businessName: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
@@ -38,6 +38,8 @@ const emptyBuyer: BuyerForm = {
   city: "",
   businessType: "",
   businessName: "",
+  isOwner: null,
+  jobTitle: "",
   newsletterWeekly: false,
   buyersGroup: false,
 };
@@ -246,6 +248,20 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
        <Field label="البريد الإلكتروني *" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" placeholder="name@example.com" />
        <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" placeholder="8 أحرف على الأقل" />
+       <fieldset>
+         <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
+         <div className="grid grid-cols-2 gap-3">
+           <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.isOwner === true ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
+             <input type="radio" name="buyer-is-owner" checked={form.isOwner === true} onChange={() => onChange({ isOwner: true, jobTitle: "" })} className="accent-primary" />
+             <span>نعم</span>
+           </label>
+           <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors ${form.isOwner === false ? "border-primary bg-primary/5" : "hover:border-primary/50"}`}>
+             <input type="radio" name="buyer-is-owner" checked={form.isOwner === false} onChange={() => onChange({ isOwner: false })} className="accent-primary" />
+             <span>لا</span>
+           </label>
+         </div>
+       </fieldset>
+       {form.isOwner === false && <Field label="المسمى الوظيفي *" value={form.jobTitle} onChange={(value) => onChange({ jobTitle: value })} placeholder="مثال: مدير المشتريات" />}
       <SelectField label="المدينة *" value={form.city} options={buyerCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
        <fieldset>
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
@@ -322,7 +338,8 @@ function validateSupplier(form: SupplierForm) {
   return validateSupplierStep(form, 0) || validateSupplierStep(form, 1) || validateSupplierStep(form, 2) || validateSupplierStep(form, 3) || (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish ? "وافق على جميع الإقرارات قبل الإرسال." : "");
 }
 function validateBuyer(form: BuyerForm) {
-  if (!form.fullName || !isSaudiPhone(form.phone) || !form.email.includes("@") || form.password.length < 8 || !form.city || !form.businessType) return "أكمل الحقول المطلوبة وتأكد من البريد والجوال وكلمة المرور (8 أحرف على الأقل).";
+  if (!form.fullName || !isSaudiPhone(form.phone) || !form.email.includes("@") || form.password.length < 8 || !form.city || !form.businessType || form.isOwner === null) return "أكمل الحقول المطلوبة وحدد هل أنت صاحب العمل.";
+  if (form.isOwner === false && (form.jobTitle.trim().length < 2 || form.jobTitle.trim().length > 80)) return "أدخل المسمى الوظيفي عند اختيار «لا».";
   return "";
 }
 function normalizeSaudiPhone(value: string) {

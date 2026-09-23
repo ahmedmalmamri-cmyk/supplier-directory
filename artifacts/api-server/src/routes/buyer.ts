@@ -53,6 +53,8 @@ type BuyerRow = {
   city: string;
   businessType: string;
   businessName: string | null;
+  isOwner: number;
+  jobTitle: string | null;
   passwordHash: string;
   createdAt: string;
   lastLogin: string | null;
@@ -61,7 +63,8 @@ type BuyerRow = {
 function getBuyer(buyerId: number) {
   return directoryDb.prepare(`
     SELECT id, full_name AS fullName, phone, email, city, business_type AS businessType,
-      business_name AS businessName, password_hash AS passwordHash,
+      business_name AS businessName, is_owner AS isOwner, job_title AS jobTitle,
+      password_hash AS passwordHash,
       created_at AS createdAt, last_login AS lastLogin
     FROM buyer_users WHERE id = ?
   `).get(buyerId) as BuyerRow | undefined;
@@ -76,6 +79,8 @@ function publicBuyer(buyer: BuyerRow) {
     city: buyer.city,
     businessType: buyer.businessType,
     businessName: buyer.businessName,
+    isOwner: buyer.isOwner === 1,
+    jobTitle: buyer.jobTitle,
     createdAt: buyer.createdAt,
     lastLogin: buyer.lastLogin,
   };
@@ -117,11 +122,15 @@ router.post("/buyer/register", (req, res): void => {
   const city = text(body.city);
   const businessType = text(body.businessType);
   const businessName = text(body.businessName);
+  const isOwner = typeof body.isOwner === "boolean" ? body.isOwner : null;
+  const jobTitle = text(body.jobTitle);
   const password = typeof body.password === "string" ? body.password : "";
 
   if (fullName.length < 2 || fullName.length > 80 || !isSaudiPhone(phone) || !email.includes("@") ||
-      !city || !buyerBusinessTypes.includes(businessType) || password.length < 8 || password.length > 128) {
-    res.status(400).json({ error: "أكمل بيانات التسجيل وتأكد من صحة الجوال والبريد وكلمة المرور (8 أحرف على الأقل)." });
+      !city || !buyerBusinessTypes.includes(businessType) || isOwner === null ||
+      (!isOwner && (jobTitle.length < 2 || jobTitle.length > 80)) ||
+      password.length < 8 || password.length > 128) {
+    res.status(400).json({ error: "أكمل بيانات التسجيل، وحدد صفتك الوظيفية وأدخل المسمى الوظيفي عند الحاجة." });
     return;
   }
 
@@ -129,16 +138,16 @@ router.post("/buyer/register", (req, res): void => {
     const now = new Date().toISOString();
     const result = directoryDb.prepare(`
       INSERT INTO buyer_users
-        (full_name, phone, email, city, business_type, business_name, password_hash, created_at, last_login)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(fullName, phone, email, city, businessType, businessName || null, hashPassword(password), now, now);
+        (full_name, phone, email, city, business_type, business_name, is_owner, job_title, password_hash, created_at, last_login)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(fullName, phone, email, city, businessType, businessName || null, isOwner ? 1 : 0, isOwner ? null : jobTitle, hashPassword(password), now, now);
     const buyerId = Number(result.lastInsertRowid);
     const requestResult = directoryDb.prepare(`
       INSERT INTO buyer_requests
-        (request_code, full_name, phone, email, city, business_type, business_name, referral_source,
-         newsletter_weekly, buyers_group, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(`TEMP-${randomUUID()}`, fullName, phone, email, city, businessType, businessName || null, null, body.newsletterWeekly === true ? 1 : 0, body.buyersGroup === true ? 1 : 0, now);
+        (request_code, full_name, phone, email, city, business_type, business_name, is_owner, job_title,
+         referral_source, newsletter_weekly, buyers_group, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(`TEMP-${randomUUID()}`, fullName, phone, email, city, businessType, businessName || null, isOwner ? 1 : 0, isOwner ? null : jobTitle, null, body.newsletterWeekly === true ? 1 : 0, body.buyersGroup === true ? 1 : 0, now);
     const requestId = Number(requestResult.lastInsertRowid);
     const requestCode = nextRequestCode(requestId);
     directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, requestId);
@@ -171,7 +180,8 @@ router.post("/buyer/login", (req, res): void => {
   const normalizedEmail = normalizeEmail(identifier);
   const buyer = directoryDb.prepare(`
     SELECT id, full_name AS fullName, phone, email, city, business_type AS businessType,
-      business_name AS businessName, password_hash AS passwordHash,
+      business_name AS businessName, is_owner AS isOwner, job_title AS jobTitle,
+      password_hash AS passwordHash,
       created_at AS createdAt, last_login AS lastLogin
     FROM buyer_users WHERE phone = ? OR email = ? LIMIT 1
   `).get(normalizedPhone, normalizedEmail) as BuyerRow | undefined;
@@ -226,7 +236,7 @@ router.post("/buyer/contact", (req, res): void => {
   const messageId = `MSG-${new Date().getFullYear()}-${String(logId).padStart(4, "0")}`;
   const message = [
     "السلام عليكم،",
-    `أنا ${buyer.fullName} من ${buyer.businessName || "صاحب عمل"}، ونشاطي ${buyer.businessType} في مدينة ${buyer.city}.`,
+    `أنا ${buyer.fullName} من ${buyer.businessName || "منشأتي"}، ${buyer.isOwner === 1 ? "صاحب العمل" : `أعمل بوظيفة ${buyer.jobTitle || "ممثل المنشأة"}`}، ونشاطي ${buyer.businessType} في مدينة ${buyer.city}.`,
     `أرغب في الاستفسار والتواصل مع ${supplier.name}.`,
     `رقم الجوال: ${buyer.phone}`,
     `رقم المرجع: ${messageId}`,

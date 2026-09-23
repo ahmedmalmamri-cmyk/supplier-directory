@@ -172,6 +172,9 @@ export interface BuyerUser {
   businessType: string;
   /** @nullable */
   businessName: string | null;
+  isOwner: boolean;
+  /** @nullable */
+  jobTitle: string | null;
   createdAt: string;
   /** @nullable */
   lastLogin: string | null;
@@ -201,6 +204,9 @@ export interface BuyerRegisterInput {
   businessType: BuyerRegisterInputBusinessType;
   /** @maxLength 120 */
   businessName?: string;
+  isOwner: boolean;
+  /** @maxLength 80 */
+  jobTitle?: string;
   /**
      * @minLength 8
      * @maxLength 128
