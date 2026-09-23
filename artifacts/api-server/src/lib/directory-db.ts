@@ -195,6 +195,15 @@ directoryDb.exec(`
     sent_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'read'))
   );
+  CREATE TABLE IF NOT EXISTS supplier_page_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    viewed_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_page_views_supplier_date
+    ON supplier_page_views (supplier_id, viewed_at);
+  CREATE INDEX IF NOT EXISTS idx_contact_logs_supplier_buyer_date
+    ON contact_logs (supplier_id, buyer_id, sent_at);
   CREATE TABLE IF NOT EXISTS buyer_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contact_log_id INTEGER NOT NULL UNIQUE REFERENCES contact_logs(id),

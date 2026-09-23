@@ -1,7 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useAdminLogin, useAdminLogout } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
 type Tab = "suppliers" | "buyers" | "moderation" | "directory" | "stats" | "settings";
 type SupplierRequest = {
@@ -18,7 +18,7 @@ type BuyerReport = { id: number; contactLogId: number; buyerId: number; supplier
 type BuyerStatus = "active" | "under_review" | "restricted" | "suspended" | "blocked";
 type BuyerModerationUser = { id: number; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; moderationStatus: BuyerStatus; moderationReason: string | null; moderationUpdatedAt: string | null; createdAt: string; reportCount: number };
 type AdminProduct = { id: number; name: string; imageUrl: string | null; sortOrder: number };
-type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
+type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number; totalPageViews: number; totalContacts: number; pageViews30d: number; qualifiedContacts30d: number; contactRate30d: number };
 type Plan = { id: number; name: string; slug: string; priceMonthly: number; maxProducts: number; maxImagesPerProduct: number; hasVerifiedBadge: boolean; hasFeaturedListing: boolean; hasBanner: boolean; hasAnalytics: boolean; hasPrioritySupport: boolean; description: string; isActive: boolean; displayOrder: number };
 type Settings = { whatsapp: string; email: string; address: string; cities: string[]; categories: { id: number; name: string }[]; plans: Plan[] };
 
@@ -316,8 +316,8 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
 }
 
 function StatsTab({ stats }: { stats: Stats | null }) {
-  const cards = [["الطلبات المعلقة", stats?.pendingSupplierRequests ?? 0, Clock3], ["الموردون المعتمدون", stats?.approvedSuppliers ?? 0, Store], ["أصحاب الأعمال", stats?.buyers ?? 0, ShoppingCart], ["المنتجات", stats?.products ?? 0, FileText], ["المدن المغطاة", stats?.cities ?? 0, LayoutDashboard]] as const;
-  return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{cards.map(([label, value, Icon]) => <div key={label} className="bg-card border rounded-2xl p-6"><Icon className="w-6 h-6 text-primary mb-4" /><div className="text-3xl font-bold">{value}</div><div className="text-muted-foreground mt-1">{label}</div></div>)}</div>;
+  const cards = [["الطلبات المعلقة", stats?.pendingSupplierRequests ?? 0, Clock3], ["الموردون المعتمدون", stats?.approvedSuppliers ?? 0, Store], ["أصحاب الأعمال", stats?.buyers ?? 0, ShoppingCart], ["المنتجات", stats?.products ?? 0, FileText], ["المدن المغطاة", stats?.cities ?? 0, LayoutDashboard], ["زيارات ملفات الموردين", stats?.totalPageViews ?? 0, Eye], ["فرص التواصل المؤهلة · 30 يوماً", stats?.qualifiedContacts30d ?? 0, MessageCircle], ["نسبة التحويل · 30 يوماً", `${stats?.contactRate30d ?? 0}%`, TrendingUp]] as const;
+  return <div><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{cards.map(([label, value, Icon]) => <div key={label} className="bg-card border rounded-2xl p-6"><Icon className="w-6 h-6 text-primary mb-4" /><div className="text-3xl font-bold">{value}</div><div className="text-muted-foreground mt-1">{label}</div></div>)}</div><div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-sm leading-7 text-muted-foreground">تُحسب فرصة التواصل المؤهلة مرة واحدة لكل صاحب عمل مع كل مورد خلال 30 يوماً. الأرقام تقيس فرصاً منشأة عبر الدليل، وليست مبيعات مؤكدة أو دليلاً على قراءة الرسالة أو الرد عليها في واتساب.</div></div>;
 }
 
 function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | null; suppliers: Supplier[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {

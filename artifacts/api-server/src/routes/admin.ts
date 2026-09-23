@@ -697,9 +697,20 @@ router.get("/admin/stats", (req, res): void => {
       (SELECT COUNT(*) FROM suppliers WHERE is_active = 1) AS approvedSuppliers,
       (SELECT COUNT(*) FROM buyer_requests) AS buyers,
       (SELECT COUNT(*) FROM products) AS products,
-      (SELECT COUNT(DISTINCT city) FROM suppliers WHERE is_active = 1 AND city != 'غير محدد') AS cities
-  `).get();
-  res.json(stats);
+      (SELECT COUNT(DISTINCT city) FROM suppliers WHERE is_active = 1 AND city != 'غير محدد') AS cities,
+      (SELECT COUNT(*) FROM supplier_page_views) AS totalPageViews,
+      (SELECT COUNT(*) FROM contact_logs) AS totalContacts,
+      (SELECT COUNT(*) FROM supplier_page_views
+       WHERE julianday(viewed_at) >= julianday('now', '-30 days')) AS pageViews30d,
+      (SELECT COUNT(DISTINCT supplier_id || ':' || buyer_id) FROM contact_logs
+       WHERE julianday(sent_at) >= julianday('now', '-30 days')) AS qualifiedContacts30d
+  `).get() as Record<string, number>;
+  const pageViews30d = Number(stats.pageViews30d || 0);
+  const qualifiedContacts30d = Number(stats.qualifiedContacts30d || 0);
+  res.json({
+    ...stats,
+    contactRate30d: pageViews30d > 0 ? Number(((qualifiedContacts30d / pageViews30d) * 100).toFixed(1)) : 0,
+  });
 });
 
 router.get("/admin/settings", (req, res): void => {

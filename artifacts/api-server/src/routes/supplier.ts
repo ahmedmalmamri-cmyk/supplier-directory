@@ -115,6 +115,48 @@ router.get("/supplier/me", (req, res): void => {
   res.json({ supplier: publicSupplier(session.supplier) });
 });
 
+router.get("/supplier/analytics", (req, res): void => {
+  const session = requireSupplier(req, res);
+  if (!session) return;
+  const supplierId = session.supplierId;
+  const summary = directoryDb.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM contact_logs WHERE supplier_id = ?) AS totalContacts,
+      (SELECT COUNT(DISTINCT buyer_id) FROM contact_logs WHERE supplier_id = ?) AS uniqueBuyers,
+      (SELECT COUNT(*) FROM contact_logs
+       WHERE supplier_id = ? AND julianday(sent_at) >= julianday('now', '-30 days')) AS contacts30d,
+      (SELECT COUNT(DISTINCT buyer_id) FROM contact_logs
+       WHERE supplier_id = ? AND julianday(sent_at) >= julianday('now', '-30 days')) AS qualifiedContacts30d,
+      (SELECT COUNT(*) FROM supplier_page_views
+       WHERE supplier_id = ? AND julianday(viewed_at) >= julianday('now', '-30 days')) AS pageViews30d,
+      (SELECT COUNT(*) FROM supplier_page_views WHERE supplier_id = ?) AS totalPageViews
+  `).get(supplierId, supplierId, supplierId, supplierId, supplierId, supplierId) as Record<string, number>;
+  const monthly = directoryDb.prepare(`
+    SELECT strftime('%Y-%m', sent_at) AS month,
+      COUNT(*) AS contactRequests,
+      COUNT(DISTINCT buyer_id) AS uniqueBuyers
+    FROM contact_logs
+    WHERE supplier_id = ? AND julianday(sent_at) >= julianday('now', '-180 days')
+    GROUP BY strftime('%Y-%m', sent_at)
+    ORDER BY month ASC
+  `).all(supplierId);
+  const pageViews30d = Number(summary.pageViews30d || 0);
+  const qualifiedContacts30d = Number(summary.qualifiedContacts30d || 0);
+  res.json({
+    totalContacts: Number(summary.totalContacts || 0),
+    uniqueBuyers: Number(summary.uniqueBuyers || 0),
+    contacts30d: Number(summary.contacts30d || 0),
+    qualifiedContacts30d,
+    pageViews30d,
+    totalPageViews: Number(summary.totalPageViews || 0),
+    contactRate30d: pageViews30d > 0 ? Number(((qualifiedContacts30d / pageViews30d) * 100).toFixed(1)) : 0,
+    monthly: monthly.map((row) => {
+      const item = row as { month: string; contactRequests: number; uniqueBuyers: number };
+      return { month: item.month, contactRequests: Number(item.contactRequests), uniqueBuyers: Number(item.uniqueBuyers) };
+    }),
+  });
+});
+
 router.get("/supplier/contacts", (req, res): void => {
   const session = requireSupplier(req, res);
   if (!session) return;

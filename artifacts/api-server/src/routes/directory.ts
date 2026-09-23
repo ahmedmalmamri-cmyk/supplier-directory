@@ -205,6 +205,9 @@ router.get("/suppliers/:id", (req, res): void => {
     res.status(404).json({ error: "المورد غير موجود" });
     return;
   }
+  directoryDb.prepare(
+    "INSERT INTO supplier_page_views (supplier_id, viewed_at) VALUES (?, ?)",
+  ).run(parsed.data.id, new Date().toISOString());
   const products = directoryDb.prepare(`
     ${productSelect} WHERE p.supplier_id = ? ORDER BY p.sort_order ASC, p.created_at DESC, p.id DESC
    `).all(parsed.data.id);
