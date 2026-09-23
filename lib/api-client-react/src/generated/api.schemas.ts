@@ -163,6 +163,88 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface BuyerUser {
+  id: number;
+  fullName: string;
+  phone: string;
+  email: string;
+  city: string;
+  businessType: string;
+  /** @nullable */
+  businessName: string | null;
+  createdAt: string;
+  /** @nullable */
+  lastLogin: string | null;
+}
+
+export type BuyerRegisterInputBusinessType = typeof BuyerRegisterInputBusinessType[keyof typeof BuyerRegisterInputBusinessType];
+
+
+export const BuyerRegisterInputBusinessType = {
+  مخبز: 'مخبز',
+  محل_حلويات: 'محل حلويات',
+  كافيه: 'كافيه',
+  مطعم: 'مطعم',
+  فندق: 'فندق',
+  آخر: 'آخر',
+} as const;
+
+export interface BuyerRegisterInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  fullName: string;
+  phone: string;
+  email: string;
+  city: string;
+  businessType: BuyerRegisterInputBusinessType;
+  /** @maxLength 120 */
+  businessName?: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+  newsletterWeekly?: boolean;
+  buyersGroup?: boolean;
+}
+
+export interface BuyerLoginInput {
+  identifier: string;
+  /** @minLength 1 */
+  password: string;
+}
+
+export interface BuyerAuthResponse {
+  success: boolean;
+  requestCode?: string;
+  message: string;
+  user: BuyerUser;
+}
+
+export interface BuyerMeResponse {
+  user: BuyerUser;
+}
+
+export interface BuyerContactInput {
+  supplierId: number;
+  /** @maxLength 1000 */
+  message?: string;
+}
+
+export interface BuyerContactResponse {
+  success: boolean;
+  messageId: string;
+  message: string;
+  whatsappUrl: string;
+}
+
+export interface BasicSuccessResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface AdminLoginInput {
   /** @minLength 1 */
   password: string;

@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, ShoppingCart, Sprout, Store, UserPlus } from "lucide-react";
 
@@ -13,7 +14,7 @@ type SupplierForm = {
   acceptedData: boolean; acceptedTerms: boolean; acceptedBusiness: boolean; acceptedPublish: boolean;
 };
 type BuyerForm = {
-  fullName: string; phone: string; city: string; businessType: string;
+  fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
   businessName: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
 
@@ -32,6 +33,8 @@ const emptySupplier: SupplierForm = {
 const emptyBuyer: BuyerForm = {
   fullName: "",
   phone: "",
+  email: "",
+  password: "",
   city: "",
   businessType: "",
   businessName: "",
@@ -47,6 +50,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState<{ code: string; type: RegistrationType } | null>(null);
+  const { refresh } = useBuyerAuth();
 
   useEffect(() => saveDraft("supplier", supplier), [supplier]);
   useEffect(() => saveDraft("buyer", buyer), [buyer]);
@@ -62,7 +66,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center"><UserPlus className="w-7 h-7" /></div>
           <h1 className="text-4xl font-bold mb-4">{title}</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">اختر نوع التسجيل المناسب، ثم أرسل بياناتك للمراجعة اليدوية.</p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "اختر نوع التسجيل المناسب، ثم أرسل بياناتك للمراجعة اليدوية."}</p>
         </div>
       </div>
 
@@ -113,10 +117,11 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
               if (validation) { setError(validation); return; }
               setIsSubmitting(true);
                try {
-                 const response = await postRegistration("/api/buyer-requests", {
+                 const response = await postRegistration("/api/buyer/register", {
                    ...buyer,
                    phone: normalizeSaudiPhone(buyer.phone),
                  });
+                 await refresh();
                 setSubmitted({ code: response.requestCode, type: "buyer" });
                 localStorage.removeItem("bakery-buyer-registration-draft");
               } catch (submitError) {
@@ -236,9 +241,11 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
         <p className="text-muted-foreground">بيانات بسيطة تساعدنا على ترشيح الموردين المناسبين لك.</p>
       </div>
     </div>
-    <div className="space-y-5">
+     <div className="space-y-5">
       <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} />
       <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" placeholder="05XXXXXXXX" />
+       <Field label="البريد الإلكتروني *" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" placeholder="name@example.com" />
+       <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" placeholder="8 أحرف على الأقل" />
       <SelectField label="المدينة *" value={form.city} options={buyerCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
        <fieldset>
         <legend className="text-sm font-bold mb-3">نوع النشاط *</legend>
@@ -277,7 +284,7 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
   return <MainLayout><div className="container mx-auto px-4 py-20 max-w-2xl text-center">
     <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-6" />
      <h1 className="text-3xl font-bold mb-4">{type === "buyer" ? "شكراً لك! تم استلام طلبك كصاحب عمل" : "تم استلام طلبك بنجاح"}</h1>
-     <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "سيتم التواصل معك قريباً عبر الواتساب." : "شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة."}</p>
+     <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "تم إنشاء حسابك وتسجيل دخولك تلقائياً. يمكنك الآن التواصل مع جميع الموردين." : "شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة."}</p>
     <div className="my-8 rounded-2xl bg-primary/10 border border-primary/20 p-5"><div className="text-sm text-muted-foreground mb-2">رقم طلبك المرجعي</div><strong dir="ltr" className="text-2xl text-primary">{requestCode}</strong></div>
      <p className="text-sm text-muted-foreground mb-8">في حال لم يتم التواصل خلال 48 ساعة، يمكنك مراسلتنا على <a href={whatsappHref} target="_blank" rel="noreferrer" dir="ltr" className="text-primary font-bold hover:underline">{whatsapp}</a>.</p>
      <button type="button" onClick={onAgain} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold">تسجيل طلب آخر ({type === "supplier" ? "مورد" : "صاحب عمل"})</button>
@@ -315,7 +322,7 @@ function validateSupplier(form: SupplierForm) {
   return validateSupplierStep(form, 0) || validateSupplierStep(form, 1) || validateSupplierStep(form, 2) || validateSupplierStep(form, 3) || (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish ? "وافق على جميع الإقرارات قبل الإرسال." : "");
 }
 function validateBuyer(form: BuyerForm) {
-  if (!form.fullName || !isSaudiPhone(form.phone) || !form.city || !form.businessType) return "أكمل الحقول المطلوبة وأدخل الجوال بصيغة صحيحة، مثل 058 020 6951.";
+  if (!form.fullName || !isSaudiPhone(form.phone) || !form.email.includes("@") || form.password.length < 8 || !form.city || !form.businessType) return "أكمل الحقول المطلوبة وتأكد من البريد والجوال وكلمة المرور (8 أحرف على الأقل).";
   return "";
 }
 function normalizeSaudiPhone(value: string) {
@@ -338,4 +345,4 @@ async function postRegistration(url: string, data: unknown): Promise<{ requestCo
   return result;
 }
 function loadDraft<T>(key: string, fallback: T): T { try { const saved = localStorage.getItem(`bakery-${key}-registration-draft`); return saved ? { ...fallback, ...JSON.parse(saved) } : fallback; } catch { return fallback; } }
-function saveDraft<T>(key: string, value: T) { try { localStorage.setItem(`bakery-${key}-registration-draft`, JSON.stringify(value)); } catch { /* local storage may be unavailable */ } }
+function saveDraft<T>(key: string, value: T) { try { const safeValue = key === "buyer" ? { ...(value as BuyerForm), password: "" } : value; localStorage.setItem(`bakery-${key}-registration-draft`, JSON.stringify(safeValue)); } catch { /* local storage may be unavailable */ } }

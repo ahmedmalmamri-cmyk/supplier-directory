@@ -23,6 +23,8 @@ import SearchPage from '@/pages/search';
 import RegisterPage from '@/pages/register';
 import ExpansionPage from '@/pages/expansion';
 import AdminPage from '@/pages/admin';
+import BuyerLoginPage from '@/pages/buyer-login';
+import { BuyerAuthProvider } from '@/lib/buyer-auth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +51,7 @@ function Router() {
          <Route path="/register/supplier" component={() => <RegisterPage defaultType="supplier" />} />
          <Route path="/register/buyer" component={() => <RegisterPage defaultType="buyer" />} />
          <Route path="/register" component={() => <RegisterPage />} />
+         <Route path="/buyer/login" component={BuyerLoginPage} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFound} />
@@ -65,12 +68,14 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <BuyerAuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </BuyerAuthProvider>
     </QueryClientProvider>
   );
 }

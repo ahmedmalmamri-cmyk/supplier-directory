@@ -1,9 +1,10 @@
-import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, MessageCircle, Package, Search, ShieldCheck, Star, Store, Users, Wheat, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, Package, Search, ShieldCheck, Star, Store, Users, Wheat, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useGetHome, useGetSupplier, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
 import { useMemo, useState } from "react";
 
 function InitialBadge({ name, featured = false }: { name: string; featured?: boolean }) {
@@ -117,7 +118,7 @@ export default function Home() {
 function SupplierCard({ supplier, products, featured = false }: { supplier: { id: number; name: string; city: string; description: string; averageRating: number; isVerified: boolean; whatsapp?: string | null }; products: Array<{ id: number; name: string; imageUrl?: string | null }>; featured?: boolean }) {
   const { data: supplierDetails } = useGetSupplier(supplier.id);
   const cardProducts = supplierDetails?.products.slice(0, 3) ?? products.slice(0, 3);
-  const whatsappHref = buildWhatsAppUrl(supplier.whatsapp, "للاستفسار عن منتجات المورد");
+  const hasWhatsApp = Boolean(buildWhatsAppUrl(supplier.whatsapp));
   return <article key={supplier.id} data-testid={`card-supplier-${supplier.id}`} className={`group flex flex-col overflow-hidden rounded-2xl border p-5 shadow-warm transition-all duration-300 hover:-translate-y-1 hover:shadow-warm-lg ${featured ? "border-accent/55 bg-gradient-to-br from-card via-card to-secondary/25 ring-1 ring-accent/20" : "border-border bg-card hover:border-primary/30"}`}>
     {featured && <div className="mb-4 flex items-center gap-2 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> مورد مميز في الدليل</div>}
     <Link href={`/supplier/${supplier.id}`} className="block min-w-0">
@@ -128,7 +129,7 @@ function SupplierCard({ supplier, products, featured = false }: { supplier: { id
     </Link>
     <div className="mt-4 grid grid-cols-2 gap-2">
       <Link href={`/supplier/${supplier.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2.5 text-xs font-extrabold text-primary transition-colors hover:bg-primary/15">عرض الملف <ArrowLeft className="h-3.5 w-3.5" /></Link>
-      {whatsappHref ? <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#287d56] px-3 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-[#216a49]"><MessageCircle className="h-4 w-4" /> واتساب</a> : <span className="inline-flex items-center justify-center rounded-xl bg-muted px-3 py-2.5 text-xs font-bold text-muted-foreground">لا يوجد واتساب</span>}
+       {hasWhatsApp ? <ProtectedWhatsAppButton supplierId={supplier.id} supplierName={supplier.name} hasWhatsApp={hasWhatsApp} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#287d56] px-3 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-[#216a49] disabled:cursor-not-allowed disabled:opacity-60" label="واتساب" /> : <span className="inline-flex items-center justify-center rounded-xl bg-muted px-3 py-2.5 text-xs font-bold text-muted-foreground">لا يوجد واتساب</span>}
     </div>
   </article>;
 }

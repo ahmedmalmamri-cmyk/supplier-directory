@@ -337,6 +337,110 @@ export const RegisterInterestResponse = zod.object({
 })
 
 
+export const registerBuyerBodyFullNameMin = 2;
+export const registerBuyerBodyFullNameMax = 80;
+
+export const registerBuyerBodyBusinessNameMax = 120;
+
+export const registerBuyerBodyPasswordMin = 8;
+export const registerBuyerBodyPasswordMax = 128;
+
+
+
+export const RegisterBuyerBody = zod.object({
+  "fullName": zod.string().min(registerBuyerBodyFullNameMin).max(registerBuyerBodyFullNameMax),
+  "phone": zod.string(),
+  "email": zod.string().email(),
+  "city": zod.string(),
+  "businessType": zod.enum(['مخبز', 'محل حلويات', 'كافيه', 'مطعم', 'فندق', 'آخر']),
+  "businessName": zod.string().max(registerBuyerBodyBusinessNameMax).optional(),
+  "password": zod.string().min(registerBuyerBodyPasswordMin).max(registerBuyerBodyPasswordMax),
+  "newsletterWeekly": zod.boolean().optional(),
+  "buyersGroup": zod.boolean().optional()
+})
+
+export const RegisterBuyerResponse = zod.object({
+  "success": zod.boolean(),
+  "requestCode": zod.string().optional(),
+  "message": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email(),
+  "city": zod.string(),
+  "businessType": zod.string(),
+  "businessName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "lastLogin": zod.string().nullable()
+})
+})
+
+
+
+
+
+export const LoginBuyerBody = zod.object({
+  "identifier": zod.string(),
+  "password": zod.string().min(1)
+})
+
+export const LoginBuyerResponse = zod.object({
+  "success": zod.boolean(),
+  "requestCode": zod.string().optional(),
+  "message": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email(),
+  "city": zod.string(),
+  "businessType": zod.string(),
+  "businessName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "lastLogin": zod.string().nullable()
+})
+})
+
+
+export const LogoutBuyerResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const GetBuyerMeResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email(),
+  "city": zod.string(),
+  "businessType": zod.string(),
+  "businessName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "lastLogin": zod.string().nullable()
+})
+})
+
+
+export const createBuyerContactLogBodyMessageMax = 1000;
+
+
+
+export const CreateBuyerContactLogBody = zod.object({
+  "supplierId": zod.number().int(),
+  "message": zod.string().max(createBuyerContactLogBodyMessageMax).optional()
+})
+
+export const CreateBuyerContactLogResponse = zod.object({
+  "success": zod.boolean(),
+  "messageId": zod.string(),
+  "message": zod.string(),
+  "whatsappUrl": zod.string().url()
+})
+
+
 
 
 

@@ -22,6 +22,13 @@ import type {
 import type {
   AdminLoginInput,
   AdminResponse,
+  BasicSuccessResponse,
+  BuyerAuthResponse,
+  BuyerContactInput,
+  BuyerContactResponse,
+  BuyerLoginInput,
+  BuyerMeResponse,
+  BuyerRegisterInput,
   CategoryDetail,
   ContactInput,
   ContactResponse,
@@ -836,6 +843,391 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRegisterInterestMutationOptions(options));
+    }
+
+export const getRegisterBuyerUrl = () => {
+
+
+
+
+  return `/api/buyer/register`
+}
+
+export const registerBuyer = async (buyerRegisterInput: BuyerRegisterInput, options?: Parameters<typeof customFetch>[1]): Promise<BuyerAuthResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BuyerAuthResponse>(getRegisterBuyerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(buyerRegisterInput)
+  }
+);}
+
+
+
+
+
+export const getRegisterBuyerMutationKey = () => ['registerBuyer'] as const;
+
+export const getRegisterBuyerMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerBuyer>>, TError,RegisterBuyerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerBuyer>>, TError,RegisterBuyerMutationVariables, TContext> => {
+
+const mutationKey = getRegisterBuyerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerBuyer>>, RegisterBuyerMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerBuyer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterBuyerMutationResult = NonNullable<Awaited<ReturnType<typeof registerBuyer>>>
+    export type RegisterBuyerMutationBody = BodyType<BuyerRegisterInput>
+    export type RegisterBuyerMutationError = ErrorType<void>
+    export type RegisterBuyerMutationVariables = {data: BodyType<BuyerRegisterInput>}
+
+    export const useRegisterBuyer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerBuyer>>, TError,RegisterBuyerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerBuyer>>,
+        TError,
+        RegisterBuyerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegisterBuyerMutationOptions(options));
+    }
+
+export const getLoginBuyerUrl = () => {
+
+
+
+
+  return `/api/buyer/login`
+}
+
+export const loginBuyer = async (buyerLoginInput: BuyerLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<BuyerAuthResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BuyerAuthResponse>(getLoginBuyerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(buyerLoginInput)
+  }
+);}
+
+
+
+
+
+export const getLoginBuyerMutationKey = () => ['loginBuyer'] as const;
+
+export const getLoginBuyerMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBuyer>>, TError,LoginBuyerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginBuyer>>, TError,LoginBuyerMutationVariables, TContext> => {
+
+const mutationKey = getLoginBuyerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginBuyer>>, LoginBuyerMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginBuyer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginBuyerMutationResult = NonNullable<Awaited<ReturnType<typeof loginBuyer>>>
+    export type LoginBuyerMutationBody = BodyType<BuyerLoginInput>
+    export type LoginBuyerMutationError = ErrorType<void>
+    export type LoginBuyerMutationVariables = {data: BodyType<BuyerLoginInput>}
+
+    export const useLoginBuyer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBuyer>>, TError,LoginBuyerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginBuyer>>,
+        TError,
+        LoginBuyerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginBuyerMutationOptions(options));
+    }
+
+export const getLogoutBuyerUrl = () => {
+
+
+
+
+  return `/api/buyer/logout`
+}
+
+export const logoutBuyer = async ( options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+
+  return customFetch<BasicSuccessResponse>(getLogoutBuyerUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLogoutBuyerMutationKey = () => ['logoutBuyer'] as const;
+
+export const getLogoutBuyerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutBuyer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logoutBuyer>>, TError,void, TContext> => {
+
+const mutationKey = getLogoutBuyerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logoutBuyer>>, void> = () => {
+
+
+          return  logoutBuyer(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutBuyerMutationResult = NonNullable<Awaited<ReturnType<typeof logoutBuyer>>>
+
+    export type LogoutBuyerMutationError = ErrorType<unknown>
+
+
+    export const useLogoutBuyer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutBuyer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof logoutBuyer>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutBuyerMutationOptions(options));
+    }
+
+export const getGetBuyerMeUrl = () => {
+
+
+
+
+  return `/api/buyer/me`
+}
+
+export const getBuyerMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<BuyerMeResponse> => {
+
+  return customFetch<BuyerMeResponse>(getGetBuyerMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBuyerMeQueryKey = () => {
+    return [
+    `/api/buyer/me`
+    ] as const;
+    }
+
+
+export const getGetBuyerMeQueryOptions = <TData = Awaited<ReturnType<typeof getBuyerMe>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBuyerMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBuyerMeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBuyerMe>>> = ({ signal }) => getBuyerMe({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBuyerMe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBuyerMeQueryResult = NonNullable<Awaited<ReturnType<typeof getBuyerMe>>>
+export type GetBuyerMeQueryError = ErrorType<void>
+
+
+
+export function useGetBuyerMe<TData = Awaited<ReturnType<typeof getBuyerMe>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBuyerMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBuyerMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBuyerContactLogUrl = () => {
+
+
+
+
+  return `/api/buyer/contact`
+}
+
+export const createBuyerContactLog = async (buyerContactInput: BuyerContactInput, options?: Parameters<typeof customFetch>[1]): Promise<BuyerContactResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BuyerContactResponse>(getCreateBuyerContactLogUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(buyerContactInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBuyerContactLogMutationKey = () => ['createBuyerContactLog'] as const;
+
+export const getCreateBuyerContactLogMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuyerContactLog>>, TError,CreateBuyerContactLogMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBuyerContactLog>>, TError,CreateBuyerContactLogMutationVariables, TContext> => {
+
+const mutationKey = getCreateBuyerContactLogMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBuyerContactLog>>, CreateBuyerContactLogMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBuyerContactLog(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBuyerContactLogMutationResult = NonNullable<Awaited<ReturnType<typeof createBuyerContactLog>>>
+    export type CreateBuyerContactLogMutationBody = BodyType<BuyerContactInput>
+    export type CreateBuyerContactLogMutationError = ErrorType<void>
+    export type CreateBuyerContactLogMutationVariables = {data: BodyType<BuyerContactInput>}
+
+    export const useCreateBuyerContactLog = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuyerContactLog>>, TError,CreateBuyerContactLogMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBuyerContactLog>>,
+        TError,
+        CreateBuyerContactLogMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateBuyerContactLogMutationOptions(options));
     }
 
 export const getAdminLoginUrl = () => {

@@ -10,6 +10,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
 
 const reviewSchema = z.object({
   reviewerName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
@@ -39,8 +40,7 @@ export default function SupplierProfilePage() {
   if (isLoading) return <MainLayout><LoadingSpinner className="min-h-[60vh]" /></MainLayout>;
   if (error || !supplier) return <MainLayout><EmptyState title="تعذر تحميل بيانات المورد" description="حاول تحديث الصفحة أو العودة إلى قائمة الموردين." /></MainLayout>;
 
-  const whatsappText = "للاستفسار عن باقي المنتجات، تواصل معنا مباشرة";
-  const whatsappHref = buildWhatsAppUrl(supplier.whatsapp, whatsappText);
+  const hasWhatsApp = Boolean(buildWhatsAppUrl(supplier.whatsapp));
   const submitReview = (values: ReviewFormValues) => addReview.mutate({ id: supplierId, data: values });
 
   return <MainLayout>
@@ -50,7 +50,7 @@ export default function SupplierProfilePage() {
         <div className="flex flex-col gap-7 md:flex-row md:items-center">
           <LogoBadge name={supplier.name} verified={supplier.isVerified} />
           <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h1 data-testid="text-supplier-name" className="text-3xl font-extrabold md:text-5xl">{supplier.name}</h1>{supplier.isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> مورد موثق</span>}</div><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground"><span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" /> {supplier.city}، {supplier.region}</span><span className="inline-flex items-center gap-1.5"><Stars rating={supplier.averageRating} /> <b className="text-foreground">{supplier.averageRating.toFixed(1)}</b> تقييم</span></div></div>
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row"><a data-testid="button-supplier-whatsapp" href={whatsappHref} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-extrabold transition-transform hover:-translate-y-0.5 ${whatsappHref ? "bg-[#287d56] text-white" : "pointer-events-none bg-muted text-muted-foreground"}`}><MessageCircle className="h-5 w-5" /> تواصل عبر واتساب</a>{supplier.phone && <a data-testid="button-supplier-phone" href={`tel:${supplier.phone}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-bold hover:border-primary"><Phone className="h-4 w-4" /> اتصال</a>}</div>
+           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">{hasWhatsApp ? <ProtectedWhatsAppButton supplierId={supplier.id} supplierName={supplier.name} hasWhatsApp={hasWhatsApp} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#287d56] px-5 py-3 font-extrabold text-white transition-transform hover:-translate-y-0.5" label="تواصل عبر واتساب" /> : <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-muted px-5 py-3 font-extrabold text-muted-foreground">لا يوجد واتساب</span>}{supplier.phone && <a data-testid="button-supplier-phone" href={`tel:${supplier.phone}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-bold hover:border-primary"><Phone className="h-4 w-4" /> اتصال</a>}</div>
         </div>
         <p className="mt-8 max-w-3xl whitespace-pre-line rounded-2xl border border-border/70 bg-card/70 p-5 text-sm leading-8 text-muted-foreground">{supplier.description || "نبذة المورد ستُضاف قريباً."}</p>
       </div>
@@ -67,7 +67,7 @@ export default function SupplierProfilePage() {
           {supplier.reviews.length ? <div className="space-y-4">{supplier.reviews.map((review) => <article key={review.id} className="rounded-2xl border border-border bg-card p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-extrabold">{review.reviewerName}</h3><p className="mt-1 text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString("ar-SA")}</p></div><Stars rating={review.rating} /></div><p className="mt-4 text-sm leading-7 text-muted-foreground">{review.comment}</p></article>)}</div> : <EmptyState title="لا توجد تقييمات حتى الآن" description="كن أول من يشارك تجربته مع هذا المورد." compact />}</section>
       </main>
 
-      <aside><div className="sticky top-24 rounded-2xl border border-border bg-card p-6 shadow-warm"><h2 className="border-b border-border pb-4 text-lg font-extrabold">بيانات التواصل</h2><div className="space-y-5 pt-5"><ContactLine icon={<MapPin className="h-5 w-5" />} label="المدينة" value={`${supplier.city}، ${supplier.region}`} /><ContactLine icon={<Phone className="h-5 w-5" />} label="الهاتف" value={supplier.phone || "ستُضاف لاحقاً"} /><ContactLine icon={<MessageCircle className="h-5 w-5" />} label="واتساب" value={supplier.whatsapp || "ستُضاف لاحقاً"} /></div>{whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[#287d56] px-4 py-3 text-center text-sm font-extrabold text-white"><MessageCircle className="h-4 w-4" /> للاستفسار عن باقي المنتجات</a>}<div className="mt-7 flex gap-3 rounded-xl bg-secondary/20 p-4 text-xs leading-6 text-muted-foreground"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p>ننصح دائماً بالتأكد من جودة المنتج وشروط التوريد قبل الطلب بكميات كبيرة.</p></div></div></aside>
+       <aside><div className="sticky top-24 rounded-2xl border border-border bg-card p-6 shadow-warm"><h2 className="border-b border-border pb-4 text-lg font-extrabold">بيانات التواصل</h2><div className="space-y-5 pt-5"><ContactLine icon={<MapPin className="h-5 w-5" />} label="المدينة" value={`${supplier.city}، ${supplier.region}`} /><ContactLine icon={<Phone className="h-5 w-5" />} label="الهاتف" value={supplier.phone || "ستُضاف لاحقاً"} /><ContactLine icon={<MessageCircle className="h-5 w-5" />} label="واتساب" value={supplier.whatsapp || "ستُضاف لاحقاً"} /></div>{hasWhatsApp && <ProtectedWhatsAppButton supplierId={supplier.id} supplierName={supplier.name} hasWhatsApp={hasWhatsApp} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-[#287d56] px-4 py-3 text-center text-sm font-extrabold text-white" label="للاستفسار عن باقي المنتجات" />}<div className="mt-7 flex gap-3 rounded-xl bg-secondary/20 p-4 text-xs leading-6 text-muted-foreground"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p>ننصح دائماً بالتأكد من جودة المنتج وشروط التوريد قبل الطلب بكميات كبيرة.</p></div></div></aside>
     </div>
   </MainLayout>;
 }

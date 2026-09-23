@@ -140,11 +140,12 @@ router.post("/buyer/register", (req, res): void => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(`TEMP-${randomUUID()}`, fullName, phone, email, city, businessType, businessName || null, null, body.newsletterWeekly === true ? 1 : 0, body.buyersGroup === true ? 1 : 0, now);
     const requestId = Number(requestResult.lastInsertRowid);
-    directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(nextRequestCode(requestId), requestId);
+    const requestCode = nextRequestCode(requestId);
+    directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, requestId);
     const buyer = getBuyer(buyerId);
     if (!buyer) throw new Error("تعذر إنشاء حساب صاحب العمل.");
     setBuyerSession(res, buyerId);
-    res.status(201).json({ success: true, message: "تم إنشاء حسابك وتسجيل دخولك بنجاح.", user: publicBuyer(buyer) });
+    res.status(201).json({ success: true, requestCode, message: "تم إنشاء حسابك وتسجيل دخولك بنجاح.", user: publicBuyer(buyer) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message.includes("UNIQUE constraint failed: buyer_users.phone")) {

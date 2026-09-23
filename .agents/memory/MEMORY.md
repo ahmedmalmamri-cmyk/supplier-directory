@@ -1,0 +1,1 @@
+- [Buyer contact protection](buyer-contact-protection.md) — all supplier WhatsApp entry points must require a buyer session and create a server-side contact log first.

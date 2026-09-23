@@ -4,6 +4,7 @@ import { getGetProductQueryKey, useGetProduct } from "@workspace/api-client-reac
 import { Link, useRoute } from "wouter";
 import { Package, MapPin, ChevronLeft, Info, FileText, Calendar, Box, Droplets, ThermometerSnowflake, ShieldCheck } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
 
 export default function ProductDetailPage() {
   const [, params] = useRoute("/product/:id");
@@ -80,9 +81,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex gap-4">
-              <a href={buildWhatsAppUrl(product.supplier.whatsapp, `مرحباً، أستفسر عن منتج: ${product.name} (رقم: ${product.id})`)} target="_blank" rel="noopener noreferrer" className="flex-1 bg-primary text-primary-foreground text-center py-3.5 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">
-                طلب تسعيرة (واتساب)
-              </a>
+              <ProtectedWhatsAppButton supplierId={product.supplierId} supplierName={product.supplierName} hasWhatsApp={Boolean(buildWhatsAppUrl(product.supplier.whatsapp))} className="flex-1 rounded-xl bg-primary py-3.5 text-center font-bold text-primary-foreground shadow-md shadow-primary/20 transition-colors hover:bg-primary/90" label="طلب تسعيرة (واتساب)" />
               <a href={`tel:${product.supplier.phone}`} className="flex-1 bg-card border-2 text-center py-3.5 rounded-xl font-bold hover:bg-muted transition-colors">
                 اتصال بالمورد
               </a>
