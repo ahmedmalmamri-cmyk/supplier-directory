@@ -25,6 +25,12 @@ export interface Supplier {
   description: string;
   phone: string;
   whatsapp: string;
+  address: string | null;
+  website: string | null;
+  googleCategory: string | null;
+  googleRating: number | null;
+  googleReviewCount: number | null;
+  hoursNote: string | null;
   isVerified: boolean;
   averageRating: number;
   createdAt: string;

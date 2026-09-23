@@ -26,6 +26,9 @@ const router: IRouter = Router();
 
 const supplierSelect = `
   SELECT s.id, s.name, s.city, s.region, s.description, s.phone, s.whatsapp,
+    s.address, s.website, s.google_category AS googleCategory,
+    s.google_rating AS googleRating, s.google_review_count AS googleReviewCount,
+    s.hours_note AS hoursNote,
     CAST(s.is_verified AS INTEGER) AS isVerified, s.average_rating AS averageRating,
     s.created_at AS createdAt, s.request_id AS requestId, s.is_active AS isActive,
     s.is_featured AS isFeatured,

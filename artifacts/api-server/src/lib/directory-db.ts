@@ -41,6 +41,12 @@ directoryDb.exec(`
     description TEXT NOT NULL,
     phone TEXT NOT NULL,
     whatsapp TEXT NOT NULL,
+    address TEXT,
+    website TEXT,
+    google_category TEXT,
+    google_rating REAL,
+    google_review_count INTEGER,
+    hours_note TEXT,
     is_verified INTEGER NOT NULL DEFAULT 0,
     average_rating REAL NOT NULL DEFAULT 0,
     plan_id INTEGER NOT NULL DEFAULT 1 REFERENCES plans(id),
@@ -258,6 +264,47 @@ if (!supplierColumns.some((column) => column.name === "max_products_allowed")) {
 }
 if (!supplierColumns.some((column) => column.name === "is_featured")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0");
+}
+if (!supplierColumns.some((column) => column.name === "address")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN address TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "website")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN website TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "google_category")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN google_category TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "google_rating")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN google_rating REAL");
+}
+if (!supplierColumns.some((column) => column.name === "google_review_count")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN google_review_count INTEGER");
+}
+if (!supplierColumns.some((column) => column.name === "hours_note")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN hours_note TEXT");
+}
+
+const sugarPasteGoogleInfoMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("add-sugar-paste-google-info") as { name: string } | undefined;
+if (!sugarPasteGoogleInfoMigration) {
+  directoryDb.prepare(`
+    UPDATE suppliers
+    SET address = ?, website = ?, google_category = ?, google_rating = ?,
+      google_review_count = ?, hours_note = ?
+    WHERE name = ?
+  `).run(
+    "شارع الملك سعود بن عبدالعزيز، الربيع، الدمام 32241",
+    "https://sugar4paste.com",
+    "سوبرماركت",
+    4.3,
+    191,
+    "قد تختلف ساعات العمل في العطلات",
+    "عجائن السكر",
+  );
+  directoryDb.prepare(
+    "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
+  ).run("add-sugar-paste-google-info", new Date().toISOString());
 }
 const supplierRequestColumns = directoryDb
   .prepare("PRAGMA table_info(supplier_requests)")

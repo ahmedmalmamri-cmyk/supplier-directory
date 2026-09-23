@@ -367,7 +367,7 @@ components:
         productCount: { type: integer }
     Supplier:
       type: object
-      required: [id, name, city, region, description, phone, whatsapp, isVerified, averageRating, createdAt]
+      required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, averageRating, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -376,6 +376,12 @@ components:
         description: { type: string }
         phone: { type: string }
         whatsapp: { type: string }
+        address: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        googleCategory: { type: string, nullable: true }
+        googleRating: { type: number, nullable: true }
+        googleReviewCount: { type: integer, nullable: true }
+        hoursNote: { type: string, nullable: true }
         isVerified: { type: boolean }
         averageRating: { type: number }
         createdAt: { type: string }
