@@ -3,6 +3,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getGetProductQueryKey, useGetProduct } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
 import { Package, MapPin, ChevronLeft, Info, FileText, Calendar, Box, Droplets, ThermometerSnowflake, ShieldCheck } from "lucide-react";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export default function ProductDetailPage() {
   const [, params] = useRoute("/product/:id");
@@ -79,7 +80,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex gap-4">
-              <a href={`https://wa.me/${product.supplier.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(`مرحباً، أستفسر عن منتج: ${product.name} (رقم: ${product.id})`)}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-primary text-primary-foreground text-center py-3.5 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">
+              <a href={buildWhatsAppUrl(product.supplier.whatsapp, `مرحباً، أستفسر عن منتج: ${product.name} (رقم: ${product.id})`)} target="_blank" rel="noopener noreferrer" className="flex-1 bg-primary text-primary-foreground text-center py-3.5 rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">
                 طلب تسعيرة (واتساب)
               </a>
               <a href={`tel:${product.supplier.phone}`} className="flex-1 bg-card border-2 text-center py-3.5 rounded-xl font-bold hover:bg-muted transition-colors">

@@ -9,6 +9,7 @@ import { useAddReview, useGetSupplier, getGetSupplierQueryKey } from "@workspace
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const reviewSchema = z.object({
   reviewerName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
@@ -39,7 +40,7 @@ export default function SupplierProfilePage() {
   if (error || !supplier) return <MainLayout><EmptyState title="تعذر تحميل بيانات المورد" description="حاول تحديث الصفحة أو العودة إلى قائمة الموردين." /></MainLayout>;
 
   const whatsappText = "للاستفسار عن باقي المنتجات، تواصل معنا مباشرة";
-  const whatsappHref = supplier.whatsapp ? `https://wa.me/${supplier.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappText)}` : undefined;
+  const whatsappHref = buildWhatsAppUrl(supplier.whatsapp, whatsappText);
   const submitReview = (values: ReviewFormValues) => addReview.mutate({ id: supplierId, data: values });
 
   return <MainLayout>

@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, ShoppingCart, Sprout, Store, UserPlus } from "lucide-react";
 
@@ -272,13 +273,13 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
       .catch(() => undefined);
   }, []);
 
-  const whatsappDigits = whatsapp.replace(/\D/g, "");
+   const whatsappHref = buildWhatsAppUrl(whatsapp);
   return <MainLayout><div className="container mx-auto px-4 py-20 max-w-2xl text-center">
     <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-6" />
      <h1 className="text-3xl font-bold mb-4">{type === "buyer" ? "شكراً لك! تم استلام طلبك كصاحب عمل" : "تم استلام طلبك بنجاح"}</h1>
      <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "سيتم التواصل معك قريباً عبر الواتساب." : "شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة."}</p>
     <div className="my-8 rounded-2xl bg-primary/10 border border-primary/20 p-5"><div className="text-sm text-muted-foreground mb-2">رقم طلبك المرجعي</div><strong dir="ltr" className="text-2xl text-primary">{requestCode}</strong></div>
-    <p className="text-sm text-muted-foreground mb-8">في حال لم يتم التواصل خلال 48 ساعة، يمكنك مراسلتنا على <a href={`https://wa.me/${whatsappDigits}`} target="_blank" rel="noreferrer" dir="ltr" className="text-primary font-bold hover:underline">{whatsapp}</a>.</p>
+     <p className="text-sm text-muted-foreground mb-8">في حال لم يتم التواصل خلال 48 ساعة، يمكنك مراسلتنا على <a href={whatsappHref} target="_blank" rel="noreferrer" dir="ltr" className="text-primary font-bold hover:underline">{whatsapp}</a>.</p>
      <button type="button" onClick={onAgain} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold">تسجيل طلب آخر ({type === "supplier" ? "مورد" : "صاحب عمل"})</button>
   </div></MainLayout>;
 }

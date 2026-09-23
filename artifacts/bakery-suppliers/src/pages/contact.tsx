@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const contactSchema = z.object({
   name: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
@@ -90,7 +91,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-bold mb-1">واتساب التواصل</div>
-                    <a href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">{whatsapp}</a>
+                    <a href={buildWhatsAppUrl(whatsapp)} target="_blank" rel="noreferrer" className="text-muted-foreground text-sm hover:text-primary transition-colors dir-ltr block text-right">{whatsapp}</a>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">
