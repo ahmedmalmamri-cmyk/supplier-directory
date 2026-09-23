@@ -79,19 +79,19 @@ export default function Home() {
         </div>
       </section>
 
-       <section className="container mx-auto px-4 pt-16">
-         <div className="grid gap-5 md:grid-cols-2">
-           <Link href="/register/supplier" className="group rounded-3xl border border-primary/15 bg-card p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm-lg">
-             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Wheat className="h-7 w-7" /></div>
-             <h2 className="text-2xl font-extrabold">أنا مورد</h2>
-             <p className="mt-2 font-medium text-muted-foreground">أريد عرض منتجاتي في الدليل</p>
-             <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كمورد <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
+       <section className="container mx-auto px-4 pt-12 md:pt-16">
+         <div className="mb-5 flex items-end justify-between gap-4">
+           <div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">اختصارات سريعة</p><h2 className="text-2xl font-extrabold md:text-3xl">ماذا تريد أن تفعل؟</h2></div>
+           <Link href="/suppliers" className="hidden items-center gap-1 text-sm font-bold text-primary hover:gap-2 sm:flex">تصفح الدليل <ArrowLeft className="h-4 w-4" /></Link>
+         </div>
+         <div className="grid grid-cols-2 gap-3 md:gap-5">
+           <Link href="/register/supplier" className="group flex min-h-[142px] flex-col justify-between rounded-2xl border border-primary/15 bg-card p-4 shadow-warm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm-lg md:min-h-[178px] md:rounded-3xl md:p-6">
+             <div className="flex items-start justify-between gap-2"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-12 md:w-12 md:rounded-2xl"><Wheat className="h-5 w-5 md:h-6 md:w-6" /></div><ArrowLeft className="mt-1 h-4 w-4 text-primary transition-transform group-hover:-translate-x-1" /></div>
+             <div><h2 className="text-lg font-extrabold md:text-2xl">أنا مورد</h2><p className="mt-1 text-xs font-medium text-muted-foreground md:text-sm">أعرض منتجاتي في الدليل</p><span className="mt-3 inline-flex text-xs font-extrabold text-primary md:text-sm">أضف منتجاتك</span></div>
            </Link>
-           <Link href="/register/buyer" className="group rounded-3xl border border-accent/35 bg-gradient-to-br from-card to-secondary/25 p-6 shadow-warm transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-warm-lg">
-             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 text-accent"><Store className="h-7 w-7" /></div>
-             <h2 className="text-2xl font-extrabold">أنا صاحب عمل</h2>
-             <p className="mt-2 font-medium text-muted-foreground">أبحث عن موردين لموادي الأولية</p>
-             <span className="mt-6 inline-flex items-center gap-2 font-bold text-primary">سجّل كصاحب عمل <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /></span>
+           <Link href="/register/buyer" className="group flex min-h-[142px] flex-col justify-between rounded-2xl border border-accent/35 bg-gradient-to-br from-card to-secondary/25 p-4 shadow-warm transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-warm-lg md:min-h-[178px] md:rounded-3xl md:p-6">
+             <div className="flex items-start justify-between gap-2"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent md:h-12 md:w-12 md:rounded-2xl"><Store className="h-5 w-5 md:h-6 md:w-6" /></div><ArrowLeft className="mt-1 h-4 w-4 text-primary transition-transform group-hover:-translate-x-1" /></div>
+             <div><h2 className="text-lg font-extrabold md:text-2xl">أنا صاحب عمل</h2><p className="mt-1 text-xs font-medium text-muted-foreground md:text-sm">أبحث عن موردين</p><span className="mt-3 inline-flex text-xs font-extrabold text-primary md:text-sm">ابدأ البحث</span></div>
            </Link>
          </div>
        </section>
@@ -117,10 +117,10 @@ export default function Home() {
          {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : directorySuppliers.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{directorySuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون معتمدون في الدليل حالياً." />}
        </section>}
 
-      <section className="container mx-auto px-4 pb-20 pt-8">
+       <section className="container mx-auto px-4 pb-20 pt-8">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-warm-lg md:px-12 md:py-14">
           <div className="absolute -left-16 -top-20 h-64 w-64 rounded-full border-[32px] border-secondary/20" />
-          <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="mb-2 text-sm font-bold text-secondary">هل تورد للمخابز والحلويات؟</p><h2 className="text-2xl font-extrabold md:text-3xl">عرّف أصحاب الأعمال بمنتجاتك</h2><p className="mt-2 max-w-xl text-sm font-medium leading-8 text-primary-foreground/90">انضم إلى دليل متخصص يساعدك على الوصول إلى العملاء في المنطقة الشرقية.</p></div><div className="flex flex-wrap gap-3"><Link href="/register/supplier" data-testid="link-register-supplier" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-6 py-3 font-extrabold text-secondary-foreground transition-transform hover:-translate-y-0.5">سجّل كمورد <ChevronLeft className="h-4 w-4" /></Link><Link href="/register/buyer" data-testid="link-register-business-owner" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary-foreground/30 bg-primary-foreground/10 px-6 py-3 font-extrabold text-primary-foreground transition-colors hover:bg-primary-foreground/20">سجّل كصاحب عمل <ChevronLeft className="h-4 w-4" /></Link></div></div>
+           <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="mb-2 text-sm font-bold text-secondary">هل تورد للمخابز والحلويات؟</p><h2 className="text-2xl font-extrabold md:text-3xl">أضف منتجاتك إلى الدليل</h2><p className="mt-2 max-w-xl text-sm font-medium leading-8 text-primary-foreground/90">عرّف أصحاب الأعمال بمنتجاتك ووصل إلى العملاء في المنطقة الشرقية.</p></div><div className="flex flex-wrap items-center gap-4"><Link href="/register/supplier" data-testid="link-register-supplier" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-6 py-3 font-extrabold text-secondary-foreground transition-transform hover:-translate-y-0.5">سجّل كمورد <ChevronLeft className="h-4 w-4" /></Link><Link href="/suppliers" data-testid="link-bottom-browse-suppliers" className="inline-flex shrink-0 items-center gap-1 font-bold text-primary-foreground/90 transition-colors hover:text-secondary">تصفح الموردين <ChevronLeft className="h-4 w-4" /></Link></div></div>
         </div>
       </section>
     </MainLayout>
