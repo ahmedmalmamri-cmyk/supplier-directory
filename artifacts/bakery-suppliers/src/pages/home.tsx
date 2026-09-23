@@ -8,7 +8,7 @@ import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsap
 import { useMemo, useState } from "react";
 
 function InitialBadge({ name, featured = false }: { name: string; featured?: boolean }) {
-  return <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 border-background text-xl font-extrabold shadow-sm ${featured ? "bg-accent text-accent-foreground" : "bg-primary/10 text-primary"}`} aria-hidden="true">{name.slice(0, 1)}</div>;
+  return <div className={`flex shrink-0 items-center justify-center rounded-2xl border-4 border-background font-extrabold shadow-sm ${featured ? "h-20 w-20 bg-accent text-3xl text-accent-foreground shadow-accent/20" : "h-14 w-14 bg-primary/10 text-xl text-primary"}`} aria-hidden="true">{name.slice(0, 1)}</div>;
 }
 
 function Rating({ value }: { value: number }) {
@@ -35,6 +35,8 @@ export default function Home() {
 
   const allSuppliers = suppliers ?? [];
   const featured = (homeData?.featuredSuppliers ?? []).slice(0, 3);
+  const featuredIds = new Set(featured.map((supplier) => supplier.id));
+  const otherSuppliers = allSuppliers.filter((supplier) => !featuredIds.has(supplier.id));
   const statItems: Array<{ label: string; value: number | string; Icon: LucideIcon }> = [
     { label: "الموردون", value: homeData?.stats.suppliers ?? 0, Icon: Building2 },
     { label: "المدن", value: homeData?.stats.cities ?? 0, Icon: MapPin },
@@ -92,17 +94,25 @@ export default function Home() {
          </div>
        </section>
 
-      <section className="container mx-auto px-4 pb-8 pt-20">
-        <div className="mb-8 flex items-end justify-between gap-4">
-            <div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-accent">اختيارات الدليل</p><h2 className="text-3xl font-extrabold md:text-4xl">الموردون المميزون</h2></div>
-            <Link href="/suppliers" data-testid="link-featured-all" className="hidden items-center gap-1 text-sm font-bold text-primary hover:gap-2 sm:flex">عرض كل الموردين <ArrowLeft className="h-4 w-4" /></Link>
-        </div>
-        {featured.length ? <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">{featured.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} featured products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="سيظهر الموردون المميزون هنا بعد اعتمادهم." />}
+       <section className="container mx-auto px-4 pb-8 pt-20">
+         <div className="relative overflow-hidden rounded-[2rem] border border-accent/20 bg-gradient-to-br from-accent/10 via-card to-secondary/20 p-5 shadow-warm md:p-8">
+           <div className="pointer-events-none absolute -left-16 -top-20 h-48 w-48 rounded-full border-[28px] border-accent/10" />
+           <div className="pointer-events-none absolute -bottom-24 -right-16 h-56 w-56 rounded-full border-[32px] border-primary/5" />
+           <div className="relative mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+             <div>
+               <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1.5 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> اختيارات الدليل</p>
+               <h2 className="text-3xl font-extrabold md:text-4xl">الموردون المميزون</h2>
+               <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">موردون مختارون بعناية لسهولة الوصول إلى المنتجات والخدمات الموثوقة.</p>
+             </div>
+             <Link href="/suppliers" data-testid="link-featured-all" className="inline-flex items-center gap-1 self-start text-sm font-bold text-primary transition-all hover:gap-2 sm:self-auto">استكشف الدليل <ArrowLeft className="h-4 w-4" /></Link>
+           </div>
+           {featured.length ? <div className="relative grid grid-cols-1 gap-5 lg:grid-cols-3">{featured.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} featured products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="سيظهر الموردون المميزون هنا بعد اعتمادهم." />}
+         </div>
       </section>
 
       <section className="container mx-auto px-4 py-12">
-        <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">دليل المنطقة</p><h2 className="text-3xl font-extrabold md:text-4xl">كل الموردين</h2></div><Link href="/suppliers" data-testid="link-all-suppliers" className="flex items-center gap-1 text-sm font-bold text-primary hover:gap-2">تصفح القائمة <ArrowLeft className="h-4 w-4" /></Link></div>
-        {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-80 animate-pulse rounded-2xl bg-muted" /><div className="h-80 animate-pulse rounded-2xl bg-muted" /><div className="h-80 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : allSuppliers.length ? <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">{allSuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون معتمدون في الدليل حالياً." />}
+         <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">دليل المنطقة</p><h2 className="text-3xl font-extrabold md:text-4xl">بقية الموردين</h2><p className="mt-2 text-sm text-muted-foreground">قارن بين الموردين واعثر على الأنسب لاحتياجك.</p></div><Link href="/suppliers" data-testid="link-all-suppliers" className="flex items-center gap-1 text-sm font-bold text-primary hover:gap-2">تصفح القائمة <ArrowLeft className="h-4 w-4" /></Link></div>
+         {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : otherSuppliers.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{otherSuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون آخرون في الدليل حالياً." />}
       </section>
 
       <section className="container mx-auto px-4 pb-20 pt-8">
@@ -119,15 +129,15 @@ function SupplierCard({ supplier, products, featured = false }: { supplier: { id
   const { data: supplierDetails } = useGetSupplier(supplier.id);
   const cardProducts = supplierDetails?.products.slice(0, 3) ?? products.slice(0, 3);
   const hasWhatsApp = Boolean(buildWhatsAppUrl(supplier.whatsapp));
-  return <article key={supplier.id} data-testid={`card-supplier-${supplier.id}`} className={`group flex flex-col overflow-hidden rounded-2xl border p-5 shadow-warm transition-all duration-300 hover:-translate-y-1 hover:shadow-warm-lg ${featured ? "border-accent/55 bg-gradient-to-br from-card via-card to-secondary/25 ring-1 ring-accent/20" : "border-border bg-card hover:border-primary/30"}`}>
-    {featured && <div className="mb-4 flex items-center gap-2 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> مورد مميز في الدليل</div>}
+  return <article key={supplier.id} data-testid={`card-supplier-${supplier.id}`} className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 ${featured ? "min-h-[34rem] rounded-3xl border-accent/55 bg-card p-5 shadow-[0_18px_45px_-24px_hsl(var(--accent))] ring-1 ring-accent/20 hover:shadow-[0_24px_55px_-24px_hsl(var(--accent))] md:p-6" : "border-border bg-card p-4 shadow-sm hover:border-primary/30 hover:shadow-warm"}`}>
+    {featured && <div className="mb-5 flex items-center justify-between gap-3"><span className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1.5 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> مورد مميز في الدليل</span><span className="rounded-full border border-accent/25 px-2.5 py-1 text-[11px] font-bold text-muted-foreground">اختيار موصى به</span></div>}
     <Link href={`/supplier/${supplier.id}`} className="block min-w-0">
-      <div className="flex items-start gap-4"><InitialBadge name={supplier.name} featured={featured} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-lg font-extrabold">{supplier.name}</h3>{supplier.isVerified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />}</div><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {supplier.city}</p></div></div>
-      <p className="mt-4 line-clamp-2 min-h-12 text-sm leading-6 text-muted-foreground">{supplier.description}</p>
-      <div className="mt-4 flex items-center justify-between border-y border-border/70 py-3"><Rating value={supplier.averageRating} /><span className="text-xs font-bold text-muted-foreground">ملف المورد</span></div>
-      <div className="mt-4"><ProductStrip products={cardProducts} /></div>
+      <div className={`flex items-start ${featured ? "gap-4" : "gap-3"}`}><InitialBadge name={supplier.name} featured={featured} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className={`${featured ? "text-xl" : "text-lg"} truncate font-extrabold`}>{supplier.name}</h3>{supplier.isVerified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />}</div><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {supplier.city}</p>{featured && <p className="mt-2 text-xs font-bold text-accent">مورد موثق ضمن اختيارات الدليل</p>}</div></div>
+      <p className={`line-clamp-2 text-sm leading-6 text-muted-foreground ${featured ? "mt-5 min-h-12" : "mt-3 min-h-10"}`}>{supplier.description}</p>
+      <div className={`flex items-center justify-between border-y border-border/70 py-3 ${featured ? "mt-4" : "mt-3"}`}><Rating value={supplier.averageRating} /><span className="text-xs font-bold text-muted-foreground">ملف المورد</span></div>
+      <div className={featured ? "mt-4" : "mt-3"}><ProductStrip products={cardProducts} /></div>
     </Link>
-    <div className="mt-4 grid grid-cols-2 gap-2">
+    <div className={`${featured ? "mt-5" : "mt-3"} grid grid-cols-2 gap-2`}>
       <Link href={`/supplier/${supplier.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2.5 text-xs font-extrabold text-primary transition-colors hover:bg-primary/15">عرض الملف <ArrowLeft className="h-3.5 w-3.5" /></Link>
        {hasWhatsApp ? <ProtectedWhatsAppButton supplierId={supplier.id} supplierName={supplier.name} hasWhatsApp={hasWhatsApp} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#287d56] px-3 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-[#216a49] disabled:cursor-not-allowed disabled:opacity-60" label="واتساب" /> : <span className="inline-flex items-center justify-center rounded-xl bg-muted px-3 py-2.5 text-xs font-bold text-muted-foreground">لا يوجد واتساب</span>}
     </div>
