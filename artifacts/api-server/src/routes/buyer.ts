@@ -59,6 +59,9 @@ type BuyerRow = {
   passwordHash: string;
   createdAt: string;
   lastLogin: string | null;
+  moderationStatus: "active" | "under_review" | "restricted" | "suspended" | "blocked";
+  moderationReason: string | null;
+  moderationUpdatedAt: string | null;
 };
 
 function getBuyer(buyerId: number) {
@@ -67,7 +70,9 @@ function getBuyer(buyerId: number) {
       business_name AS businessName, other_business_type AS otherBusinessType,
       is_owner AS isOwner, job_title AS jobTitle,
       password_hash AS passwordHash,
-      created_at AS createdAt, last_login AS lastLogin
+      created_at AS createdAt, last_login AS lastLogin,
+      moderation_status AS moderationStatus, moderation_reason AS moderationReason,
+      moderation_updated_at AS moderationUpdatedAt
     FROM buyer_users WHERE id = ?
   `).get(buyerId) as BuyerRow | undefined;
 }
@@ -86,6 +91,9 @@ function publicBuyer(buyer: BuyerRow) {
     jobTitle: buyer.jobTitle,
     createdAt: buyer.createdAt,
     lastLogin: buyer.lastLogin,
+    moderationStatus: buyer.moderationStatus,
+    moderationReason: buyer.moderationReason,
+    moderationUpdatedAt: buyer.moderationUpdatedAt,
   };
 }
 
@@ -115,6 +123,20 @@ function requireBuyer(req: Parameters<IRouter["get"]>[1] extends never ? never :
     return null;
   }
   return buyer;
+}
+
+function requireActiveBuyer(buyer: BuyerRow, res: any) {
+  if (buyer.moderationStatus !== "active") {
+    const messages = {
+      under_review: "حسابك قيد المراجعة حالياً. لا يمكن بدء تواصل جديد حتى انتهاء المراجعة.",
+      restricted: "حسابك مقيّد مؤقتاً. لا يمكن بدء تواصل جديد حالياً.",
+      suspended: "حسابك موقوف مؤقتاً. تواصل مع الإدارة لمعرفة التفاصيل.",
+      blocked: "تم حظر هذا الحساب من التواصل عبر الدليل.",
+    } as const;
+    res.status(403).json({ error: messages[buyer.moderationStatus] || "لا يسمح الحساب ببدء تواصل جديد." });
+    return false;
+  }
+  return true;
 }
 
 router.post("/buyer/register", (req, res): void => {
@@ -191,11 +213,17 @@ router.post("/buyer/login", (req, res): void => {
       business_name AS businessName, other_business_type AS otherBusinessType,
       is_owner AS isOwner, job_title AS jobTitle,
       password_hash AS passwordHash,
-      created_at AS createdAt, last_login AS lastLogin
+      created_at AS createdAt, last_login AS lastLogin,
+      moderation_status AS moderationStatus, moderation_reason AS moderationReason,
+      moderation_updated_at AS moderationUpdatedAt
     FROM buyer_users WHERE phone = ? OR (email IS NOT NULL AND email = ?) LIMIT 1
   `).get(normalizedPhone, normalizedEmail) as BuyerRow | undefined;
   if (!buyer || !verifyPassword(password, buyer.passwordHash)) {
     res.status(401).json({ error: "بيانات الدخول غير صحيحة." });
+    return;
+  }
+  if (buyer.moderationStatus === "blocked") {
+    res.status(403).json({ error: "تم حظر هذا الحساب من استخدام الدليل." });
     return;
   }
   const now = new Date().toISOString();
@@ -218,6 +246,7 @@ router.get("/buyer/me", (req, res): void => {
 router.post("/buyer/contact", (req, res): void => {
   const buyer = requireBuyer(req, res);
   if (!buyer) return;
+  if (!requireActiveBuyer(buyer, res)) return;
   const supplierId = Number(req.body?.supplierId);
   const customMessage = text(req.body?.message);
   if (!Number.isInteger(supplierId) || supplierId <= 0 || customMessage.length > 1000) {

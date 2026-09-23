@@ -1,9 +1,9 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useAdminLogin, useAdminLogout } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
-import { CheckCircle2, Clock3, FileText, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, UserRound, XCircle } from "lucide-react";
 
-type Tab = "suppliers" | "buyers" | "directory" | "stats" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "directory" | "stats" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -14,6 +14,9 @@ type SupplierRequest = {
 };
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; referralSource: string | null; newsletterWeekly: boolean; buyersGroup: boolean; createdAt: string };
 type Supplier = { id: number; name: string; city: string; region: string; description: string; phone: string; whatsapp: string; isVerified: boolean; isActive: boolean; averageRating: number; productCount: number; planId: number; planName: string | null; maxProductsAllowed: number; isFeatured: boolean };
+type BuyerReport = { id: number; contactLogId: number; buyerId: number; supplierId: number; reason: string; note: string | null; status: "open" | "reviewed" | "dismissed" | "actioned"; adminNote: string | null; createdAt: string; reviewedAt: string | null; buyerName: string; buyerPhone: string; businessName: string | null; buyerCity: string; buyerStatus: BuyerStatus; supplierName: string; messageId: string; contactedAt: string };
+type BuyerStatus = "active" | "under_review" | "restricted" | "suspended" | "blocked";
+type BuyerModerationUser = { id: number; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; moderationStatus: BuyerStatus; moderationReason: string | null; moderationUpdatedAt: string | null; createdAt: string; reportCount: number };
 type AdminProduct = { id: number; name: string; imageUrl: string | null; sortOrder: number };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number };
 type Plan = { id: number; name: string; slug: string; priceMonthly: number; maxProducts: number; maxImagesPerProduct: number; hasVerifiedBadge: boolean; hasFeaturedListing: boolean; hasBanner: boolean; hasAnalytics: boolean; hasPrioritySupport: boolean; description: string; isActive: boolean; displayOrder: number };
@@ -22,6 +25,7 @@ type Settings = { whatsapp: string; email: string; address: string; cities: stri
 const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
   { id: "buyers", label: "طلبات أصحاب الأعمال", icon: ShoppingCart },
+  { id: "moderation", label: "بلاغات أصحاب الأعمال", icon: Flag },
   { id: "directory", label: "الموردون المعتمدون", icon: CheckCircle2 },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "settings", label: "الإعدادات", icon: Settings },
@@ -33,6 +37,8 @@ export default function AdminPage() {
   const [supplierRequests, setSupplierRequests] = useState<SupplierRequest[]>([]);
   const [buyerRequests, setBuyerRequests] = useState<BuyerRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
+  const [moderationUsers, setModerationUsers] = useState<BuyerModerationUser[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<SupplierRequest | null>(null);
@@ -55,16 +61,20 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [requests, buyers, directory, dashboardStats, directorySettings] = await Promise.all([
+      const [requests, buyers, directory, moderation, users, dashboardStats, directorySettings] = await Promise.all([
         adminFetch<SupplierRequest[]>("/api/admin/supplier-requests"),
         adminFetch<BuyerRequest[]>("/api/admin/buyer-requests"),
         adminFetch<Supplier[]>("/api/admin/suppliers"),
+        adminFetch<BuyerReport[]>("/api/admin/buyer-reports"),
+        adminFetch<BuyerModerationUser[]>("/api/admin/buyer-users"),
         adminFetch<Stats>("/api/admin/stats"),
         adminFetch<Settings>("/api/admin/settings"),
       ]);
       setSupplierRequests(requests);
       setBuyerRequests(buyers);
       setSuppliers(directory);
+      setBuyerReports(moderation);
+      setModerationUsers(users);
       setStats(dashboardStats);
       setSettings(directorySettings);
       setSelectedRequest((current) => current ? requests.find((item) => item.id === current.id) ?? null : null);
@@ -118,6 +128,7 @@ export default function AdminPage() {
           {error && <div className="mb-5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive p-3 text-sm">{error}</div>}
           {tab === "suppliers" && <SupplierRequestsTab requests={supplierRequests} selected={selectedRequest} onSelect={setSelectedRequest} onAction={act} />}
           {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب صاحب العمل.")} />}
+          {tab === "moderation" && <BuyerModerationTab reports={buyerReports} users={moderationUsers} onAction={act} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
           {tab === "stats" && <StatsTab stats={stats} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
@@ -151,6 +162,42 @@ function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; on
   return requests.length === 0 ? <Empty title="لا توجد طلبات أصحاب أعمال" description="ستظهر تسجيلات أصحاب الأعمال هنا." /> : <div className="overflow-x-auto bg-card border rounded-2xl"><table className="w-full text-sm text-right"><thead className="bg-muted/50"><tr>{["رقم الطلب", "الاسم", "المدينة", "نوع النشاط", "الجوال", "التفضيلات", "التاريخ", ""].map((head) => <th key={head} className="p-4 font-bold whitespace-nowrap">{head}</th>)}</tr></thead><tbody>{requests.map((request) => <tr key={request.id} className="border-t"><td className="p-4" dir="ltr">{request.requestCode}</td><td className="p-4 font-bold">{request.fullName}<div className="text-xs text-muted-foreground">{request.businessName || ""}</div></td><td className="p-4">{request.city}</td><td className="p-4">{request.businessType === "آخر" ? request.otherBusinessType || "آخر" : request.businessType}</td><td className="p-4" dir="ltr">{request.phone}</td><td className="p-4"><div className="flex flex-wrap gap-1 min-w-44">{request.newsletterWeekly && <span className="rounded-full bg-primary/10 text-primary px-2 py-1 text-xs">نشرة الأسعار</span>}{request.buyersGroup && <span className="rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs">مجموعة أصحاب الأعمال</span>}{!request.newsletterWeekly && !request.buyersGroup && <span className="text-muted-foreground text-xs">لا توجد</span>}</div></td><td className="p-4 whitespace-nowrap">{formatDate(request.createdAt)}</td><td className="p-4"><button type="button" onClick={() => onDelete(request.id)} className="text-red-700 hover:underline font-bold"><Trash2 className="w-4 h-4 inline" /> حذف</button></td></tr>)}</tbody></table></div>;
 }
 
+function BuyerModerationTab({ reports, users, onAction }: { reports: BuyerReport[]; users: BuyerModerationUser[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
+  const [reviewStatuses, setReviewStatuses] = useState<Record<number, string>>({});
+  const [userStatuses, setUserStatuses] = useState<Record<number, BuyerStatus>>({});
+  const [reasons, setReasons] = useState<Record<number, string>>({});
+  const statusLabels: Record<BuyerStatus, string> = { active: "نشط", under_review: "قيد المراجعة", restricted: "مقيّد مؤقتاً", suspended: "موقوف", blocked: "محظور" };
+  const reportLabels = { open: "مفتوح", reviewed: "تمت المراجعة", dismissed: "مرفوض", actioned: "تم اتخاذ إجراء" };
+  return <div className="space-y-8">
+    <section>
+      <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">البلاغات الواردة</h3><p className="mt-1 text-sm text-muted-foreground">كل بلاغ مرتبط بتواصل مسجل فعلياً مع المورد.</p></div><span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900">{reports.filter((report) => report.status === "open").length} مفتوح</span></div>
+      {reports.length === 0 ? <Empty title="لا توجد بلاغات" description="ستظهر هنا البلاغات التي يرفعها الموردون عن تواصل موثق." /> : <div className="space-y-4">{reports.map((report) => <article key={report.id} className="rounded-2xl border bg-card p-5">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" /><h4 className="text-lg font-bold">{report.buyerName}</h4><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{reportLabels[report.status]}</span><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{statusLabels[report.buyerStatus]}</span></div>
+            <p className="mt-2 text-sm text-muted-foreground">المورد: {report.supplierName} · السبب: <strong className="text-foreground">{report.reason}</strong></p>
+            <p className="mt-1 text-xs text-muted-foreground">سجل التواصل: {report.messageId} · {formatDate(report.createdAt)} · {report.buyerPhone}</p>
+            {report.note && <p className="mt-4 rounded-xl bg-muted/40 p-3 text-sm leading-7">{report.note}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <select value={reviewStatuses[report.id] || report.status} onChange={(event) => setReviewStatuses({ ...reviewStatuses, [report.id]: event.target.value })} className="h-10 rounded-lg border bg-background px-3 text-sm">
+              <option value="reviewed">تمت المراجعة</option><option value="dismissed">رفض البلاغ</option><option value="actioned">تم اتخاذ إجراء</option>
+            </select>
+            <button type="button" onClick={() => void onAction(`/api/admin/buyer-reports/${report.id}/review`, { method: "POST", body: JSON.stringify({ status: reviewStatuses[report.id] || "reviewed" }) }, "تم حفظ نتيجة البلاغ.")} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground">حفظ النتيجة</button>
+            <button type="button" onClick={() => void onAction(`/api/admin/buyer-users/${report.buyerId}/status`, { method: "POST", body: JSON.stringify({ status: "under_review", reason: `بلاغ من المورد ${report.supplierName}: ${report.reason}` }) }, "تم وضع الحساب قيد المراجعة.")} className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-bold text-amber-800">قيد المراجعة</button>
+          </div>
+        </div>
+      </article>)}</div>}
+    </section>
+    <section>
+      <div className="mb-4"><h3 className="text-xl font-bold">حسابات أصحاب الأعمال</h3><p className="mt-1 text-sm text-muted-foreground">تغيير الحالة قرار إداري مسجل، وليس صلاحية للمورد.</p></div>
+      {users.length === 0 ? <Empty title="لا توجد حسابات" description="ستظهر حسابات أصحاب الأعمال بعد التسجيل." /> : <div className="space-y-3">{users.map((user) => <article key={user.id} className="flex flex-col justify-between gap-4 rounded-2xl border bg-card p-4 lg:flex-row lg:items-center">
+        <div><div className="flex flex-wrap items-center gap-2"><h4 className="font-bold">{user.fullName}</h4><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{statusLabels[user.moderationStatus]}</span>{user.reportCount > 0 && <span className="text-xs text-amber-700">بلاغات: {user.reportCount}</span>}</div><p className="mt-1 text-sm text-muted-foreground">{user.businessName || "منشأة غير محددة"} · {user.city} · {user.phone}</p>{user.moderationReason && <p className="mt-1 text-xs text-muted-foreground">آخر سبب: {user.moderationReason}</p>}</div>
+        <div className="flex flex-col gap-2 sm:flex-row"><select value={userStatuses[user.id] || user.moderationStatus} onChange={(event) => setUserStatuses({ ...userStatuses, [user.id]: event.target.value as BuyerStatus })} className="h-10 rounded-lg border bg-background px-3 text-sm">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input value={reasons[user.id] || ""} onChange={(event) => setReasons({ ...reasons, [user.id]: event.target.value })} placeholder="سبب مختصر (اختياري)" className="h-10 rounded-lg border bg-background px-3 text-sm" /><button type="button" onClick={() => void onAction(`/api/admin/buyer-users/${user.id}/status`, { method: "POST", body: JSON.stringify({ status: userStatuses[user.id] || user.moderationStatus, reason: reasons[user.id] || "" }) }, "تم تحديث حالة الحساب.")} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">حفظ</button></div>
+      </article>)}</div>}
+    </section>
+  </div>;
+}
+
 function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
   const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string; imageUrl: string; imageDataUrl: string } | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -158,6 +205,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   const [orderEditor, setOrderEditor] = useState<{ supplierId: number; products: AdminProduct[] } | null>(null);
   const [draggingProductId, setDraggingProductId] = useState<number | null>(null);
   const [orderLoading, setOrderLoading] = useState<number | null>(null);
+  const [accessEditing, setAccessEditing] = useState<{ supplierId: number; password: string } | null>(null);
 
   const openOrderEditor = async (supplierId: number) => {
     setOrderLoading(supplierId);
@@ -224,6 +272,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
            <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "", imageDataUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>
+           <button type="button" onClick={() => setAccessEditing({ supplierId: supplier.id, password: "" })} className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-bold text-primary">تفعيل دخول المورد</button>
           <button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/pause`, { method: "POST" }, supplier.isActive ? "تم إيقاف المورد." : "تم إعادة تفعيل المورد.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{supplier.isActive ? "إيقاف مؤقت" : "تفعيل"}</button>
           <button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">حذف</button>
         </div>
@@ -236,6 +285,11 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
         <input value={editing.whatsapp} onChange={(event) => setEditing({ ...editing, whatsapp: event.target.value })} placeholder="الواتساب" className="h-10 rounded-lg border bg-background px-3" />
         <textarea value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} placeholder="الوصف" className="rounded-lg border bg-background px-3 py-2 md:col-span-2" />
         <div className="flex gap-2 md:col-span-2"><button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing) }, "تم تحديث المورد.")} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground">حفظ التعديل</button><button type="button" onClick={() => setEditing(null)} className="rounded-lg border px-4 py-2">إلغاء</button></div>
+      </div>}
+
+      {accessEditing?.supplierId === supplier.id && <div className="mt-4 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <div><p className="font-bold">إنشاء وصول آمن للمورد</p><p className="mt-1 text-xs leading-6 text-muted-foreground">سيستخدم المورد جواله المسجل للدخول إلى صفحة البلاغات. سلّمه كلمة المرور خارج المنصة.</p></div>
+        <div className="flex flex-col gap-2 sm:flex-row"><input type="password" dir="ltr" value={accessEditing.password} onChange={(event) => setAccessEditing({ ...accessEditing, password: event.target.value })} placeholder="كلمة مرور 6 خانات أو أكثر" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" disabled={accessEditing.password.length < 6} onClick={async () => { const saved = await onAction(`/api/admin/suppliers/${supplier.id}/access`, { method: "POST", body: JSON.stringify({ password: accessEditing.password }) }, "تم تفعيل وصول المورد."); if (saved) setAccessEditing(null); }} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">حفظ الوصول</button><button type="button" onClick={() => setAccessEditing(null)} className="rounded-lg border px-4 py-2 font-bold">إلغاء</button></div>
       </div>}
 
       {newProduct?.supplierId === supplier.id && <div className="mt-4 space-y-4 border-t pt-4">

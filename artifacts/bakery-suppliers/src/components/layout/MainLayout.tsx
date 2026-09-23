@@ -34,11 +34,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
               </div>
               <span className="font-bold text-lg hidden sm:inline-block">دليل المخابز والحلويات</span>
             </Link>
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
+             <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
               <Link href="/" className="hover:text-foreground transition-colors">الرئيسية</Link>
               <a href="/#categories" className="hover:text-foreground transition-colors">التصنيفات</a>
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">التسجيل</Link>
+               <Link href="/supplier/login" className="hover:text-foreground transition-colors">دخول المورد</Link>
               <Link href="/contact" className="hover:text-foreground transition-colors">اتصل بنا</Link>
               <Link href="/admin" className="hover:text-foreground transition-colors">الإدارة</Link>
             </nav>
@@ -71,6 +72,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <a href="/#categories" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><LayoutGrid className="w-4 h-4"/> التصنيفات</a>
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Users className="w-4 h-4"/> الموردين</Link>
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserPlus className="w-4 h-4"/> التسجيل</Link>
+             <Link href="/supplier/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> دخول المورد</Link>
             <Link href="/expansion" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Rocket className="w-4 h-4"/> خطة التوسع</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Mail className="w-4 h-4"/> اتصل بنا</Link>
             <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> الإدارة</Link>

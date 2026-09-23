@@ -24,6 +24,8 @@ import RegisterPage from '@/pages/register';
 import ExpansionPage from '@/pages/expansion';
 import AdminPage from '@/pages/admin';
 import BuyerLoginPage from '@/pages/buyer-login';
+import SupplierLoginPage from '@/pages/supplier-login';
+import SupplierPortalPage from '@/pages/supplier-portal';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 
 const queryClient = new QueryClient({
@@ -42,7 +44,9 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/category/:id" component={CategoryPage} />
         <Route path="/suppliers" component={SuppliersPage} />
-        <Route path="/supplier/:id" component={SupplierProfilePage} />
+         <Route path="/supplier/login" component={SupplierLoginPage} />
+         <Route path="/supplier/portal" component={SupplierPortalPage} />
+         <Route path="/supplier/:id" component={SupplierProfilePage} />
         <Route path="/product/:id" component={ProductDetailPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />

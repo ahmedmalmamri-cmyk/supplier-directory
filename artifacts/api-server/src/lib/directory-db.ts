@@ -166,6 +166,18 @@ directoryDb.exec(`
     job_title TEXT,
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    last_login TEXT,
+    moderation_status TEXT NOT NULL DEFAULT 'active',
+    moderation_reason TEXT,
+    moderation_updated_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS supplier_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL UNIQUE REFERENCES suppliers(id) ON DELETE CASCADE,
+    phone TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+    created_at TEXT NOT NULL,
     last_login TEXT
   );
   CREATE TABLE IF NOT EXISTS contact_logs (
@@ -176,6 +188,27 @@ directoryDb.exec(`
     message_id TEXT NOT NULL UNIQUE,
     sent_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'read'))
+  );
+  CREATE TABLE IF NOT EXISTS buyer_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contact_log_id INTEGER NOT NULL UNIQUE REFERENCES contact_logs(id),
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+    reason TEXT NOT NULL,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewed', 'dismissed', 'actioned')),
+    admin_note TEXT,
+    created_at TEXT NOT NULL,
+    reviewed_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS buyer_moderation_decisions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
+    report_id INTEGER REFERENCES buyer_reports(id),
+    previous_status TEXT NOT NULL,
+    new_status TEXT NOT NULL,
+    reason TEXT,
+    created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS directory_settings (
     key TEXT PRIMARY KEY,
@@ -261,6 +294,15 @@ if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.nam
 }
 if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "other_business_type")) {
   directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN other_business_type TEXT");
+}
+if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "moderation_status")) {
+  directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'active'");
+}
+if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "moderation_reason")) {
+  directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN moderation_reason TEXT");
+}
+if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "moderation_updated_at")) {
+  directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN moderation_updated_at TEXT");
 }
 const buyerEmailColumn = buyerUserColumns.find((column) => column.name === "email");
 if (buyerEmailColumn?.notnull === 1) {

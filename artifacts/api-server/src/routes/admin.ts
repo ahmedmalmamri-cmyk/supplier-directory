@@ -8,6 +8,7 @@ import {
   ListRegistrationInterestsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { hashPassword as hashSupplierPassword } from "./supplier";
 
 const router: IRouter = Router();
 const adminCookieName = "bakery_admin_session";
@@ -271,6 +272,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
         UPDATE suppliers SET name = ?, city = ?, region = 'المنطقة الشرقية', description = ?,
           phone = ?, whatsapp = ?, is_verified = ?, is_active = 1 WHERE id = ?
       `).run(businessName, city, String(request.description), phone, whatsapp, verified, existing.id);
+      directoryDb.prepare("UPDATE supplier_users SET phone = ? WHERE supplier_id = ?").run(phone, existing.id);
     } else {
       const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
       directoryDb.prepare(`
@@ -361,6 +363,117 @@ router.get("/admin/suppliers", (req, res): void => {
   })));
 });
 
+router.post("/admin/suppliers/:id/access", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  const password = typeof req.body.password === "string" ? req.body.password : "";
+  if (!Number.isInteger(supplierId) || supplierId <= 0 || password.length < 6 || password.length > 128 || !/^[A-Za-z0-9]+$/.test(password)) {
+    res.status(400).json({ error: "كلمة مرور المورد يجب أن تكون 6 خانات على الأقل، أرقاماً أو أحرفاً إنجليزية فقط." });
+    return;
+  }
+  const supplier = directoryDb.prepare("SELECT id, phone FROM suppliers WHERE id = ?").get(supplierId) as { id: number; phone: string } | undefined;
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود." });
+    return;
+  }
+  const now = new Date().toISOString();
+  directoryDb.prepare(`
+    INSERT INTO supplier_users (supplier_id, phone, password_hash, status, created_at, last_login)
+    VALUES (?, ?, ?, 'active', ?, NULL)
+    ON CONFLICT(supplier_id) DO UPDATE SET phone = excluded.phone, password_hash = excluded.password_hash, status = 'active'
+  `).run(supplier.id, supplier.phone, hashSupplierPassword(password), now);
+  res.json({ success: true, message: "تم تفعيل وصول المورد. سلّمه رقم الجوال وكلمة المرور بشكل آمن." });
+});
+
+router.get("/admin/buyer-users", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const rows = directoryDb.prepare(`
+    SELECT b.id, b.full_name AS fullName, b.phone, b.email, b.city,
+      b.business_type AS businessType, b.other_business_type AS otherBusinessType,
+      b.business_name AS businessName, b.moderation_status AS moderationStatus,
+      b.moderation_reason AS moderationReason, b.moderation_updated_at AS moderationUpdatedAt,
+      b.created_at AS createdAt, COUNT(br.id) AS reportCount
+    FROM buyer_users b
+    LEFT JOIN buyer_reports br ON br.buyer_id = b.id
+    GROUP BY b.id
+    ORDER BY CASE b.moderation_status
+      WHEN 'under_review' THEN 0 WHEN 'restricted' THEN 1 WHEN 'suspended' THEN 2
+      WHEN 'blocked' THEN 3 ELSE 4 END, b.created_at DESC
+  `).all();
+  res.json(rows);
+});
+
+router.get("/admin/buyer-reports", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const rows = directoryDb.prepare(`
+    SELECT br.id, br.contact_log_id AS contactLogId, br.buyer_id AS buyerId,
+      br.supplier_id AS supplierId, br.reason, br.note, br.status,
+      br.admin_note AS adminNote, br.created_at AS createdAt, br.reviewed_at AS reviewedAt,
+      b.full_name AS buyerName, b.phone AS buyerPhone, b.business_name AS businessName,
+      b.city AS buyerCity, b.moderation_status AS buyerStatus,
+      s.name AS supplierName, cl.message_id AS messageId, cl.sent_at AS contactedAt
+    FROM buyer_reports br
+    JOIN buyer_users b ON b.id = br.buyer_id
+    JOIN suppliers s ON s.id = br.supplier_id
+    JOIN contact_logs cl ON cl.id = br.contact_log_id
+    ORDER BY CASE br.status WHEN 'open' THEN 0 ELSE 1 END, br.created_at DESC, br.id DESC
+  `).all();
+  res.json(rows);
+});
+
+router.post("/admin/buyer-users/:id/status", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const buyerId = Number(req.params.id);
+  const status = typeof req.body.status === "string" ? req.body.status : "";
+  const reason = typeof req.body.reason === "string" ? req.body.reason.trim().slice(0, 1000) : "";
+  const statuses = ["active", "under_review", "restricted", "suspended", "blocked"];
+  if (!Number.isInteger(buyerId) || !statuses.includes(status)) {
+    res.status(400).json({ error: "حالة صاحب العمل غير صحيحة." });
+    return;
+  }
+  const buyer = directoryDb.prepare("SELECT id, moderation_status AS moderationStatus FROM buyer_users WHERE id = ?").get(buyerId) as { id: number; moderationStatus: string } | undefined;
+  if (!buyer) {
+    res.status(404).json({ error: "صاحب العمل غير موجود." });
+    return;
+  }
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.prepare(`
+      UPDATE buyer_users SET moderation_status = ?, moderation_reason = ?, moderation_updated_at = ? WHERE id = ?
+    `).run(status, reason || null, now, buyerId);
+    directoryDb.prepare(`
+      INSERT INTO buyer_moderation_decisions (buyer_id, report_id, previous_status, new_status, reason, created_at)
+      VALUES (?, NULL, ?, ?, ?, ?)
+    `).run(buyerId, buyer.moderationStatus, status, reason || null, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  res.json({ success: true, message: "تم تحديث حالة صاحب العمل وتسجيل القرار." });
+});
+
+router.post("/admin/buyer-reports/:id/review", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const reportId = Number(req.params.id);
+  const reportStatus = typeof req.body.status === "string" ? req.body.status : "";
+  const adminNote = typeof req.body.adminNote === "string" ? req.body.adminNote.trim().slice(0, 1000) : "";
+  if (!Number.isInteger(reportId) || !["reviewed", "dismissed", "actioned"].includes(reportStatus)) {
+    res.status(400).json({ error: "نتيجة مراجعة البلاغ غير صحيحة." });
+    return;
+  }
+  const report = directoryDb.prepare("SELECT id FROM buyer_reports WHERE id = ?").get(reportId);
+  if (!report) {
+    res.status(404).json({ error: "البلاغ غير موجود." });
+    return;
+  }
+  directoryDb.prepare(`
+    UPDATE buyer_reports SET status = ?, admin_note = ?, reviewed_at = ? WHERE id = ?
+  `).run(reportStatus, adminNote || null, new Date().toISOString(), reportId);
+  res.json({ success: true, message: "تم حفظ نتيجة مراجعة البلاغ." });
+});
+
 router.post("/admin/product-images", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   try {
@@ -389,6 +502,10 @@ router.patch("/admin/suppliers/:id", (req, res): void => {
   if (!result.changes) {
     res.status(404).json({ error: "المورد غير موجود" });
     return;
+  }
+  const updatedPhone = typeof body.phone === "string" ? body.phone.trim() : "";
+  if (updatedPhone) {
+    directoryDb.prepare("UPDATE supplier_users SET phone = ? WHERE supplier_id = ?").run(updatedPhone, Number(req.params.id));
   }
   res.json({ success: true, message: "تم تحديث المورد." });
 });
