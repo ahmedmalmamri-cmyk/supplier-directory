@@ -138,7 +138,7 @@ router.post("/buyer/register", (req, res): void => {
       (businessType === "آخر" && (otherBusinessType.length < 2 || otherBusinessType.length > 80)) ||
       (!isOwner && (jobTitle.length < 2 || jobTitle.length > 80)) ||
       password.length < 6 || password.length > 128) {
-    res.status(400).json({ error: "أكمل بيانات التسجيل. البريد الإلكتروني اختياري، لكنه مطلوب للاشتراك في النشرة الأسبوعية." });
+    res.status(400).json({ error: "أكمل بيانات التسجيل. كلمة المرور يجب ألا تقل عن 6 أحرف، والبريد الإلكتروني اختياري لكنه مطلوب للاشتراك في النشرة الأسبوعية." });
     return;
   }
 
