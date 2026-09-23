@@ -167,7 +167,8 @@ export interface BuyerUser {
   id: number;
   fullName: string;
   phone: string;
-  email: string;
+  /** @nullable */
+  email: string | null;
   city: string;
   businessType: string;
   /** @nullable */
@@ -204,7 +205,8 @@ export interface BuyerRegisterInput {
      */
   fullName: string;
   phone: string;
-  email: string;
+  /** @maxLength 160 */
+  email?: string;
   city: string;
   businessType: BuyerRegisterInputBusinessType;
   /** @maxLength 120 */

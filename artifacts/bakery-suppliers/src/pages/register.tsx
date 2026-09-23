@@ -129,7 +129,8 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
               setIsSubmitting(true);
                try {
                  const response = await postRegistration("/api/buyer/register", {
-                   ...buyer,
+                    ...buyer,
+                    email: buyer.email.trim() || undefined,
                    phone: normalizeSaudiPhone(buyer.phone),
                  });
                  await refresh();
@@ -255,7 +256,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
       <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="space-y-5">
        <Field label="الاسم الكامل *" value={form.fullName} onChange={(value) => onChange({ fullName: value })} autoComplete="name" />
        <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />
-        <Field label="البريد الإلكتروني *" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" placeholder="name@example.com" />
+         <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" placeholder="name@example.com" />
        <Field label="كلمة المرور *" value={form.password} onChange={(value) => onChange({ password: value })} dir="ltr" type="password" autoComplete="new-password" placeholder="8 أحرف على الأقل" />
        <fieldset>
          <legend className="text-sm font-bold mb-3">هل أنت صاحب العمل؟ *</legend>
@@ -286,7 +287,7 @@ function BuyerForm({ form, error, isSubmitting, onChange, onBack, onSubmit }: { 
        <Field label="اسم النشاط التجاري (اختياري)" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
       <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
         <p className="text-sm font-bold">خيارات التواصل</p>
-        <CheckField label="أرغب باستقبال نشرة الأسعار الأسبوعية" checked={form.newsletterWeekly} onChange={(value) => onChange({ newsletterWeekly: value })} />
+         <CheckField label="أرغب باستقبال نشرة الأسعار الأسبوعية (يتطلب البريد الإلكتروني)" checked={form.newsletterWeekly} onChange={(value) => onChange({ newsletterWeekly: value })} />
          <CheckField label="أرغب بالانضمام إلى مجموعة أصحاب الأعمال" checked={form.buyersGroup} onChange={(value) => onChange({ buyersGroup: value })} />
       </div>
       {error && <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 p-4 text-sm">{error}</div>}
@@ -349,7 +350,10 @@ function validateSupplier(form: SupplierForm) {
   return validateSupplierStep(form, 0) || validateSupplierStep(form, 1) || validateSupplierStep(form, 2) || validateSupplierStep(form, 3) || (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish ? "وافق على جميع الإقرارات قبل الإرسال." : "");
 }
 function validateBuyer(form: BuyerForm) {
-  if (!form.fullName || !isSaudiPhone(form.phone) || !form.email.includes("@") || form.password.length < 8 || !form.city || !form.businessType || form.isOwner === null) return "أكمل الحقول المطلوبة وحدد هل أنت صاحب العمل.";
+  const email = form.email.trim();
+  if (email && (email.length > 160 || !email.includes("@"))) return "أدخل بريداً إلكترونياً صحيحاً أو اترك الحقل فارغاً.";
+  if (!form.fullName || !isSaudiPhone(form.phone) || form.password.length < 8 || !form.city || !form.businessType || form.isOwner === null) return "أكمل الحقول المطلوبة وحدد هل أنت صاحب العمل.";
+  if (form.newsletterWeekly && !email) return "أدخل البريد الإلكتروني للاشتراك في النشرة الأسبوعية، أو ألغِ اختيار النشرة.";
   if (form.businessType === "آخر" && (form.otherBusinessType.trim().length < 2 || form.otherBusinessType.trim().length > 80)) return "اذكر نوع النشاط عند اختيار «آخر».";
   if (form.isOwner === false && (form.jobTitle.trim().length < 2 || form.jobTitle.trim().length > 80)) return "أدخل المسمى الوظيفي عند اختيار «لا».";
   return "";

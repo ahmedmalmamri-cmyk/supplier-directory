@@ -20,3 +20,9 @@ Buyer activity choices include bakery-and-sweets and home-produced businesses; t
 **Why:** The directory serves businesses that do not fit a fixed activity list, while suppliers still need a specific activity description.
 
 **How to apply:** Keep the selected activity category separate from its custom label so validation, reporting, and future category updates remain unambiguous.
+
+Buyer email is optional because phone and WhatsApp are the primary contact and login channels; require email only when the buyer opts into the weekly newsletter.
+
+**Why:** Registration should stay low-friction without allowing a newsletter subscription that has no delivery address.
+
+**How to apply:** Keep phone login working for email-less accounts and represent missing email as null rather than a placeholder address.

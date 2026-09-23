@@ -340,6 +340,8 @@ export const RegisterInterestResponse = zod.object({
 export const registerBuyerBodyFullNameMin = 2;
 export const registerBuyerBodyFullNameMax = 80;
 
+export const registerBuyerBodyEmailMax = 160;
+
 export const registerBuyerBodyBusinessNameMax = 120;
 
 export const registerBuyerBodyOtherBusinessTypeMax = 80;
@@ -354,7 +356,7 @@ export const registerBuyerBodyPasswordMax = 128;
 export const RegisterBuyerBody = zod.object({
   "fullName": zod.string().min(registerBuyerBodyFullNameMin).max(registerBuyerBodyFullNameMax),
   "phone": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().email().max(registerBuyerBodyEmailMax).optional(),
   "city": zod.string(),
   "businessType": zod.enum(['مخبز', 'محل حلويات', 'مخبز وحلويات', 'كافيه', 'مطعم', 'أسرة منتجة', 'أسر منتجة', 'فندق', 'آخر']),
   "businessName": zod.string().max(registerBuyerBodyBusinessNameMax).optional(),
@@ -374,7 +376,7 @@ export const RegisterBuyerResponse = zod.object({
   "id": zod.number().int(),
   "fullName": zod.string(),
   "phone": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().email().nullable(),
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
@@ -403,7 +405,7 @@ export const LoginBuyerResponse = zod.object({
   "id": zod.number().int(),
   "fullName": zod.string(),
   "phone": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().email().nullable(),
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
@@ -427,7 +429,7 @@ export const GetBuyerMeResponse = zod.object({
   "id": zod.number().int(),
   "fullName": zod.string(),
   "phone": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().email().nullable(),
   "city": zod.string(),
   "businessType": zod.string(),
   "businessName": zod.string().nullable(),
