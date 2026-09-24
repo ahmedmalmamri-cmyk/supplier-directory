@@ -711,6 +711,92 @@ if (!cakeFillingsMigration) {
   }
 }
 
+const groupedItemCategorySeed = [
+  ["دقيق", "🥖", "المواد الأساسية", 1],
+  ["سميد", "🌾", "المواد الأساسية", 2],
+  ["برغل", "🌾", "المواد الأساسية", 3],
+  ["نخالة", "🌾", "المواد الأساسية", 4],
+  ["سكر", "🍰", "المواد الأساسية", 5],
+  ["سكر بودرة", "🍰", "المواد الأساسية", 6],
+  ["سكر بني", "🍰", "المواد الأساسية", 7],
+  ["زبدة", "🧈", "الدهون والزبدة", 8],
+  ["مارجرين", "🧈", "الدهون والزبدة", 9],
+  ["سمن نباتي", "🧈", "الدهون والزبدة", 10],
+  ["سمن حيواني", "🧈", "الدهون والزبدة", 11],
+  ["زيت", "🛢️", "الدهون والزبدة", 12],
+  ["زيت زيتون", "🫒", "الدهون والزبدة", 13],
+  ["شورتنج", "🧈", "الدهون والزبدة", 14],
+  ["حليب بودرة", "🥛", "منتجات الألبان", 15],
+  ["حليب مكثف", "🥛", "منتجات الألبان", 16],
+  ["حليب طازج", "🥛", "منتجات الألبان", 17],
+  ["قشطة", "🍶", "منتجات الألبان", 18],
+  ["كريمة خفق", "🍦", "منتجات الألبان", 19],
+  ["كريمة طبخ", "🍦", "منتجات الألبان", 20],
+  ["لبنة", "🍶", "منتجات الألبان", 21],
+  ["زبادي", "🍶", "منتجات الألبان", 22],
+  ["جبن كيري", "🧀", "الأجبان", 23],
+  ["جبن موزاريلا", "🧀", "الأجبان", 24],
+  ["جبن شيدر", "🧀", "الأجبان", 25],
+  ["جبن فيتا", "🧀", "الأجبان", 26],
+  ["جبن حلومي", "🧀", "الأجبان", 27],
+  ["جبن عكاوي", "🧀", "الأجبان", 28],
+  ["جبن رومي", "🧀", "الأجبان", 29],
+  ["جبن كريمي", "🧀", "الأجبان", 30],
+  ["جبن سائل", "🧀", "الأجبان", 31],
+  ["شوكولاتة بلوك", "🍫", "الشوكولاتة والكاكاو", 32],
+  ["شوكولاتة حبيبات", "🍫", "الشوكولاتة والكاكاو", 33],
+  ["شوكولاتة بودرة", "🍫", "الشوكولاتة والكاكاو", 34],
+  ["كاكاو بودرة", "🍫", "الشوكولاتة والكاكاو", 35],
+  ["زبدة كاكاو", "🍫", "الشوكولاتة والكاكاو", 36],
+  ["غاناش", "🍫", "الشوكولاتة والكاكاو", 37],
+  ["صوص شوكولاتة", "🍫", "الشوكولاتة والكاكاو", 38],
+  ["خلطات كيك", "🍰", "مكونات الكيك", 39],
+  ["خلطات مافن", "🧁", "مكونات الكيك", 40],
+  ["خلطات براوني", "🍫", "مكونات الكيك", 41],
+  ["خلطات دونات", "🍩", "مكونات الكيك", 42],
+  ["كاستر بودر", "🍮", "مكونات الكيك", 43],
+  ["جيلاتين", "🍮", "مكونات الكيك", 44],
+  ["جيلي", "🍮", "مكونات الكيك", 45],
+  ["نشا", "🌾", "مكونات الكيك", 46],
+  ["بيكنج بودر", "🧪", "مكونات الكيك", 47],
+  ["حشوة توت", "🍓", "الحشوات والكريمات", 48],
+  ["حشوة فراولة", "🍓", "الحشوات والكريمات", 49],
+  ["حشوة مانجو", "🥭", "الحشوات والكريمات", 50],
+] as const;
+
+const groupedItemCategoriesMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("grouped-item-category-catalog-v1") as { name: string } | undefined;
+if (!groupedItemCategoriesMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const upsertItemCategory = directoryDb.prepare(`
+      INSERT INTO item_categories
+        (name, icon, group_name, parent_id, description, display_on_home,
+         display_order, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, NULL, NULL, 0, ?, 1, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET
+        icon = excluded.icon,
+        group_name = excluded.group_name,
+        display_order = excluded.display_order,
+        is_active = 1,
+        updated_at = excluded.updated_at
+    `);
+    for (const [name, icon, groupName, displayOrder] of groupedItemCategorySeed) {
+      upsertItemCategory.run(name, icon, groupName, displayOrder, now, now);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at)
+      VALUES ('grouped-item-category-catalog-v1', ?)
+    `).run(now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
   .get() as { count: number };
