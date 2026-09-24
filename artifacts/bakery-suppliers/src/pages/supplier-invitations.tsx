@@ -55,12 +55,7 @@ export function SupplierInvitationsPanel() {
   const [showDraft, setShowDraft] = useState(false);
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [draft, setDraft] = useState<Draft>({ name: "", whatsapp: "", city: "" });
-  const [whatsAppDraft, setWhatsAppDraft] = useState<Draft>({ name: "", whatsapp: "", city: "" });
   const [manualPhoneError, setManualPhoneError] = useState("");
-  const [whatsAppPhoneError, setWhatsAppPhoneError] = useState("");
-  const [whatsAppOpened, setWhatsAppOpened] = useState(false);
-  const [whatsAppNotice, setWhatsAppNotice] = useState("");
-  const [whatsAppChatUrl, setWhatsAppChatUrl] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [links, setLinks] = useState<Record<number, string>>({});
@@ -110,60 +105,6 @@ export function SupplierInvitationsPanel() {
     setPhoneError("");
     window.open(testUrl, "_blank", "noopener,noreferrer");
     setMessage("أرسل رسالة الاختبار من واتساب بنفسك؛ لا يستطيع الموقع تأكيد وصولها.");
-  };
-
-  const openWhatsAppForDetails = () => {
-    setError("");
-    setWhatsAppNotice("");
-    setWhatsAppChatUrl("");
-    const phone = normalizeSaudiMobile(whatsAppDraft.whatsapp);
-    if (!phone) {
-      setWhatsAppPhoneError(invalidSaudiPhoneMessage);
-      setError("أدخل رقم جوال المورد الفعلي أولاً. مثال صحيح: 0551234567. النص التوضيحي داخل الحقل ليس رقماً.");
-      document.querySelector<HTMLInputElement>('[data-testid="input-whatsapp-draft-phone"]')?.focus();
-      return;
-    }
-
-    setWhatsAppPhoneError("");
-    const chatUrl = buildWhatsAppChatUrl(phone.local);
-    if (!chatUrl) return;
-    setWhatsAppChatUrl(chatUrl);
-    let opened = false;
-    try {
-      const popup = window.open(chatUrl, "_blank");
-      if (popup) {
-        popup.opener = null;
-        opened = true;
-      }
-    } catch {
-      opened = false;
-    }
-    setWhatsAppOpened(true);
-    setWhatsAppNotice(opened
-      ? "تم فتح واتساب. لا تُجلب البيانات تلقائياً؛ أدخل الاسم والمدينة يدوياً. إذا لم تظهر المحادثة فاستخدم رابط فتح واتساب أدناه."
-      : "لم يفتح المتصفح واتساب تلقائياً. استخدم رابط فتح واتساب أدناه، ثم أدخل الاسم والمدينة يدوياً.");
-  };
-
-  const submitWhatsAppDraft = (event: FormEvent) => {
-    event.preventDefault();
-    setError("");
-    const phone = normalizeSaudiMobile(whatsAppDraft.whatsapp);
-    if (!phone) {
-      setWhatsAppPhoneError(invalidSaudiPhoneMessage);
-      return;
-    }
-    setWhatsAppPhoneError("");
-    createDraft.mutate({ data: { ...whatsAppDraft, whatsapp: phone.local, source: "whatsapp" } }, {
-      onSuccess: () => {
-        setWhatsAppDraft({ name: "", whatsapp: "", city: "" });
-        setWhatsAppOpened(false);
-        setWhatsAppNotice("");
-        setShowWhatsApp(false);
-        setNotice("تمت إضافة مورد واتساب كمسودة. لم تُجلب بياناته تلقائياً.");
-        refresh();
-      },
-      onError: (mutationError) => setError(mutationError instanceof Error ? mutationError.message : "تعذر إضافة المورد."),
-    });
   };
 
   const markInvitationSent = (supplierId: number, successMessage: string) => {
@@ -267,6 +208,10 @@ export function SupplierInvitationsPanel() {
   };
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const registrationUrl = `${window.location.origin}${basePath}/register/supplier`;
+  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى إدخال بيانات منشأتكم بأنفسكم. سيُراجع الطلب من الإدارة قبل اعتماده ونشره.`;
+  const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
   return (
     <section className="space-y-6" dir="rtl">
@@ -285,15 +230,10 @@ export function SupplierInvitationsPanel() {
             <Plus className="h-4 w-4" /> إضافة مورد جديد
           </button>
           <button data-testid="button-add-supplier-whatsapp" type="button" onClick={() => {
-            setWhatsAppDraft({ name: "", whatsapp: "", city: "" });
-            setWhatsAppOpened(false);
-            setWhatsAppNotice("");
-            setWhatsAppChatUrl("");
-            setWhatsAppPhoneError("");
             setError("");
             setShowWhatsApp(true);
           }} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#287c62]/30 bg-[#287c62]/10 px-4 text-sm font-bold text-[#21674f] transition-colors hover:bg-[#287c62]/15">
-            <MessageCircle className="h-4 w-4" /> إضافة من الواتساب
+            <MessageCircle className="h-4 w-4" /> دعوة مورد عبر واتساب
           </button>
         </div>
       </div>
@@ -314,37 +254,28 @@ export function SupplierInvitationsPanel() {
       <Dialog open={showWhatsApp} onOpenChange={setShowWhatsApp}>
         <DialogContent dir="rtl" className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>إضافة مورد من الواتساب</DialogTitle>
-            <DialogDescription>أدخل رقم المورد الفعلي لفتح محادثته، ثم أدخل الاسم والمدينة يدوياً. لا يوجد جلب تلقائي للبيانات.</DialogDescription>
+            <DialogTitle>دعوة مورد للتسجيل في الدليل</DialogTitle>
+            <DialogDescription>اختر جهة الاتصال من واتساب، ثم أرسل لها رابط التسجيل الرسمي.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={submitWhatsAppDraft} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-              <PhoneField value={whatsAppDraft.whatsapp} onChange={(value) => {
-                setWhatsAppDraft({ ...whatsAppDraft, whatsapp: value });
-                setWhatsAppOpened(false);
-                setWhatsAppNotice("");
-                setWhatsAppChatUrl("");
-                setWhatsAppPhoneError("");
-                setError("");
-              }} onVerify={() => testWhatsAppNumber(whatsAppDraft.whatsapp, setWhatsAppPhoneError, setWhatsAppNotice)} error={whatsAppPhoneError} inputTestId="input-whatsapp-draft-phone" verifyTestId="button-verify-whatsapp-draft-phone" />
-              <button data-testid="button-fetch-whatsapp-details" type="button" onClick={openWhatsAppForDetails} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#287c62] px-4 text-sm font-bold text-white hover:bg-[#21674f]">
-                <MessageCircle className="h-4 w-4" /> فتح واتساب
+          <div className="space-y-4">
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm leading-6">
+              <p>سيفتح واتساب لاختيار المستلم، وستحتاج إلى الضغط على إرسال داخل واتساب.</p>
+              <p className="mt-2 text-muted-foreground">على المورد إدخال بياناته بنفسه في نموذج التسجيل. يبقى الطلب بانتظار مراجعة الإدارة قبل اعتماده ونشره.</p>
+              <p className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a data-testid="button-share-supplier-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#287c62] px-4 text-sm font-bold text-white hover:bg-[#21674f]">
+                <MessageCircle className="h-4 w-4" /> اختيار مستلم في واتساب
+              </a>
+              <button data-testid="button-copy-supplier-registration-link" type="button" onClick={() => {
+                void navigator.clipboard?.writeText(registrationUrl);
+                setNotice("تم نسخ رابط التسجيل الرسمي.");
+                setShowWhatsApp(false);
+              }} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold hover:bg-muted">
+                <Clipboard className="h-4 w-4" /> نسخ رابط التسجيل
               </button>
             </div>
-            {whatsAppNotice && <p role="status" data-testid="status-whatsapp-draft-note" className="rounded-xl border border-[#287c62]/20 bg-[#287c62]/5 p-3 text-sm text-[#21674f]">{whatsAppNotice}</p>}
-            {whatsAppChatUrl && <a data-testid="link-open-whatsapp-chat" href={whatsAppChatUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-[#287c62]/30 bg-[#287c62]/10 px-4 py-2.5 text-sm font-bold text-[#21674f] hover:bg-[#287c62]/15"><MessageCircle className="h-4 w-4" /> فتح المحادثة في واتساب</a>}
-            {error && <p role="alert" data-testid="status-whatsapp-draft-error" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-            {whatsAppOpened && <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block"><span className="mb-1.5 block text-xs font-bold">اسم المنشأة</span><input data-testid="input-whatsapp-draft-name" required value={whatsAppDraft.name} onChange={(event) => setWhatsAppDraft({ ...whatsAppDraft, name: event.target.value })} placeholder="أدخل اسم المنشأة" className="h-11 w-full rounded-xl border bg-background px-3 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" /></label>
-                <label className="block"><span className="mb-1.5 block text-xs font-bold">المدينة</span><input data-testid="input-whatsapp-draft-city" list="supplier-city-options" required value={whatsAppDraft.city} onChange={(event) => setWhatsAppDraft({ ...whatsAppDraft, city: event.target.value })} placeholder="ابدأ بكتابة المدينة" className="h-11 w-full rounded-xl border bg-background px-3 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" /><span className="mt-1 block text-[11px] text-muted-foreground">اختر مدينة من القائمة المقترحة.</span></label>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button data-testid="button-save-whatsapp-supplier-draft" type="submit" disabled={createDraft.isPending} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{createDraft.isPending ? "جاري الحفظ..." : "حفظ المسودة"}</button>
-                <button data-testid="button-cancel-whatsapp-supplier-draft" type="button" onClick={() => setShowWhatsApp(false)} className="rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-muted">إلغاء</button>
-              </div>
-            </>}
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
