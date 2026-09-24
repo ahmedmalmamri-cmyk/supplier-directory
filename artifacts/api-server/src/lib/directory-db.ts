@@ -22,9 +22,13 @@ directoryDb.exec(`
     name TEXT NOT NULL UNIQUE,
     icon TEXT NOT NULL,
     group_name TEXT NOT NULL,
+    parent_id INTEGER REFERENCES item_categories(id),
+    description TEXT,
     display_on_home INTEGER NOT NULL DEFAULT 0 CHECK (display_on_home IN (0, 1)),
     display_order INTEGER NOT NULL DEFAULT 0,
-    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT ''
   );
   CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY,
@@ -253,6 +257,18 @@ directoryDb.exec(`
     password_hash TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER NOT NULL REFERENCES admin_credentials(id),
+    action_type TEXT NOT NULL CHECK (action_type IN ('add', 'edit', 'transfer', 'delete')),
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('category', 'supplier', 'buyer')),
+    entity_id INTEGER NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
+    ON activity_log (created_at DESC, id DESC);
   CREATE TABLE IF NOT EXISTS directory_migrations (
     name TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL
