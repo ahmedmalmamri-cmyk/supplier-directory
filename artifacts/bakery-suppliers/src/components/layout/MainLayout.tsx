@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck, Moon, Sun } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck, Moon, Sun, UserRound } from "lucide-react";
 import { useState } from "react";
+import { useBuyerAuth } from "@/lib/buyer-auth";
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -22,6 +23,7 @@ function ThemeToggle() {
 
 export function MainLayout({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useBuyerAuth();
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -39,6 +41,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <a href="/#categories" className="hover:text-foreground transition-colors">التصنيفات</a>
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">التسجيل</Link>
+              <Link href={user ? "/buyer/profile" : "/buyer/login"} className="inline-flex items-center gap-1 hover:text-foreground transition-colors"><UserRound className="h-4 w-4" />{user ? "حسابي" : "دخول أصحاب الأعمال"}</Link>
                <Link href="/supplier/login" className="hover:text-foreground transition-colors">دخول المورد</Link>
               <Link href="/contact" className="hover:text-foreground transition-colors">اتصل بنا</Link>
               <Link href="/admin" className="hover:text-foreground transition-colors">الإدارة</Link>
@@ -72,6 +75,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <a href="/#categories" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><LayoutGrid className="w-4 h-4"/> التصنيفات</a>
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Users className="w-4 h-4"/> الموردين</Link>
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserPlus className="w-4 h-4"/> التسجيل</Link>
+            <Link href={user ? "/buyer/profile" : "/buyer/login"} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserRound className="w-4 h-4"/>{user ? "حساب صاحب العمل" : "دخول أصحاب الأعمال"}</Link>
              <Link href="/supplier/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> دخول المورد</Link>
             <Link href="/expansion" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Rocket className="w-4 h-4"/> خطة التوسع</Link>
             <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Mail className="w-4 h-4"/> اتصل بنا</Link>
@@ -113,6 +117,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <li><Link href="/terms" className="hover:text-foreground flex items-center gap-2"><FileText className="w-3 h-3"/> الشروط والأحكام</Link></li>
               <li><Link href="/register" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> التسجيل</Link></li>
                <li><Link href="/register/buyer" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> سجّل كصاحب عمل</Link></li>
+              {user && <li><Link href="/buyer/profile" className="hover:text-foreground flex items-center gap-2"><UserRound className="w-3 h-3"/> ملف حسابي</Link></li>}
             </ul>
           </div>
         </div>

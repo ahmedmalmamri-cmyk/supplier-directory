@@ -12,7 +12,7 @@ export default function BuyerLoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => { if (user) setLocation("/"); }, [user, setLocation]);
+  useEffect(() => { if (user) setLocation("/buyer/profile"); }, [user, setLocation]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -28,7 +28,7 @@ export default function BuyerLoginPage() {
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || "تعذر تسجيل الدخول.");
       await refresh();
-      setLocation("/");
+      setLocation("/buyer/profile");
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "تعذر تسجيل الدخول.");
     } finally {

@@ -3,7 +3,7 @@ import { useAdminLogin, useAdminLogout } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "directory" | "stats" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "stats" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -17,6 +17,7 @@ type Supplier = { id: number; name: string; city: string; region: string; descri
 type BuyerReport = { id: number; contactLogId: number; buyerId: number; supplierId: number; reason: string; note: string | null; status: "open" | "reviewed" | "dismissed" | "actioned"; adminNote: string | null; createdAt: string; reviewedAt: string | null; buyerName: string; buyerPhone: string; businessName: string | null; buyerCity: string; buyerStatus: BuyerStatus; supplierName: string; messageId: string; contactedAt: string };
 type BuyerStatus = "active" | "under_review" | "restricted" | "suspended" | "blocked";
 type BuyerModerationUser = { id: number; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; moderationStatus: BuyerStatus; moderationReason: string | null; moderationUpdatedAt: string | null; createdAt: string; reportCount: number };
+type ContactLog = { id: number; messageId: string; buyerName: string; businessType: string; supplierName: string; sentAt: string };
 type AdminProduct = { id: number; name: string; imageUrl: string | null; sortOrder: number };
 type Stats = { pendingSupplierRequests: number; approvedSuppliers: number; buyers: number; products: number; cities: number; totalPageViews: number; totalContacts: number; pageViews30d: number; qualifiedContacts30d: number; contactRate30d: number };
 type Plan = { id: number; name: string; slug: string; priceMonthly: number; maxProducts: number; maxImagesPerProduct: number; hasVerifiedBadge: boolean; hasFeaturedListing: boolean; hasBanner: boolean; hasAnalytics: boolean; hasPrioritySupport: boolean; description: string; isActive: boolean; displayOrder: number };
@@ -26,6 +27,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "suppliers", label: "طلبات الموردين", icon: Store },
   { id: "buyers", label: "طلبات أصحاب الأعمال", icon: ShoppingCart },
   { id: "moderation", label: "بلاغات أصحاب الأعمال", icon: Flag },
+  { id: "contacts", label: "سجل التواصل", icon: MessageCircle },
   { id: "directory", label: "الموردون المعتمدون", icon: CheckCircle2 },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "settings", label: "الإعدادات", icon: Settings },
@@ -38,6 +40,7 @@ export default function AdminPage() {
   const [buyerRequests, setBuyerRequests] = useState<BuyerRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [buyerReports, setBuyerReports] = useState<BuyerReport[]>([]);
+  const [contactLogs, setContactLogs] = useState<ContactLog[]>([]);
   const [moderationUsers, setModerationUsers] = useState<BuyerModerationUser[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -61,12 +64,13 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [requests, buyers, directory, moderation, users, dashboardStats, directorySettings] = await Promise.all([
+      const [requests, buyers, directory, moderation, users, contacts, dashboardStats, directorySettings] = await Promise.all([
         adminFetch<SupplierRequest[]>("/api/admin/supplier-requests"),
         adminFetch<BuyerRequest[]>("/api/admin/buyer-requests"),
         adminFetch<Supplier[]>("/api/admin/suppliers"),
         adminFetch<BuyerReport[]>("/api/admin/buyer-reports"),
         adminFetch<BuyerModerationUser[]>("/api/admin/buyer-users"),
+        adminFetch<ContactLog[]>("/api/admin/contact-logs"),
         adminFetch<Stats>("/api/admin/stats"),
         adminFetch<Settings>("/api/admin/settings"),
       ]);
@@ -75,6 +79,7 @@ export default function AdminPage() {
       setSuppliers(directory);
       setBuyerReports(moderation);
       setModerationUsers(users);
+      setContactLogs(contacts);
       setStats(dashboardStats);
       setSettings(directorySettings);
       setSelectedRequest((current) => current ? requests.find((item) => item.id === current.id) ?? null : null);
@@ -129,6 +134,7 @@ export default function AdminPage() {
           {tab === "suppliers" && <SupplierRequestsTab requests={supplierRequests} selected={selectedRequest} onSelect={setSelectedRequest} onAction={act} />}
           {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب صاحب العمل.")} />}
           {tab === "moderation" && <BuyerModerationTab reports={buyerReports} users={moderationUsers} onAction={act} />}
+          {tab === "contacts" && <ContactLogsTab logs={contactLogs} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
           {tab === "stats" && <StatsTab stats={stats} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
@@ -160,6 +166,23 @@ function DetailGrid({ request }: { request: SupplierRequest }) {
 
 function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; onDelete: (id: number) => void }) {
   return requests.length === 0 ? <Empty title="لا توجد طلبات أصحاب أعمال" description="ستظهر تسجيلات أصحاب الأعمال هنا." /> : <div className="overflow-x-auto bg-card border rounded-2xl"><table className="w-full text-sm text-right"><thead className="bg-muted/50"><tr>{["رقم الطلب", "الاسم", "المدينة", "نوع النشاط", "الجوال", "التفضيلات", "التاريخ", ""].map((head) => <th key={head} className="p-4 font-bold whitespace-nowrap">{head}</th>)}</tr></thead><tbody>{requests.map((request) => <tr key={request.id} className="border-t"><td className="p-4" dir="ltr">{request.requestCode}</td><td className="p-4 font-bold">{request.fullName}<div className="text-xs text-muted-foreground">{request.businessName || ""}</div></td><td className="p-4">{request.city}</td><td className="p-4">{request.businessType === "آخر" ? request.otherBusinessType || "آخر" : request.businessType}</td><td className="p-4" dir="ltr">{request.phone}</td><td className="p-4"><div className="flex flex-wrap gap-1 min-w-44">{request.newsletterWeekly && <span className="rounded-full bg-primary/10 text-primary px-2 py-1 text-xs">نشرة الأسعار</span>}{request.buyersGroup && <span className="rounded-full bg-secondary text-secondary-foreground px-2 py-1 text-xs">مجموعة أصحاب الأعمال</span>}{!request.newsletterWeekly && !request.buyersGroup && <span className="text-muted-foreground text-xs">لا توجد</span>}</div></td><td className="p-4 whitespace-nowrap">{formatDate(request.createdAt)}</td><td className="p-4"><button type="button" onClick={() => onDelete(request.id)} className="text-red-700 hover:underline font-bold"><Trash2 className="w-4 h-4 inline" /> حذف</button></td></tr>)}</tbody></table></div>;
+}
+
+function ContactLogsTab({ logs }: { logs: ContactLog[] }) {
+  return logs.length === 0
+    ? <Empty title="لا توجد سجلات تواصل" description="ستظهر هنا الرسائل التي جُهزت لأصحاب الأعمال للتواصل مع الموردين." />
+    : <div className="overflow-x-auto rounded-2xl border bg-card">
+      <table className="w-full text-right text-sm">
+        <thead className="bg-muted/50"><tr>{["رقم الرسالة", "اسم العميل", "نوع النشاط", "اسم المورد", "تاريخ الإرسال"].map((heading) => <th key={heading} className="whitespace-nowrap p-4 font-bold">{heading}</th>)}</tr></thead>
+        <tbody>{logs.map((log) => <tr key={log.id} className="border-t">
+          <td className="whitespace-nowrap p-4 font-bold text-primary" dir="ltr">{log.messageId}</td>
+          <td className="p-4">{log.buyerName}</td>
+          <td className="p-4">{log.businessType}</td>
+          <td className="p-4">{log.supplierName}</td>
+          <td className="whitespace-nowrap p-4">{formatDateTime(log.sentAt)}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>;
 }
 
 function BuyerModerationTab({ reports, users, onAction }: { reports: BuyerReport[]; users: BuyerModerationUser[]; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
@@ -438,6 +461,7 @@ function Status({ status }: { status: "pending" | "approved" | "rejected" }) {
 function Info({ label, value }: { label: string; value: string }) { return <div><strong>{label}:</strong> <span className="text-muted-foreground">{value}</span></div>; }
 function Empty({ title, description }: { title: string; description: string }) { return <div className="rounded-2xl border border-dashed bg-muted/20 p-12 text-center"><UserRound className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" /><h2 className="font-bold text-lg mb-2">{title}</h2><p className="text-muted-foreground">{description}</p></div>; }
 function formatDate(value: string) { return new Date(value).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" }); }
+function formatDateTime(value: string) { return new Date(value).toLocaleString("ar-SA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); }
 function prepareProductImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {

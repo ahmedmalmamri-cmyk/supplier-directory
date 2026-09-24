@@ -713,6 +713,25 @@ router.get("/admin/stats", (req, res): void => {
   });
 });
 
+router.get("/admin/contact-logs", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const rows = directoryDb.prepare(`
+    SELECT cl.id, cl.message_id AS messageId, cl.sent_at AS sentAt,
+      b.full_name AS buyerName,
+      CASE
+        WHEN b.business_type = 'آخر' THEN COALESCE(NULLIF(b.other_business_type, ''), 'آخر')
+        ELSE b.business_type
+      END AS businessType,
+      s.name AS supplierName
+    FROM contact_logs cl
+    JOIN buyer_users b ON b.id = cl.buyer_id
+    JOIN suppliers s ON s.id = cl.supplier_id
+    ORDER BY cl.sent_at DESC, cl.id DESC
+    LIMIT 500
+  `).all();
+  res.json(rows);
+});
+
 router.get("/admin/settings", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const citiesRow = directoryDb.prepare("SELECT value FROM directory_settings WHERE key = 'available_cities'").get() as { value: string } | undefined;

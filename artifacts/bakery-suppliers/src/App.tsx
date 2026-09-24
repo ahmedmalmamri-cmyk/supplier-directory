@@ -24,6 +24,7 @@ import RegisterPage from '@/pages/register';
 import ExpansionPage from '@/pages/expansion';
 import AdminPage from '@/pages/admin';
 import BuyerLoginPage from '@/pages/buyer-login';
+import BuyerProfilePage from '@/pages/buyer-profile';
 import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
@@ -56,6 +57,7 @@ function Router() {
          <Route path="/register/buyer" component={() => <RegisterPage defaultType="buyer" />} />
          <Route path="/register" component={() => <RegisterPage />} />
          <Route path="/buyer/login" component={BuyerLoginPage} />
+          <Route path="/buyer/profile" component={BuyerProfilePage} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFound} />

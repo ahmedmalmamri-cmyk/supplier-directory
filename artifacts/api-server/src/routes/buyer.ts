@@ -272,15 +272,60 @@ router.post("/buyer/contact", (req, res): void => {
   `).run(buyer.id, supplier.id, placeholderId, now);
   const logId = Number(result.lastInsertRowid);
   const messageId = `MSG-${new Date().getFullYear()}-${String(logId).padStart(4, "0")}`;
+  const activity = buyer.businessType === "آخر"
+    ? buyer.otherBusinessType || "نشاط آخر"
+    : buyer.businessType;
+  const activityIcons: Record<string, string> = {
+    "مخبز": "🍞",
+    "محل حلويات": "🍰",
+    "مخبز وحلويات": "🧁",
+    "كافيه": "☕",
+    "مطعم": "🍽️",
+    "أسرة منتجة": "🏡",
+    "أسر منتجة": "🏡",
+    "فندق": "🏨",
+    "آخر": "🏢",
+  };
+  const originHeader = req.get("origin") || req.get("referer") || "";
+  let siteLink = "";
+  try {
+    const parsedOrigin = new URL(originHeader);
+    if (parsedOrigin.protocol === "https:" || parsedOrigin.protocol === "http:") {
+      siteLink = parsedOrigin.origin;
+    }
+  } catch {
+    // Some non-browser clients omit Origin and Referer; keep the message valid.
+  }
   const message = [
-    "السلام عليكم،",
-    `أنا ${buyer.fullName} من ${buyer.businessName || "منشأتي"}، ${buyer.isOwner === 1 ? "صاحب العمل" : `أعمل بوظيفة ${buyer.jobTitle || "ممثل المنشأة"}`}، ونشاطي ${buyer.businessType === "آخر" ? buyer.otherBusinessType || "آخر" : buyer.businessType} في مدينة ${buyer.city}.`,
-    `أرغب في الاستفسار والتواصل مع ${supplier.name}.`,
-    `رقم الجوال: ${buyer.phone}`,
-    `رقم المرجع: ${messageId}`,
-    customMessage ? `\n${customMessage}` : "",
-    "شكراً لكم.",
-  ].filter(Boolean).join("\n");
+    "السلام عليكم ورحمة الله وبركاته",
+    "",
+    "📢 رسالة من دليل موردي المخابز والحلويات",
+    "",
+    "أتواصل معكم عبر الموقع:",
+    `🔗 ${siteLink || "دليل موردي المخابز والحلويات"}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "📋 معلومات العميل:",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "",
+    `👤 الاسم: ${buyer.fullName}`,
+    `${activityIcons[buyer.businessType] || "🏢"} النشاط: ${activity}`,
+    `📛 اسم النشاط: ${buyer.businessName || "غير محدد"}`,
+    `📍 الموقع: ${buyer.city}`,
+    `📞 الجوال: ${buyer.phone}`,
+    `👔 الصفة: ${buyer.isOwner === 1 ? "صاحب العمل" : buyer.jobTitle || "ممثل المنشأة"}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "💬 رسالة العميل:",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "",
+    customMessage || "استفسار عن المنتجات",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    `🔖 رقم المرجع: ${messageId}`,
+    "",
+    "نتشرف بتواصلكم معنا 🌾",
+  ].join("\n");
   directoryDb.prepare("UPDATE contact_logs SET message = ?, message_id = ? WHERE id = ?").run(message, messageId, logId);
   res.status(201).json({
     success: true,

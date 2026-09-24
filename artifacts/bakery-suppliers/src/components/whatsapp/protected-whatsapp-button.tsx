@@ -1,4 +1,4 @@
-import { CheckCircle2, LockKeyhole, MessageCircle, X } from "lucide-react";
+import { Building2, CheckCircle2, LockKeyhole, MapPin, MessageCircle, Phone, UserRound, X } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
@@ -92,10 +92,13 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 <h2 id="whatsapp-dialog-title" className="text-2xl font-extrabold">التواصل مع {supplierName}</h2>
                 <div className="mt-5 rounded-2xl bg-primary/5 p-4">
                   <p className="flex items-center gap-2 font-extrabold text-primary"><CheckCircle2 className="h-5 w-5" /> مرحباً {user?.fullName}</p>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">سيتم إرسال رسالة رسمية للمورد تحتوي على اسمك ونوع نشاطك واسم نشاطك التجاري و مدينتك ورقم جوالك.</p>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <span>النشاط: {user?.businessType}</span><span>المدينة: {user?.city}</span>
-                    <span>الجوال: {user?.phone}</span><span>المنشأة: {user?.businessName || "غير محدد"}</span>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">سيتم إرسال رسالة رسمية تحتوي على بيانات التواصل التالية:</p>
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                    <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> النشاط: {user?.businessType}</span>
+                    <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> اسم النشاط: {user?.businessName || "غير محدد"}</span>
+                    <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5" /> المدينة: {user?.city}</span>
+                    <span className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> الجوال: {user?.phone}</span>
+                    <span className="flex items-center gap-2 sm:col-span-2"><UserRound className="h-3.5 w-3.5" /> الصفة: {user?.isOwner ? "صاحب العمل" : user?.jobTitle || "ممثل المنشأة"}</span>
                   </div>
                 </div>
                 <label className="mt-6 block text-sm font-bold">هل تريد إضافة رسالة؟ <span className="font-normal text-muted-foreground">(اختياري)</span>
