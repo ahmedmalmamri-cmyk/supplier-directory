@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   BuyerInvitation,
@@ -16,15 +16,18 @@ import {
   useUpdateBuyerInvitation,
   useUpdateInvitedBuyerAccountStatus,
 } from "@workspace/api-client-react";
-import { Clipboard, ContactRound, Download, FilePenLine, Link2, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Clipboard, Download, FilePenLine, MessageCircle, Plus, Search, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Status = "invited" | "activated" | "active" | "suspended";
 type BusinessType = typeof BuyerInvitationInputBusinessType[keyof typeof BuyerInvitationInputBusinessType];
 type FormState = { fullName: string; phone: string; businessName: string; businessType: BusinessType; city: string; internalNotes: string };
-type DeviceContact = { name?: string[]; tel?: string[] };
-type DeviceContactPicker = {
-  select: (properties: Array<"name" | "tel">, options?: { multiple?: boolean }) => Promise<DeviceContact[]>;
-};
 const statuses: { id: Status; label: string; tone: string }[] = [
   { id: "invited", label: "مدعوون", tone: "bg-amber-100 text-amber-800" },
   { id: "activated", label: "مفعّلون", tone: "bg-sky-100 text-sky-800" },
@@ -34,44 +37,6 @@ const statuses: { id: Status; label: string; tone: string }[] = [
 const businessTypes = Object.values(BuyerInvitationInputBusinessType);
 const emptyForm: FormState = { fullName: "", phone: "", businessName: "", businessType: "مخبز", city: "", internalNotes: "" };
 
-function getDeviceContactPicker() {
-  if (typeof navigator === "undefined" || !window.isSecureContext) return undefined;
-  return (navigator as Navigator & { contacts?: DeviceContactPicker }).contacts;
-}
-
-function parseSingleVCard(content: string) {
-  const cards = content.replace(/=\r?\n/g, "").split(/BEGIN:VCARD/i).slice(1)
-    .map((card) => card.split(/END:VCARD/i)[0] ?? "");
-  if (cards.length !== 1) return null;
-  const lines = cards[0].replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
-  const readValue = (property: "FN" | "TEL") => {
-    const line = lines.find((value) => new RegExp(`^(?:[A-Z0-9-]+\\.)?${property}(?:;[^:]*)?:`, "i").test(value));
-    if (!line) return "";
-    const colon = line.indexOf(":");
-    const metadata = line.slice(0, colon);
-    let value = line.slice(colon + 1);
-    if (/ENCODING=QUOTED-PRINTABLE/i.test(metadata)) {
-      const bytes: number[] = [];
-      for (let index = 0; index < value.length; index += 1) {
-        const hex = value.slice(index + 1, index + 3);
-        if (value[index] === "=" && /^[\da-f]{2}$/i.test(hex)) {
-          bytes.push(Number.parseInt(hex, 16));
-          index += 2;
-        } else bytes.push(value.charCodeAt(index) & 0xff);
-      }
-      try {
-        value = new TextDecoder(metadata.match(/CHARSET=([^;:]+)/i)?.[1] ?? "utf-8").decode(new Uint8Array(bytes));
-      } catch {
-        value = new TextDecoder().decode(new Uint8Array(bytes));
-      }
-    }
-    return value.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
-  };
-  const fullName = readValue("FN");
-  const phone = readValue("TEL").replace(/^tel:/i, "").trim();
-  return phone ? { fullName, phone } : null;
-}
-
 export function BuyerInvitationsPanel() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>("invited");
@@ -79,10 +44,7 @@ export function BuyerInvitationsPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<BuyerInvitation | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [contactPickerLoading, setContactPickerLoading] = useState(false);
-  const [contactPickerMessage, setContactPickerMessage] = useState("");
-  const [openWhatsAppAfterSave, setOpenWhatsAppAfterSave] = useState(false);
-  const contactVCardInput = useRef<HTMLInputElement>(null);
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [details, setDetails] = useState<number | null>(null);
@@ -99,6 +61,10 @@ export function BuyerInvitationsPanel() {
   const linkMutation = useGetBuyerInvitationLink();
   const markSent = useMarkBuyerInvitationSent();
   const accountStatus = useUpdateInvitedBuyerAccountStatus();
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const registrationUrl = `${window.location.origin}${basePath}/register/buyer`;
+  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كصاحب عمل في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى تعبئة البيانات وإنشاء حسابكم.`;
+  const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: getListBuyerInvitationsQueryKey() });
@@ -108,96 +74,19 @@ export function BuyerInvitationsPanel() {
     const needle = search.trim().toLowerCase();
     return !needle || [item.fullName, item.phone, item.businessName, item.city].some((value) => value.toLowerCase().includes(needle));
   }), [list.data, search]);
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); setShowForm(true); setError(""); };
-  const openEdit = (item: BuyerInvitation) => { setEditing(item); setForm({ fullName: item.fullName, phone: item.phone, businessName: item.businessName, businessType: item.businessType as BusinessType, city: item.city, internalNotes: item.internalNotes || "" }); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); setShowForm(true); setError(""); };
-  const chooseDeviceContact = async () => {
-    setOpenWhatsAppAfterSave(false);
-    const picker = getDeviceContactPicker();
-    if (!picker?.select) {
-      setContactPickerMessage("هذا المتصفح لا يفتح دفتر الهاتف مباشرةً؛ اختر ملف VCF أو انسخ الرقم والصقه.");
-      contactVCardInput.current?.click();
-      return;
-    }
-    setContactPickerLoading(true);
-    setContactPickerMessage("");
-    setError("");
-    try {
-      const [contact] = await picker.select(["name", "tel"], { multiple: false });
-      if (!contact) return;
-      const phone = contact.tel?.find((value) => value.trim());
-      if (!phone) {
-        setContactPickerMessage("جهة الاتصال المحددة لا تحتوي على رقم هاتف.");
-        return;
-      }
-      const fullName = contact.name?.find((value) => value.trim())?.trim();
-      setForm((current) => ({ ...current, ...(fullName ? { fullName } : {}), phone: phone.trim() }));
-      setOpenWhatsAppAfterSave(true);
-      setContactPickerMessage("تمت تعبئة بيانات الجهة. بعد الحفظ سيفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.");
-    } catch (pickerError) {
-      if (pickerError instanceof DOMException && pickerError.name === "AbortError") return;
-      setContactPickerMessage(pickerError instanceof DOMException && pickerError.name === "NotAllowedError"
-        ? "منع المتصفح الوصول إلى دفتر الهاتف. استورد ملف VCF أو انسخ الرقم من واتساب والصقه."
-        : "لم يفتح دفتر الهاتف في هذا المتصفح. استورد ملف VCF أو انسخ الرقم من واتساب والصقه.");
-      contactVCardInput.current?.click();
-    } finally {
-      setContactPickerLoading(false);
-    }
-  };
-  const importVCard = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setOpenWhatsAppAfterSave(false);
-    setContactPickerMessage("");
-    try {
-      if (file.size > 512_000) {
-        setContactPickerMessage("ملف جهة الاتصال كبير جداً؛ اختر ملف VCF لجهة واحدة.");
-        return;
-      }
-      const contact = parseSingleVCard(await file.text());
-      if (!contact) {
-        setContactPickerMessage("تعذر قراءة جهة اتصال واحدة ورقم هاتف من الملف. اختر ملف VCF صحيحاً.");
-        return;
-      }
-      setForm((current) => ({ ...current, ...(contact.fullName ? { fullName: contact.fullName } : {}), phone: contact.phone }));
-      setOpenWhatsAppAfterSave(true);
-      setContactPickerMessage("تمت تعبئة الجهة. بعد الحفظ سيفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.");
-    } catch {
-      setContactPickerMessage("تعذر قراءة الملف. اختر بطاقة جهة اتصال بصيغة VCF أو الصق الرقم يدوياً.");
-    } finally {
-      event.target.value = "";
-    }
-  };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); setError(""); };
+  const openEdit = (item: BuyerInvitation) => { setEditing(item); setForm({ fullName: item.fullName, phone: item.phone, businessName: item.businessName, businessType: item.businessType as BusinessType, city: item.city, internalNotes: item.internalNotes || "" }); setShowForm(true); setError(""); };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setError("");
     const payload = { ...form, fullName: form.fullName.trim(), phone: form.phone.trim(), businessName: form.businessName.trim(), city: form.city.trim(), internalNotes: form.internalNotes.trim() };
-    const shouldOpenWhatsApp = !editing && openWhatsAppAfterSave;
-    const whatsappWindow = shouldOpenWhatsApp ? window.open("about:blank", "_blank") : null;
-    if (whatsappWindow) whatsappWindow.opener = null;
-    const onSuccess = (savedInvitation: BuyerInvitation) => {
+    const onSuccess = () => {
       setShowForm(false);
       setForm(emptyForm);
-      setOpenWhatsAppAfterSave(false);
-      setContactPickerMessage("");
-      if (shouldOpenWhatsApp && whatsappWindow) {
-        linkMutation.mutate({ id: savedInvitation.id }, {
-          onSuccess: (link) => {
-            whatsappWindow.location.href = link.whatsappUrl;
-            markSent.mutate({ id: savedInvitation.id }, { onSuccess: refresh });
-            setNotice("تم فتح واتساب. راجع الرسالة واضغط إرسال؛ لا يؤكد النظام تسليمها.");
-          },
-          onError: (err) => {
-            whatsappWindow.close();
-            setError(err instanceof Error ? err.message : "تم حفظ الدعوة، لكن تعذر تجهيز رسالة واتساب.");
-          },
-        });
-      } else {
-        setNotice(shouldOpenWhatsApp ? "تم حفظ الدعوة، لكن منع المتصفح فتح واتساب. اسمح بالنوافذ المنبثقة ثم استخدم زر واتساب في الدعوة." : editing ? "تم تحديث بيانات الدعوة." : "تم إنشاء مسودة دعوة جديدة.");
-      }
+      setNotice(editing ? "تم تحديث بيانات الدعوة." : "تم إنشاء مسودة دعوة جديدة.");
       refresh();
     };
     const onError = (err: unknown) => {
-      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : "تعذر حفظ الدعوة.");
     };
     if (editing) update.mutate({ id: editing.id, data: payload }, { onSuccess, onError });
@@ -223,6 +112,16 @@ export function BuyerInvitationsPanel() {
       },
       onError: (err) => { whatsappWindow?.close(); setError(err instanceof Error ? err.message : "تعذر إنشاء الرابط."); },
     });
+  };
+  const copyRegistrationLink = async () => {
+    setError("");
+    try {
+      await navigator.clipboard.writeText(registrationUrl);
+      setNotice("تم نسخ رابط تسجيل أصحاب الأعمال.");
+      setShowWhatsApp(false);
+    } catch {
+      setError("تعذر نسخ الرابط تلقائياً. حدّد الرابط وانسخه يدوياً.");
+    }
   };
   const exportCsv = async () => {
     setError("");
@@ -251,27 +150,40 @@ export function BuyerInvitationsPanel() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button data-testid="button-create-buyer-invitation" type="button" onClick={openCreate} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground shadow-warm"><Plus className="h-4 w-4" /> دعوة جديدة</button>
+          <button data-testid="button-add-buyer-whatsapp" type="button" onClick={() => { setError(""); setShowWhatsApp(true); }} className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#287c62]/30 bg-[#287c62]/10 px-4 text-sm font-bold text-[#21674f] hover:bg-[#287c62]/15"><MessageCircle className="h-4 w-4" /> دعوة أصحاب أعمال عبر واتساب</button>
           <button data-testid="button-export-buyer-invitations" type="button" onClick={() => void exportCsv()} disabled={exportQuery.isFetching} className="inline-flex h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted disabled:opacity-60"><Download className="h-4 w-4" /> {exportQuery.isFetching ? "جاري التجهيز..." : "تصدير Excel"}</button>
         </div>
       </div>
+      <Dialog open={showWhatsApp} onOpenChange={setShowWhatsApp}>
+        <DialogContent dir="rtl" className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>دعوة صاحب عمل للتسجيل</DialogTitle>
+            <DialogDescription>اختر جهة الاتصال من واتساب، ثم أرسل لها رابط التسجيل الرسمي.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm leading-6">
+              <p>سيفتح واتساب لاختيار المستلم، وستحتاج إلى الضغط على إرسال داخل واتساب.</p>
+              <p className="mt-2 text-muted-foreground">بعد تعبئة النموذج، ينشأ لصاحب العمل حساب ويتم تسجيل دخوله تلقائياً.</p>
+              <p data-testid="text-buyer-registration-url" className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a data-testid="button-share-buyer-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#287c62] px-4 text-sm font-bold text-white hover:bg-[#21674f]">
+                <MessageCircle className="h-4 w-4" /> اختيار مستلم في واتساب
+              </a>
+              <button data-testid="button-copy-buyer-registration-link" type="button" onClick={() => void copyRegistrationLink()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold hover:bg-muted">
+                <Clipboard className="h-4 w-4" /> نسخ رابط التسجيل
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {showForm && <form data-testid="form-buyer-invitation" onSubmit={submit} className="animate-rise-in rounded-2xl border border-primary/20 bg-primary/5 p-5">
         <div className="mb-4 flex items-start justify-between gap-3"><div><h3 data-testid="text-buyer-form-title" className="font-extrabold">{editing ? "تعديل الدعوة" : "مسودة دعوة جديدة"}</h3><p className="text-xs text-muted-foreground">{editing ? "يمكن تعديل الدعوة قبل تفعيل الحساب فقط." : "ستبقى الدعوة في حالة مدعو حتى تفعيلها."}</p></div><button data-testid="button-close-buyer-form" type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button></div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field id="input-buyer-invitation-full-name" label="الاسم الكامل" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} required />
           <div className="block">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <label htmlFor="input-buyer-invitation-phone" className="text-sm font-bold">رقم الجوال</label>
-              {!editing && <div className="flex shrink-0 items-center gap-1">
-                <button data-testid="button-select-buyer-contact" type="button" onClick={() => void chooseDeviceContact()} disabled={contactPickerLoading} className="inline-flex items-center gap-1 rounded-lg border bg-card px-2.5 py-1.5 text-xs font-bold hover:bg-muted disabled:opacity-60"><ContactRound className="h-3.5 w-3.5" />{contactPickerLoading ? "جاري الاختيار..." : "اختيار جهة اتصال"}</button>
-                <button data-testid="button-import-buyer-contact-vcard" type="button" onClick={() => contactVCardInput.current?.click()} className="rounded-lg border bg-card px-2 py-1.5 text-xs font-bold hover:bg-muted">استيراد VCF</button>
-              </div>}
-            </div>
-            <input id="input-buyer-invitation-phone" data-testid="input-buyer-invitation-phone" required value={form.phone} onChange={(event) => { setForm((current) => ({ ...current, phone: event.target.value })); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); }} dir="ltr" inputMode="tel" autoComplete="tel" className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-            {!editing && <>
-              <p data-testid="text-buyer-contact-picker-help" className="mt-1.5 text-xs text-muted-foreground">اختر من دفتر الهاتف أو استورد ملف VCF؛ لا يمكن للموقع قراءة قائمة واتساب مباشرةً.</p>
-              <input ref={contactVCardInput} data-testid="input-buyer-contact-vcard" type="file" accept=".vcf,text/vcard" className="sr-only" tabIndex={-1} aria-label="استيراد جهة اتصال من ملف VCF" onChange={(event) => void importVCard(event)} />
-            </>}
-            {contactPickerMessage && <p data-testid="status-buyer-contact-picker" role="status" className="mt-1.5 text-xs text-muted-foreground">{contactPickerMessage}</p>}
+            <label htmlFor="input-buyer-invitation-phone" className="mb-1.5 block text-sm font-bold">رقم الجوال</label>
+            <input id="input-buyer-invitation-phone" data-testid="input-buyer-invitation-phone" required value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} dir="ltr" inputMode="tel" autoComplete="tel" className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
           </div>
           <Field id="input-buyer-invitation-business-name" label="اسم المنشأة" value={form.businessName} onChange={(value) => setForm({ ...form, businessName: value })} required />
           <label className="block"><span className="mb-1.5 block text-sm font-bold">نوع النشاط</span><select data-testid="select-buyer-invitation-business-type" value={form.businessType} onChange={(event) => setForm({ ...form, businessType: event.target.value as BusinessType })} className="h-11 w-full rounded-xl border bg-background px-3">{businessTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
@@ -279,7 +191,7 @@ export function BuyerInvitationsPanel() {
           <label className="block md:col-span-2 lg:col-span-3"><span className="mb-1.5 block text-sm font-bold">ملاحظات داخلية <span className="font-normal text-muted-foreground">(اختياري)</span></span><textarea data-testid="textarea-buyer-invitation-notes" value={form.internalNotes} onChange={(event) => setForm({ ...form, internalNotes: event.target.value })} maxLength={1000} rows={3} className="w-full resize-y rounded-xl border bg-background p-3" /></label>
         </div>
         {error && <p data-testid="status-buyer-invitation-form-error" className="mt-3 text-sm text-destructive">{error}</p>}
-        <div className="mt-4 flex flex-wrap gap-2"><button data-testid="button-save-buyer-invitation" type="submit" disabled={create.isPending || update.isPending} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{create.isPending || update.isPending ? "جاري الحفظ..." : openWhatsAppAfterSave ? "حفظ الدعوة وفتح واتساب" : "حفظ الدعوة"}</button><button data-testid="button-cancel-buyer-invitation" type="button" onClick={() => setShowForm(false)} className="rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-muted">إلغاء</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button data-testid="button-save-buyer-invitation" type="submit" disabled={create.isPending || update.isPending} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{create.isPending || update.isPending ? "جاري الحفظ..." : "حفظ الدعوة"}</button><button data-testid="button-cancel-buyer-invitation" type="button" onClick={() => setShowForm(false)} className="rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-muted">إلغاء</button></div>
       </form>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {statuses.map((item) => <div data-testid={`stat-buyer-invitations-${item.id}`} key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.tone}`}>{item.label}</span><Users className="h-4 w-4 text-muted-foreground" /></div><strong className="text-2xl">{stats.data?.[item.id] ?? "—"}</strong><span className="mr-2 text-xs text-muted-foreground">حساب</span></div>)}
