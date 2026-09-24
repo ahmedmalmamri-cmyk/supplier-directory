@@ -191,7 +191,8 @@ directoryDb.exec(`
     last_login TEXT,
     moderation_status TEXT NOT NULL DEFAULT 'active',
     moderation_reason TEXT,
-    moderation_updated_at TEXT
+    moderation_updated_at TEXT,
+    suspended_until TEXT
   );
   CREATE TABLE IF NOT EXISTS supplier_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -425,6 +426,9 @@ if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.nam
 if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "moderation_updated_at")) {
   directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN moderation_updated_at TEXT");
 }
+if (buyerUserColumns.length > 0 && !buyerUserColumns.some((column) => column.name === "suspended_until")) {
+  directoryDb.exec("ALTER TABLE buyer_users ADD COLUMN suspended_until TEXT");
+}
 const buyerEmailColumn = buyerUserColumns.find((column) => column.name === "email");
 if (buyerEmailColumn?.notnull === 1) {
   directoryDb.exec(`
@@ -443,13 +447,19 @@ if (buyerEmailColumn?.notnull === 1) {
       job_title TEXT,
       password_hash TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      last_login TEXT
+      last_login TEXT,
+      moderation_status TEXT NOT NULL DEFAULT 'active',
+      moderation_reason TEXT,
+      moderation_updated_at TEXT,
+      suspended_until TEXT
     );
     INSERT INTO buyer_users_optional_email
       (id, full_name, phone, email, city, business_type, business_name, other_business_type,
-       is_owner, job_title, password_hash, created_at, last_login)
+       is_owner, job_title, password_hash, created_at, last_login, moderation_status,
+       moderation_reason, moderation_updated_at, suspended_until)
     SELECT id, full_name, phone, email, city, business_type, business_name, other_business_type,
-      is_owner, job_title, password_hash, created_at, last_login
+      is_owner, job_title, password_hash, created_at, last_login, moderation_status,
+      moderation_reason, moderation_updated_at, suspended_until
     FROM buyer_users;
     DROP TABLE buyer_users;
     ALTER TABLE buyer_users_optional_email RENAME TO buyer_users;
@@ -457,6 +467,34 @@ if (buyerEmailColumn?.notnull === 1) {
     PRAGMA foreign_keys = ON;
   `);
 }
+directoryDb.exec(`
+  CREATE TABLE IF NOT EXISTS buyer_invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    business_name TEXT NOT NULL,
+    business_type TEXT NOT NULL,
+    city TEXT NOT NULL,
+    internal_notes TEXT NOT NULL DEFAULT '',
+    token_nonce TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    invited_at TEXT NOT NULL,
+    created_by TEXT NOT NULL DEFAULT 'الإدارة',
+    invite_sent_at TEXT,
+    activated_at TEXT,
+    buyer_id INTEGER UNIQUE REFERENCES buyer_users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_buyer_invitations_phone
+    ON buyer_invitations (phone);
+  CREATE TABLE IF NOT EXISTS buyer_search_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    search_term TEXT NOT NULL,
+    searched_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_buyer_search_logs_term_date
+    ON buyer_search_logs (search_term, searched_at);
+`);
 const productColumns = directoryDb
   .prepare("PRAGMA table_info(products)")
   .all() as Array<{ name: string }>;

@@ -11,6 +11,7 @@ import {
   ListRegistrationInterestsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { requireAdmin } from "../lib/admin-auth";
 import { hashPassword as hashSupplierPassword } from "./supplier";
 
 const router: IRouter = Router();
@@ -30,26 +31,6 @@ function createSessionToken() {
   const payload = `admin:${expiresAt}`;
   const signature = createHmac("sha256", getSessionSecret()).update(payload).digest("hex");
   return `${payload}.${signature}`;
-}
-
-function isAdminAuthenticated(req: Request) {
-  const token = req.cookies?.[adminCookieName];
-  if (!token) return false;
-  const [role, expiresAtText, signature] = token.split(":").flatMap((part: string) => part.split("."));
-  if (role !== "admin" || !expiresAtText || !signature) return false;
-  const expiresAt = Number(expiresAtText);
-  if (!Number.isInteger(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) return false;
-  const payload = `admin:${expiresAt}`;
-  const expected = createHmac("sha256", getSessionSecret()).update(payload).digest("hex");
-  const providedBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  return providedBuffer.length === expectedBuffer.length && timingSafeEqual(providedBuffer, expectedBuffer);
-}
-
-function requireAdmin(req: Request, res: Response) {
-  if (isAdminAuthenticated(req)) return true;
-  res.status(401).json({ error: "تسجيل دخول المدير مطلوب" });
-  return false;
 }
 
 function saveProductImage(dataUrl: unknown) {
