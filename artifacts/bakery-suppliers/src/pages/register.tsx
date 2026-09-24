@@ -2,7 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, CakeSlice, CheckCircle2, ChevronLeft, ChevronRight, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
+import { Building2, CakeSlice, CheckCircle2, ChevronLeft, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
 type SupplierForm = {
@@ -29,11 +29,23 @@ const buyerBusinessTypes = [
   { value: "فندق", icon: Hotel },
   { value: "آخر", icon: Building2 },
 ];
-const categories = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
-const supplierSteps = ["النشاط", "التواصل", "الموقع", "المنتجات", "الوثائق والإقرار"];
+const categories = [
+  { value: "دقيق وخبز", label: "دقيق", icon: "🥖" },
+  { value: "سكر ومحليات", label: "سكر", icon: "🍰" },
+  { value: "زبدة ودهون", label: "زبدة ودهون", icon: "🧈" },
+  { value: "حليب ومشتقاته", label: "حليب ومشتقاته", icon: "🥛" },
+  { value: "أجبان", label: "أجبان", icon: "🧀" },
+  { value: "شوكولاتة وكاكاو", label: "شوكولاتة", icon: "🍫" },
+  { value: "مكسرات", label: "مكسرات", icon: "🥜" },
+  { value: "خمائر ومحسنات", label: "خمائر", icon: "🧪" },
+  { value: "عبوات وتغليف", label: "عبوات وتغليف", icon: "📦" },
+  { value: "نكهات وألوان", label: "نكهات وألوان", icon: "🎨" },
+  { value: "معدات وأدوات", label: "معدات وأدوات", icon: "🛠️" },
+  { value: "أخرى", label: "أخرى", icon: "🛍️" },
+];
 
 const emptySupplier: SupplierForm = {
-  businessName: "", contactPerson: "", businessType: "", phone: "", whatsapp: "", sameWhatsapp: false,
+  businessName: "", contactPerson: "", businessType: "", phone: "", whatsapp: "", sameWhatsapp: true,
   email: "", website: "", city: "", address: "", deliversToOtherCities: false, otherCities: "",
   categories: [], minOrder: "", description: "", commercialLicense: "", idCard: "", healthCertificate: "",
   acceptedData: false, acceptedTerms: false, acceptedBusiness: false, acceptedPublish: false,
@@ -59,7 +71,6 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const [type, setType] = useState<RegistrationType | null>(initialType);
   const [supplier, setSupplier] = useState<SupplierForm>(() => loadDraft("supplier", emptySupplier));
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
-  const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState<{ code: string; type: RegistrationType } | null>(null);
@@ -71,7 +82,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const title = type === "supplier" ? "تسجيل مورد" : type === "buyer" ? "تسجيل صاحب عمل" : "التسجيل في الدليل";
   const updateSupplier = (patch: Partial<SupplierForm>) => setSupplier((current) => ({ ...current, ...patch }));
 
-  if (submitted) return <ThankYou requestCode={submitted.code} type={submitted.type} onAgain={() => { setSubmitted(null); setType(null); setStep(0); }} />;
+  if (submitted) return <ThankYou requestCode={submitted.code} type={submitted.type} onAgain={() => { setSubmitted(null); setType(null); }} />;
 
   return (
     <MainLayout>
@@ -79,7 +90,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center"><UserPlus className="w-7 h-7" /></div>
           <h1 className="text-4xl font-bold mb-4">{title}</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "اختر نوع التسجيل المناسب، ثم أرسل بياناتك للمراجعة اليدوية."}</p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "أرسل طلب انضمامك في دقيقة: اختر فئتك وأدخل اسم النشاط ووسيلة التواصل والمدينة. تُراجع الطلبات قبل النشر."}</p>
         </div>
       </div>
 
@@ -89,12 +100,10 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
         ) : type === "supplier" ? (
           <SupplierWizard
             form={supplier}
-            step={step}
             error={error}
             isSubmitting={isSubmitting}
             onChange={updateSupplier}
-            onStep={setStep}
-            onBack={() => { setType(null); setStep(0); setError(""); }}
+            onBack={() => { setType(null); setError(""); }}
             onSubmit={async () => {
               setError("");
               const validation = validateSupplier(supplier);
@@ -172,76 +181,129 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
   );
 }
 
-function SupplierWizard({ form, step, error, isSubmitting, onChange, onStep, onBack, onSubmit }: {
-  form: SupplierForm; step: number; error: string; isSubmitting: boolean; onChange: (patch: Partial<SupplierForm>) => void;
-  onStep: (step: number) => void; onBack: () => void; onSubmit: () => void;
+function SupplierWizard({ form, error, isSubmitting, onChange, onBack, onSubmit }: {
+  form: SupplierForm; error: string; isSubmitting: boolean; onChange: (patch: Partial<SupplierForm>) => void;
+  onBack: () => void; onSubmit: () => void;
 }) {
-  const canContinue = step < supplierSteps.length - 1;
+  const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState("");
+  const acceptedAll = form.acceptedData && form.acceptedBusiness && form.acceptedTerms && form.acceptedPublish;
   return (
     <section className="bg-card border rounded-3xl p-5 md:p-8 shadow-sm">
-      <div className="flex items-center justify-between gap-3 mb-8">
-        <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground">تغيير نوع التسجيل</button>
-        <span className="text-sm font-bold text-primary">الخطوة {step + 1} من {supplierSteps.length}</span>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <button type="button" onClick={() => { if (step === 0) onBack(); else { setStep(0); setStepError(""); } }} className="text-sm text-muted-foreground hover:text-foreground">{step === 0 ? "تغيير نوع التسجيل" : "السابق"}</button>
+        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-extrabold text-primary">الخطوة {step + 1} من 2 · نحو دقيقة</span>
       </div>
-      <div className="grid grid-cols-5 gap-1 mb-10" aria-label="تقدم التسجيل">
-        {supplierSteps.map((label, index) => <div key={label} className="text-center">
-          <div className={`h-2 rounded-full mb-2 ${index <= step ? "bg-primary" : "bg-muted"}`} />
-          <span className={`text-[11px] md:text-xs ${index === step ? "font-bold text-primary" : "text-muted-foreground"}`}>{label}</span>
-        </div>)}
+      {step === 0 ? (
+        <SupplierCategoryStep
+          selected={form.categories}
+          error={stepError}
+          onChange={(selected) => { onChange({ categories: selected }); setStepError(""); }}
+          onNext={() => {
+            if (!form.categories.length) { setStepError("اختر فئة واحدة على الأقل."); return; }
+            setStep(1);
+            setStepError("");
+          }}
+        />
+      ) : (
+        <>
+      <div className="mb-6 rounded-xl bg-muted/30 p-4 text-sm">
+        <span className="font-bold">فئاتك:</span> {form.categories.join("، ")}
+        <button type="button" onClick={() => setStep(0)} className="mr-3 font-bold text-primary hover:underline">تعديل</button>
       </div>
-
-      {step === 0 && <FormSection title="معلومات النشاط" description="أدخل البيانات الأساسية لنشاطك التجاري.">
-        <Field label="اسم المورد / النشاط التجاري *" value={form.businessName} onChange={(value) => onChange({ businessName: value })} />
-        <Field label="اسم الشخص المسؤول *" value={form.contactPerson} onChange={(value) => onChange({ contactPerson: value })} />
-        <SelectField label="نوع النشاط *" value={form.businessType} options={["منتج / مصنع", "موزع", "مستورد", "تاجر جملة", "أخرى"]} onChange={(value) => onChange({ businessType: value })} placeholder="اختر نوع النشاط" />
-      </FormSection>}
-      {step === 1 && <FormSection title="معلومات التواصل" description="يجب أن تكون أرقام الجوال بصيغة 05XXXXXXXX.">
-        <Field label="رقم الجوال *" value={form.phone} onChange={(value) => onChange({ phone: value, ...(form.sameWhatsapp ? { whatsapp: value } : {}) })} dir="ltr" placeholder="05XXXXXXXX" />
-        <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.sameWhatsapp} onChange={(event) => onChange({ sameWhatsapp: event.target.checked, ...(event.target.checked ? { whatsapp: form.phone } : {}) })} /> رقم الواتساب نفس رقم الجوال</label>
-        <Field label="رقم الواتساب *" value={form.whatsapp} onChange={(value) => onChange({ whatsapp: value })} dir="ltr" placeholder="05XXXXXXXX" disabled={form.sameWhatsapp} />
-        <Field label="البريد الإلكتروني (اختياري)" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" />
-        <Field label="الموقع الإلكتروني (اختياري)" value={form.website} onChange={(value) => onChange({ website: value })} dir="ltr" placeholder="https://" />
-      </FormSection>}
-      {step === 2 && <FormSection title="الموقع الجغرافي" description="التسجيل متاح حالياً للموردين في المنطقة الشرقية.">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="اسم المورد أو النشاط التجاري *" value={form.businessName} onChange={(value) => onChange({ businessName: value })} autoComplete="organization" />
+        <Field label="اسمك للتواصل *" value={form.contactPerson} onChange={(value) => onChange({ contactPerson: value })} autoComplete="name" />
+        <SelectField label="نوع المورد *" value={form.businessType} options={["منتج / مصنع", "موزع", "مستورد", "تاجر جملة", "أخرى"]} onChange={(value) => onChange({ businessType: value })} placeholder="اختر نوع النشاط" />
         <SelectField label="المدينة *" value={form.city} options={supplierCities} onChange={(value) => onChange({ city: value })} placeholder="اختر المدينة" />
-        <Field label="العنوان التفصيلي (اختياري)" value={form.address} onChange={(value) => onChange({ address: value })} />
-        <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.deliversToOtherCities} onChange={(event) => onChange({ deliversToOtherCities: event.target.checked })} /> أوصل إلى مدن أخرى</label>
-         {form.deliversToOtherCities && <TextAreaField label="اذكر المدن التي توصل إليها" value={form.otherCities} onChange={(value) => onChange({ otherCities: value })} placeholder="اكتب المدن التي توصل إليها..." />}
-      </FormSection>}
-       {step === 3 && <FormSection title="معلومات المنتجات" description="اختر كل الفئات التي يتعامل بها نشاطك.">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {categories.map((category) => <label key={category} className="flex items-center gap-2 rounded-xl border p-3 text-sm cursor-pointer hover:border-primary">
-            <input type="checkbox" checked={form.categories.includes(category)} onChange={(event) => onChange({ categories: event.target.checked ? [...form.categories, category] : form.categories.filter((item) => item !== category) })} />
-            {category}
-          </label>)}
+        <Field label="رقم الجوال وواتساب *" value={form.phone} onChange={(value) => onChange({ phone: value, ...(form.sameWhatsapp ? { whatsapp: value } : {}) })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />
+        <div className="flex flex-col justify-center gap-3 rounded-xl border bg-muted/20 p-4">
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.sameWhatsapp} onChange={(event) => onChange({ sameWhatsapp: event.target.checked, ...(event.target.checked ? { whatsapp: form.phone } : {}) })} /> رقم واتساب المورد هو نفس رقم الجوال</label>
+          {!form.sameWhatsapp && <Field label="رقم واتساب *" value={form.whatsapp} onChange={(value) => onChange({ whatsapp: value })} dir="ltr" autoComplete="tel" placeholder="05XXXXXXXX" />}
         </div>
-        <Field label="الحد الأدنى للطلب (اختياري)" value={form.minOrder} onChange={(value) => onChange({ minOrder: value })} placeholder="مثال: 10 كراتين" />
-        <div>
-           <label className="block text-sm font-bold mb-2">نبذة عن النشاط * (20-300 كلمة)</label>
-          <textarea value={form.description} onChange={(event) => onChange({ description: event.target.value })} rows={8} placeholder="عرّف بنشاطك، سنوات الخبرة، وما يميزك" className="w-full px-4 py-3 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-y" />
-           <p className="text-xs text-muted-foreground mt-1">عدد الكلمات: {wordCount(form.description)} من 20 إلى 300</p>
-        </div>
-      </FormSection>}
-      {step === 4 && <FormSection title="الوثائق والإقرار" description="رفع الوثائق اختياري، لكنه يساعد في الحصول على شارة موثق بعد الموافقة.">
-        <FileField label="السجل التجاري (صورة أو PDF)" value={form.commercialLicense} onChange={(value) => onChange({ commercialLicense: value })} />
-        <FileField label="صورة الهوية" value={form.idCard} onChange={(value) => onChange({ idCard: value })} />
-        <FileField label="شهادة صحية إن وجدت" value={form.healthCertificate} onChange={(value) => onChange({ healthCertificate: value })} />
-        <div className="space-y-3 border-t pt-5">
-          <CheckField label="أتعهد بصحة جميع البيانات المُدخلة" checked={form.acceptedData} onChange={(value) => onChange({ acceptedData: value })} />
-          <CheckField label="أتعهد بأن نشاطي في مجال المخابز والحلويات" checked={form.acceptedBusiness} onChange={(value) => onChange({ acceptedBusiness: value })} />
-          <CheckField label="أوافق على شروط الاستخدام وسياسة الخصوصية" checked={form.acceptedTerms} onChange={(value) => onChange({ acceptedTerms: value })} />
-          <CheckField label="أوافق على نشر بياناتي في الدليل بعد الموافقة" checked={form.acceptedPublish} onChange={(value) => onChange({ acceptedPublish: value })} />
-        </div>
-      </FormSection>}
-
-      {(error || stepError) && <div className="mt-6 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 p-4 text-sm">{error || stepError}</div>}
-      <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t">
-        <button type="button" onClick={() => onStep(Math.max(0, step - 1))} disabled={step === 0} className="px-5 py-3 rounded-xl border font-bold disabled:opacity-40 inline-flex items-center gap-2"><ChevronRight className="w-4 h-4" /> السابق</button>
-        {canContinue ? <button type="button" onClick={() => { const validation = validateSupplierStep(form, step); setStepError(validation); if (!validation) onStep(step + 1); }} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 inline-flex items-center gap-2">التالي <ChevronLeft className="w-4 h-4" /></button>
-          : <button type="button" onClick={onSubmit} disabled={isSubmitting} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري الإرسال..." : "إرسال طلب الانضمام"}</button>}
       </div>
+
+      <details className="mt-6 rounded-2xl border border-border bg-muted/10 p-4">
+        <summary className="cursor-pointer font-bold text-primary">تفاصيل إضافية اختيارية — لا تحتاجها لإرسال الطلب</summary>
+        <div className="mt-5 space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="البريد الإلكتروني" value={form.email} onChange={(value) => onChange({ email: value })} dir="ltr" type="email" autoComplete="email" />
+            <Field label="الموقع الإلكتروني" value={form.website} onChange={(value) => onChange({ website: value })} dir="ltr" placeholder="https://" />
+            <Field label="العنوان التفصيلي" value={form.address} onChange={(value) => onChange({ address: value })} />
+            <Field label="الحد الأدنى للطلب" value={form.minOrder} onChange={(value) => onChange({ minOrder: value })} placeholder="مثال: 10 كراتين" />
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.deliversToOtherCities} onChange={(event) => onChange({ deliversToOtherCities: event.target.checked })} /> أوصل إلى مدن أخرى</label>
+          {form.deliversToOtherCities && <TextAreaField label="اذكر المدن التي توصل إليها" value={form.otherCities} onChange={(value) => onChange({ otherCities: value })} placeholder="اكتب المدن التي توصل إليها..." />}
+          <TextAreaField label="نبذة عن النشاط" value={form.description} onChange={(value) => onChange({ description: value })} placeholder="عرّف بنشاطك والمنتجات التي توفرها..." />
+          <div className="grid gap-4 md:grid-cols-2">
+            <FileField label="السجل التجاري (اختياري)" value={form.commercialLicense} onChange={(value) => onChange({ commercialLicense: value })} />
+            <FileField label="صورة الهوية (اختياري)" value={form.idCard} onChange={(value) => onChange({ idCard: value })} />
+            <FileField label="الشهادة الصحية (اختياري)" value={form.healthCertificate} onChange={(value) => onChange({ healthCertificate: value })} />
+          </div>
+        </div>
+      </details>
+
+      <div className="mt-6 border-t pt-5">
+        <CheckField
+          label="أؤكد صحة البيانات، وأن نشاطي مرتبط بقطاع المخابز والحلويات، وأوافق على الشروط ونشر بياناتي في الدليل بعد مراجعة الإدارة."
+          checked={acceptedAll}
+          onChange={(value) => onChange({ acceptedData: value, acceptedBusiness: value, acceptedTerms: value, acceptedPublish: value })}
+        />
+      </div>
+
+      {error && <div className="mt-6 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>}
+      <div className="mt-7 flex flex-col-reverse justify-between gap-3 border-t pt-6 sm:flex-row">
+        <button type="button" onClick={() => setStep(0)} className="rounded-xl border px-5 py-3 font-bold hover:bg-muted">السابق</button>
+        <button type="button" onClick={onSubmit} disabled={isSubmitting} className="rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">{isSubmitting ? "جاري الإرسال..." : "أرسل طلب الانضمام"}</button>
+      </div>
+        </>
+      )}
     </section>
+  );
+}
+
+function SupplierCategoryStep({ selected, error, onChange, onNext }: {
+  selected: string[];
+  error: string;
+  onChange: (selected: string[]) => void;
+  onNext: () => void;
+}) {
+  const selectedCount = selected.length;
+  return (
+    <div>
+      <h2 className="text-2xl font-extrabold">ما الذي تبيعه؟</h2>
+      <p className="mt-1 text-sm text-muted-foreground">اختر كل ما ينطبق. يكفي تحديد الفئة؛ تفاصيل الأنواع والتوفر تُعرف عبر واتساب.</p>
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+        {categories.map((category) => {
+          const isSelected = selected.includes(category.value);
+          return (
+            <label key={category.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-primary bg-primary/5 font-bold text-primary" : "hover:border-primary/50"}`}>
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(event) => onChange(event.target.checked
+                  ? [...selected, category.value]
+                  : selected.filter((item) => item !== category.value))}
+                className="h-4 w-4 accent-primary"
+              />
+              <span aria-hidden="true" className="text-xl">{category.icon}</span>
+              <span>{category.label}</span>
+            </label>
+          );
+        })}
+      </div>
+      <p className="mt-4 rounded-xl bg-muted/30 px-4 py-3 text-sm font-bold" aria-live="polite">
+        {selectedCount
+          ? `اخترت ${selectedCount} ${selectedCount === 1 ? "صنفاً" : "أصناف"}`
+          : "اختر فئة واحدة على الأقل للمتابعة"}
+      </p>
+      {error && <p className="mt-3 text-sm font-bold text-destructive" role="alert">{error}</p>}
+      <div className="mt-6 flex justify-end border-t pt-5">
+        <button type="button" onClick={onNext} className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:bg-primary/90">
+          التالي <ChevronLeft className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -314,16 +376,13 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
   return <MainLayout><div className="container mx-auto px-4 py-20 max-w-2xl text-center">
     <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-6" />
      <h1 className="text-3xl font-bold mb-4">{type === "buyer" ? "شكراً لك! تم استلام طلبك كصاحب عمل" : "تم استلام طلبك بنجاح"}</h1>
-     <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "تم إنشاء حسابك وتسجيل دخولك تلقائياً. يمكنك الآن التواصل مع جميع الموردين." : "شكراً لك! سيتم مراجعة طلبك من قبل إدارة الدليل، وسيتم التواصل معك عبر الواتساب خلال 48 ساعة."}</p>
+      <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "تم إنشاء حسابك وتسجيل دخولك تلقائياً. يمكنك الآن التواصل مع جميع الموردين." : "تم استلام طلبك. تراجعه الإدارة قبل نشر ملف المورد، ثم تتواصل معك خلال 48 ساعة. لا يلزمك تحديث المنتجات يومياً؛ يمكن لأصحاب الأعمال الاستفسار عن الأنواع والتوفر عبر واتساب."}</p>
     <div className="my-8 rounded-2xl bg-primary/10 border border-primary/20 p-5"><div className="text-sm text-muted-foreground mb-2">رقم طلبك المرجعي</div><strong dir="ltr" className="text-2xl text-primary">{requestCode}</strong></div>
      <p className="text-sm text-muted-foreground mb-8">في حال لم يتم التواصل خلال 48 ساعة، يمكنك مراسلتنا على <a href={whatsappHref} target="_blank" rel="noreferrer" dir="ltr" className="text-primary font-bold hover:underline">{whatsapp}</a>.</p>
      <button type="button" onClick={onAgain} className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold">تسجيل طلب آخر ({type === "supplier" ? "مورد" : "صاحب عمل"})</button>
   </div></MainLayout>;
 }
 
-function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return <div className="space-y-5"><h2 className="text-2xl font-bold">{title}</h2><p className="text-sm text-muted-foreground -mt-3">{description}</p>{children}</div>;
-}
 function Field({ label, value, onChange, dir, type = "text", placeholder, disabled, autoComplete, showPasswordToggle }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl"; type?: string; placeholder?: string; disabled?: boolean; autoComplete?: string; showPasswordToggle?: boolean }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const canTogglePassword = showPasswordToggle && type === "password";
@@ -351,16 +410,16 @@ function FileField({ label, value, onChange }: { label: string; value: string; o
   return <label className="block border border-dashed rounded-xl p-4 cursor-pointer hover:border-primary"><span className="flex items-center gap-2 text-sm font-bold mb-2"><FileUp className="w-4 h-4 text-primary" />{label}</span><input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={async (event) => { const file = event.target.files?.[0]; if (file) onChange(await readFile(file)); }} className="block w-full text-sm" />{value && <span className="text-xs text-green-700 mt-2 block">تم تجهيز الملف للإرسال</span>}</label>;
 }
 
-function validateSupplierStep(form: SupplierForm, step: number) {
-  if (step === 0 && (!form.businessName || !form.contactPerson || !form.businessType)) return "أكمل معلومات النشاط قبل المتابعة.";
-  if (step === 1 && !isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 058 020 6951.";
-  if (step === 1 && !isSaudiPhone(form.whatsapp)) return form.sameWhatsapp ? "تحقق من رقم الجوال." : "أدخل رقم الواتساب أو فعّل خيار «رقم الواتساب نفس رقم الجوال».";
-  if (step === 2 && (!form.city || (form.deliversToOtherCities && !form.otherCities))) return "اختر المدينة وأكمل مدن التوصيل.";
-   if (step === 3 && (!form.categories.length || wordCount(form.description) < 20 || wordCount(form.description) > 300)) return "اختر فئة واحدة على الأقل واكتب نبذة من 20 إلى 300 كلمة.";
-  return "";
-}
 function validateSupplier(form: SupplierForm) {
-  return validateSupplierStep(form, 0) || validateSupplierStep(form, 1) || validateSupplierStep(form, 2) || validateSupplierStep(form, 3) || (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish ? "وافق على جميع الإقرارات قبل الإرسال." : "");
+  if (!form.businessName.trim() || !form.contactPerson.trim() || !form.businessType) return "أدخل اسم النشاط واسم مسؤول التواصل ونوع المورد.";
+  if (!isSaudiPhone(form.phone)) return "أدخل رقم الجوال بصيغة صحيحة، مثل 05XXXXXXXX.";
+  if (!isSaudiPhone(form.whatsapp)) return form.sameWhatsapp ? "تحقق من رقم الجوال." : "أدخل رقم الواتساب أو فعّل خيار «رقم واتساب المورد هو نفس رقم الجوال».";
+  if (!form.city) return "اختر المدينة.";
+  if (!form.categories.length) return "اختر فئة واحدة على الأقل، مثل زبدة.";
+  if (form.deliversToOtherCities && !form.otherCities.trim()) return "اذكر المدن التي توصل إليها أو ألغِ خيار التوصيل لمدن أخرى.";
+  if (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish) return "وافق على الإقرار قبل إرسال الطلب.";
+  if (wordCount(form.description) > 300) return "اختصر النبذة إلى 300 كلمة أو أقل.";
+  return "";
 }
 function validateBuyer(form: BuyerForm) {
   const email = form.email.trim();

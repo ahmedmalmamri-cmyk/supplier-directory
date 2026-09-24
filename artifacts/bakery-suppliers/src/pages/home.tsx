@@ -66,6 +66,10 @@ export default function Home() {
                <span className="ml-1 text-sm font-bold">تصفح حسب نوع المورد:</span>
                {SUPPLIER_TYPES.map((type) => <Link key={type} href={`/suppliers?type=${encodeURIComponent(type)}`} className="rounded-full border border-primary/25 bg-card/80 px-3 py-1.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground">{type}</Link>)}
              </div>
+              <Link href="/register/supplier" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+                <Building2 className="h-4 w-4" />
+                أنا مورد — سجّل نشاطك في الدليل
+              </Link>
           </div>
         </div>
       </section>

@@ -11,9 +11,10 @@ type ProtectedWhatsAppButtonProps = {
   hasWhatsApp: boolean;
   className: string;
   label: string;
+  initialMessage?: string;
 };
 
-export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp, className, label }: ProtectedWhatsAppButtonProps) {
+export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp, className, label, initialMessage }: ProtectedWhatsAppButtonProps) {
   const { user, isLoading, refresh } = useBuyerAuth();
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [customMessage, setCustomMessage] = useState("");
@@ -31,6 +32,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
     if (!hasWhatsApp || isSending) return;
     setError("");
     const currentUser = isLoading ? await refresh() : user;
+    setCustomMessage(initialMessage ?? "");
     setDialog(currentUser ? "compose" : "gate");
   };
 
@@ -101,7 +103,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                     <span className="flex items-center gap-2 sm:col-span-2"><UserRound className="h-3.5 w-3.5" /> الصفة: {user?.isOwner ? "صاحب العمل" : user?.jobTitle || "ممثل المنشأة"}</span>
                   </div>
                 </div>
-                <label className="mt-6 block text-sm font-bold">هل تريد إضافة رسالة؟ <span className="font-normal text-muted-foreground">(اختياري)</span>
+                <label className="mt-6 block text-sm font-bold">رسالة الاستفسار <span className="font-normal text-muted-foreground">(يمكنك تعديلها)</span>
                   <textarea value={customMessage} onChange={(event) => setCustomMessage(event.target.value)} maxLength={1000} rows={4} className="mt-2 w-full resize-none rounded-xl border border-input bg-background p-3 font-normal leading-7 outline-none focus:border-primary" placeholder="اكتب استفسارك هنا..." />
                 </label>
                 {error && <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">{error}</p>}

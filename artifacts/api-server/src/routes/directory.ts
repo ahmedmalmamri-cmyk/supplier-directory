@@ -112,13 +112,26 @@ router.get("/search", (req, res): void => {
   }
   const term = `%${parsed.data.q ?? ""}%`;
   const suppliers = normalizeSuppliers(directoryDb.prepare(`
-    ${supplierSelect} WHERE s.is_active = 1 AND (s.name LIKE ? OR s.description LIKE ?)
+    ${supplierSelect} WHERE s.is_active = 1 AND (
+      s.name LIKE ? OR s.description LIKE ? OR s.city LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM supplier_requests sr
+        WHERE sr.id = s.request_id AND (sr.categories LIKE ? OR sr.business_type LIKE ?)
+      )
+      OR EXISTS (
+        SELECT 1 FROM products sp
+        JOIN categories sc ON sc.id = sp.category_id
+        WHERE sp.supplier_id = s.id
+          AND (sp.name LIKE ? OR sp.country_of_origin LIKE ? OR sc.name LIKE ?)
+      )
+    )
     GROUP BY s.id ORDER BY s.average_rating DESC
-  `).all(term, term) as Record<string, unknown>[]);
+  `).all(term, term, term, term, term, term, term, term) as Record<string, unknown>[]);
   const products = directoryDb.prepare(`
-    ${productSelect} WHERE p.name LIKE ? OR s.name LIKE ?
+    ${productSelect}
+    WHERE p.name LIKE ? OR s.name LIKE ? OR p.country_of_origin LIKE ? OR c.name LIKE ?
     ORDER BY p.created_at DESC
-  `).all(term, term);
+  `).all(term, term, term, term);
   res.json(SearchDirectoryResponse.parse({ suppliers, products }));
 });
 
@@ -178,8 +191,21 @@ router.get("/suppliers", (req, res): void => {
   const values: (string | number)[] = [];
   const clauses: string[] = ["s.is_active = 1"];
   if (q) {
-    clauses.push("(s.name LIKE ? OR s.description LIKE ? OR s.city LIKE ?)");
-    values.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    const pattern = `%${q}%`;
+    clauses.push(`(
+      s.name LIKE ? OR s.description LIKE ? OR s.city LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM supplier_requests sr
+        WHERE sr.id = s.request_id AND (sr.categories LIKE ? OR sr.business_type LIKE ?)
+      )
+      OR EXISTS (
+        SELECT 1 FROM products qp
+        JOIN categories qc ON qc.id = qp.category_id
+        WHERE qp.supplier_id = s.id
+          AND (qp.name LIKE ? OR qp.country_of_origin LIKE ? OR qc.name LIKE ?)
+      )
+    )`);
+    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern);
   }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (type) {

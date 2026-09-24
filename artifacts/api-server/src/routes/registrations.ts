@@ -11,7 +11,7 @@ mkdirSync(uploadsDir, { recursive: true });
 const eastCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const supplierBusinessTypes = ["منتج / مصنع", "موزع", "مستورد", "تاجر جملة", "أخرى"];
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "كافيه", "مطعم", "فندق", "آخر"];
-const categoryNames = ["دقيق وخبز", "سكر ومحليات", "دهون وزبدة", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
+const categoryNames = ["دقيق وخبز", "سكر ومحليات", "زبدة", "زبدة ودهون", "دهون وزبدة", "حليب ومشتقاته", "أجبان", "شوكولاتة وكاكاو", "مكسرات", "نكهات وألوان", "خمائر ومحسنات", "عبوات وتغليف", "معدات وأدوات", "أخرى"];
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -67,7 +67,8 @@ router.post("/supplier-requests", (req, res): void => {
   const otherCities = text(body.otherCities);
   const categories = Array.isArray(body.categories) ? body.categories.filter((item): item is string => typeof item === "string") : [];
   const minOrder = text(body.minOrder);
-  const description = text(body.description);
+  const submittedDescription = text(body.description);
+  const description = submittedDescription || `مورد متخصص في توفير ${categories.join("، ")}.`;
   const deliversToOtherCities = body.deliversToOtherCities === true;
   const acceptedTerms = body.acceptedTerms === true;
   const acceptedData = body.acceptedData === true;
@@ -77,7 +78,7 @@ router.post("/supplier-requests", (req, res): void => {
   if (!businessName || !contactPerson || !supplierBusinessTypes.includes(businessType) ||
       !phoneIsValid(phone) || !phoneIsValid(whatsapp) || !eastCities.includes(city) ||
       categories.length === 0 || categories.some((item) => !categoryNames.includes(item)) ||
-       wordCount(description) < 20 || wordCount(description) > 300 ||
+       wordCount(description) > 300 ||
       !acceptedTerms || !acceptedData || !acceptedBusiness || !acceptedPublish ||
       (deliversToOtherCities && !otherCities)) {
     res.status(400).json({ error: "يرجى استكمال بيانات المورد والتأكد من صحة الجوال والإقرارات." });

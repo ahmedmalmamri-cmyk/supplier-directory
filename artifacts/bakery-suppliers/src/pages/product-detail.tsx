@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex gap-4">
-              <ProtectedWhatsAppButton supplierId={product.supplierId} supplierName={product.supplierName} hasWhatsApp={Boolean(buildWhatsAppUrl(product.supplier.whatsapp))} className="flex-1 rounded-xl bg-primary py-3.5 text-center font-bold text-primary-foreground shadow-md shadow-primary/20 transition-colors hover:bg-primary/90" label="طلب تسعيرة (واتساب)" />
+              <ProtectedWhatsAppButton supplierId={product.supplierId} supplierName={product.supplierName} hasWhatsApp={Boolean(buildWhatsAppUrl(product.supplier.whatsapp))} initialMessage={`السلام عليكم، هل يتوفر لديكم ${product.name}؟ أرجو إرسال الأنواع المتاحة والأسعار والحد الأدنى للطلب. بلد المنشأ المسجل: ${product.countryOfOrigin}.`} className="flex-1 rounded-xl bg-primary py-3.5 text-center font-bold text-primary-foreground shadow-md shadow-primary/20 transition-colors hover:bg-primary/90" label="استفسر عن المنتج (واتساب)" />
               <a href={`tel:${product.supplier.phone}`} className="flex-1 bg-card border-2 text-center py-3.5 rounded-xl font-bold hover:bg-muted transition-colors">
                 اتصال بالمورد
               </a>
