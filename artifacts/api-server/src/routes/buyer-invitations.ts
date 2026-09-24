@@ -44,6 +44,27 @@ const accountStatusSql = `CASE
   ELSE 'active'
 END`;
 
+type BuyerInvitationRow = {
+  id: number;
+  fullName: string;
+  phone: string;
+  businessName: string;
+  businessType: string;
+  city: string;
+  internalNotes: string;
+  tokenNonce: string;
+  tokenHash: string;
+  invitedAt: string;
+  createdBy: string;
+  inviteSentAt: string | null;
+  activatedAt: string | null;
+  buyerId: number | null;
+  createdAt: string;
+  lastLogin: string | null;
+  suspendedUntil: string | null;
+  accountStatus: "invited" | "activated" | "active" | "suspended";
+};
+
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;
   if (!secret) throw new Error("SESSION_SECRET is not configured");
@@ -86,10 +107,10 @@ function getInvitation(id: number) {
     FROM buyer_invitations bi
     LEFT JOIN buyer_users bu ON bu.id = bi.buyer_id
     WHERE bi.id = ?
-  `).get(id) as Record<string, unknown> | undefined;
+  `).get(id) as BuyerInvitationRow | undefined;
 }
 
-function publicInvitation(invitation: Record<string, unknown>) {
+function publicInvitation(invitation: BuyerInvitationRow) {
   const { tokenNonce: _tokenNonce, tokenHash: _tokenHash, ...result } = invitation;
   return result;
 }
