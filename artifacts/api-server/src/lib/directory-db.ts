@@ -797,6 +797,82 @@ if (!groupedItemCategoriesMigration) {
   }
 }
 
+const groupedItemCategoryContinuationSeed = [
+  ["كريمة لوتس", "🍮", "الحشوات والكريمات", 51],
+  ["كريمة فستق", "🍮", "الحشوات والكريمات", 52],
+  ["كريمة نوتيلا", "🍫", "الحشوات والكريمات", 53],
+  ["توفي كراميل", "🍮", "الحشوات والكريمات", 54],
+  ["مربى مشمش", "🍑", "الحشوات والكريمات", 55],
+  ["عسل", "🍯", "الحشوات والكريمات", 56],
+  ["دبس تمر", "🍯", "الحشوات والكريمات", 57],
+  ["دبس رمان", "🍯", "الحشوات والكريمات", 58],
+  ["لوز", "🥜", "المكسرات والبذور", 59],
+  ["كاجو", "🥜", "المكسرات والبذور", 60],
+  ["فستق", "🥜", "المكسرات والبذور", 61],
+  ["بندق", "🥜", "المكسرات والبذور", 62],
+  ["جوز", "🥜", "المكسرات والبذور", 63],
+  ["بيكان", "🥜", "المكسرات والبذور", 64],
+  ["فول سوداني", "🥜", "المكسرات والبذور", 65],
+  ["سمسم", "🌰", "المكسرات والبذور", 66],
+  ["حبة البركة", "🌰", "المكسرات والبذور", 67],
+  ["جوز الهند", "🥥", "المكسرات والبذور", 68],
+  ["خميرة", "🧪", "المحسنات والخمائر", 69],
+  ["محسن خبز", "🧪", "المحسنات والخمائر", 70],
+  ["محسن كيك", "🧪", "المحسنات والخمائر", 71],
+  ["بيكنج صودا", "🧪", "المحسنات والخمائر", 72],
+  ["مانع عفن", "🧪", "المحسنات والخمائر", 73],
+  ["فانيليا", "🌿", "النكهات والألوان", 74],
+  ["نكهات", "🌿", "النكهات والألوان", 75],
+  ["ألوان طعام", "🎨", "النكهات والألوان", 76],
+  ["ألوان بودرة", "🎨", "النكهات والألوان", 77],
+  ["عطور حلويات", "🌸", "النكهات والألوان", 78],
+  ["مستخلصات", "🌿", "النكهات والألوان", 79],
+  ["زعفران", "🌸", "النكهات والألوان", 80],
+  ["هيل", "🌿", "النكهات والألوان", 81],
+  ["قرفة", "🌿", "النكهات والألوان", 82],
+  ["كمون", "🌿", "النكهات والألوان", 83],
+  ["ينسون", "🌿", "النكهات والألوان", 84],
+  ["سماق", "🌿", "النكهات والألوان", 85],
+  ["زعتر", "🌿", "النكهات والألوان", 86],
+  ["كركم", "🌿", "النكهات والألوان", 87],
+  ["ملح ليمون", "🧂", "النكهات والألوان", 88],
+  ["بسكويت لوتس", "🍪", "البسكويت والحلويات", 89],
+  ["بسكويت أوريو", "🍪", "البسكويت والحلويات", 90],
+] as const;
+
+const groupedItemCategoryContinuationMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("grouped-item-category-catalog-v2") as { name: string } | undefined;
+if (!groupedItemCategoryContinuationMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const upsertItemCategory = directoryDb.prepare(`
+      INSERT INTO item_categories
+        (name, icon, group_name, parent_id, description, display_on_home,
+         display_order, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, NULL, NULL, 0, ?, 1, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET
+        icon = excluded.icon,
+        group_name = excluded.group_name,
+        display_order = excluded.display_order,
+        is_active = 1,
+        updated_at = excluded.updated_at
+    `);
+    for (const [name, icon, groupName, displayOrder] of groupedItemCategoryContinuationSeed) {
+      upsertItemCategory.run(name, icon, groupName, displayOrder, now, now);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at)
+      VALUES ('grouped-item-category-catalog-v2', ?)
+    `).run(now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
   .get() as { count: number };
