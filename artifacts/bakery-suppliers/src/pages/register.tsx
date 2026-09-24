@@ -54,7 +54,9 @@ const emptyBuyer: BuyerForm = {
 };
 
 export default function RegisterPage({ defaultType }: { defaultType?: RegistrationType } = {}) {
-  const [type, setType] = useState<RegistrationType | null>(defaultType ?? null);
+  const requestedType = new URLSearchParams(window.location.search).get("type");
+  const initialType = defaultType ?? (requestedType === "supplier" || requestedType === "buyer" ? requestedType : null);
+  const [type, setType] = useState<RegistrationType | null>(initialType);
   const [supplier, setSupplier] = useState<SupplierForm>(() => loadDraft("supplier", emptySupplier));
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
   const [step, setStep] = useState(0);

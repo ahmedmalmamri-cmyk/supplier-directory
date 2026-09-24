@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, ShieldCheck, Moon, Sun, UserRound } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, Moon, Sun, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 
@@ -34,26 +34,18 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
                 د
               </div>
-              <span className="font-bold text-lg hidden sm:inline-block">دليل المخابز والحلويات</span>
+              <span className="max-w-[135px] truncate text-xs font-bold sm:max-w-none sm:text-lg">دليل موردي المخابز والحلويات</span>
             </Link>
-             <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-              <Link href="/" className="hover:text-foreground transition-colors">الرئيسية</Link>
-              <a href="/#categories" className="hover:text-foreground transition-colors">التصنيفات</a>
+             <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
+              <Link href="/categories" className="hover:text-foreground transition-colors">التصنيفات</Link>
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
-              <Link href="/register" className="hover:text-foreground transition-colors">التسجيل</Link>
-              <Link href={user ? "/buyer/profile" : "/buyer/login"} className="inline-flex items-center gap-1 hover:text-foreground transition-colors"><UserRound className="h-4 w-4" />{user ? "حسابي" : "دخول أصحاب الأعمال"}</Link>
-               <Link href="/supplier/login" className="hover:text-foreground transition-colors">دخول المورد</Link>
-              <Link href="/contact" className="hover:text-foreground transition-colors">اتصل بنا</Link>
-              <Link href="/admin" className="hover:text-foreground transition-colors">الإدارة</Link>
+              <Link href="/register" className="hover:text-foreground transition-colors">انضم للدليل</Link>
+              <Link href={user ? "/buyer/profile" : "/login"} className="inline-flex items-center gap-1 hover:text-foreground transition-colors"><UserRound className="h-4 w-4" />{user ? "حسابي" : "دخول"}</Link>
             </nav>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/search" className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground text-sm transition-colors transition-all focus:ring-2 ring-primary outline-none hidden sm:flex">
-              <Search className="w-4 h-4" />
-              <span>بحث عن منتج أو مورد...</span>
-            </Link>
-            <Link href="/search" aria-label="البحث" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted sm:hidden">
+            <Link href="/search" aria-label="البحث عن منتج أو مورد" title="البحث" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
               <Search className="h-5 w-5" />
             </Link>
             <ThemeToggle />
@@ -70,16 +62,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
 
       {isMobileMenuOpen && (
         <div className="md:hidden border-b bg-card">
-          <nav className="flex flex-col p-4 space-y-3 text-sm font-medium">
-            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Package className="w-4 h-4"/> الرئيسية</Link>
-            <a href="/#categories" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><LayoutGrid className="w-4 h-4"/> التصنيفات</a>
-            <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Users className="w-4 h-4"/> الموردين</Link>
-            <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserPlus className="w-4 h-4"/> التسجيل</Link>
-            <Link href={user ? "/buyer/profile" : "/buyer/login"} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><UserRound className="w-4 h-4"/>{user ? "حساب صاحب العمل" : "دخول أصحاب الأعمال"}</Link>
-             <Link href="/supplier/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> دخول المورد</Link>
-            <Link href="/expansion" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Rocket className="w-4 h-4"/> خطة التوسع</Link>
-            <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><Mail className="w-4 h-4"/> اتصل بنا</Link>
-            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md"><ShieldCheck className="w-4 h-4"/> الإدارة</Link>
+          <nav className="flex flex-col gap-1 p-3 text-sm font-medium">
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Package className="h-4 w-4"/> الرئيسية</Link>
+            <Link href="/categories" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><LayoutGrid className="h-4 w-4"/> التصنيفات</Link>
+            <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Users className="h-4 w-4"/> الموردون</Link>
+            <Link href={user ? "/buyer/profile" : "/login"} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><UserRound className="h-4 w-4"/>{user ? "حسابي" : "دخول"}</Link>
+            <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="mt-1 flex min-h-11 items-center gap-3 rounded-xl bg-primary px-3 py-2 font-extrabold text-primary-foreground hover:bg-primary/90"><UserPlus className="h-4 w-4"/> انضم للدليل</Link>
           </nav>
         </div>
       )}
@@ -105,7 +93,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <h3 className="font-bold mb-4">روابط سريعة</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/suppliers" className="hover:text-foreground">تصفح الموردين</Link></li>
-              <li><Link href="/search" className="hover:text-foreground">البحث عن منتجات</Link></li>
+              <li><Link href="/categories" className="hover:text-foreground">التصنيفات</Link></li>
+              <li><Link href="/search" className="hover:text-foreground">البحث عن منتج أو مورد</Link></li>
               <li><Link href="/about" className="hover:text-foreground">من نحن</Link></li>
               <li><Link href="/expansion" className="hover:text-foreground">خطة التوسع</Link></li>
             </ul>
@@ -115,9 +104,6 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/contact" className="hover:text-foreground flex items-center gap-2"><Mail className="w-3 h-3"/> اتصل بنا</Link></li>
               <li><Link href="/terms" className="hover:text-foreground flex items-center gap-2"><FileText className="w-3 h-3"/> الشروط والأحكام</Link></li>
-              <li><Link href="/register" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> التسجيل</Link></li>
-               <li><Link href="/register/buyer" className="hover:text-foreground flex items-center gap-2"><UserPlus className="w-3 h-3"/> سجّل كصاحب عمل</Link></li>
-              {user && <li><Link href="/buyer/profile" className="hover:text-foreground flex items-center gap-2"><UserRound className="w-3 h-3"/> ملف حسابي</Link></li>}
             </ul>
           </div>
         </div>

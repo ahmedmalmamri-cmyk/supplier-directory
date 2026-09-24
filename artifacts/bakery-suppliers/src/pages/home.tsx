@@ -1,6 +1,6 @@
-import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, Package, Search, ShieldCheck, Star, Store, Users, Wheat, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, Candy, Cookie, FlaskConical, MapPin, Milk, Nut, Package, Search, ShieldCheck, Sparkles, Star, Users, Wheat, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useGetHome, useGetSupplier, useListSuppliers } from "@workspace/api-client-react";
+import { useGetHome, useGetSupplier } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
@@ -15,6 +15,17 @@ function Rating({ value }: { value: number }) {
   return <span className="inline-flex items-center gap-1 text-sm font-bold text-accent"><Star className="h-4 w-4 fill-current" />{value.toFixed(1)}</span>;
 }
 
+const categoryIcons: Record<string, LucideIcon> = {
+  Wheat,
+  Candy,
+  Milk,
+  Cookie,
+  Nut,
+  FlaskConical,
+  Sparkles,
+  Package,
+};
+
 function ProductStrip({ products }: { products: Array<{ id: number; name: string; imageUrl?: string | null }> }) {
   if (!products.length) return <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-border bg-secondary/15 text-xs text-muted-foreground">صور المنتجات ستظهر هنا عند إضافتها</div>;
   return <div className="grid grid-cols-3 gap-2">{products.slice(0, 3).map((product) => <div key={product.id} className="aspect-square overflow-hidden rounded-xl bg-muted" title={product.name}>{product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-primary/50"><Package className="h-6 w-6" /></div>}</div>)}</div>;
@@ -22,7 +33,6 @@ function ProductStrip({ products }: { products: Array<{ id: number; name: string
 
 export default function Home() {
   const { data: homeData, isLoading, error } = useGetHome();
-  const { data: suppliers, isLoading: suppliersLoading, error: suppliersError } = useListSuppliers({ sort: "rating" });
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -33,12 +43,7 @@ export default function Home() {
     }
   };
 
-  const allSuppliers = suppliers ?? [];
   const featured = (homeData?.featuredSuppliers ?? []).slice(0, 3);
-  const featuredIds = new Set(featured.map((supplier) => supplier.id));
-  const otherSuppliers = allSuppliers.filter((supplier) => !featuredIds.has(supplier.id));
-  const directorySuppliers = featured.length ? otherSuppliers : allSuppliers;
-  const showDirectorySection = featured.length === 0 || suppliersLoading || Boolean(suppliersError) || directorySuppliers.length > 0;
   const statItems: Array<{ label: string; value: number | string; Icon: LucideIcon }> = [
     { label: "الموردون", value: homeData?.stats.suppliers ?? 0, Icon: Building2 },
     { label: "المدن", value: homeData?.stats.cities ?? 0, Icon: MapPin },
@@ -79,50 +84,38 @@ export default function Home() {
         </div>
       </section>
 
-       <section className="container mx-auto px-4 pt-12 md:pt-16">
+       <section id="categories" className="container mx-auto px-4 pt-12 md:pt-16">
          <div className="mb-5 flex items-end justify-between gap-4">
-           <div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">اختصارات سريعة</p><h2 className="text-2xl font-extrabold md:text-3xl">ماذا تريد أن تفعل؟</h2></div>
-           <Link href="/suppliers" className="hidden items-center gap-1 text-sm font-bold text-primary hover:gap-2 sm:flex">تصفح الدليل <ArrowLeft className="h-4 w-4" /></Link>
+           <div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">اعثر على احتياجك</p><h2 className="text-2xl font-extrabold md:text-3xl">تصفح حسب التصنيف</h2></div>
+           <Link href="/categories" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:gap-2">كل التصنيفات <ArrowLeft className="h-4 w-4" /></Link>
          </div>
-         <div className="grid grid-cols-2 gap-3 md:gap-5">
-           <Link href="/register/supplier" className="group flex min-h-[142px] flex-col justify-between rounded-2xl border border-primary/15 bg-card p-4 shadow-warm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-warm-lg md:min-h-[178px] md:rounded-3xl md:p-6">
-             <div className="flex items-start justify-between gap-2"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-12 md:w-12 md:rounded-2xl"><Wheat className="h-5 w-5 md:h-6 md:w-6" /></div><ArrowLeft className="mt-1 h-4 w-4 text-primary transition-transform group-hover:-translate-x-1" /></div>
-             <div><h2 className="text-lg font-extrabold md:text-2xl">أنا مورد</h2><p className="mt-1 text-xs font-medium text-muted-foreground md:text-sm">أعرض منتجاتي في الدليل</p><span className="mt-3 inline-flex text-xs font-extrabold text-primary md:text-sm">أضف منتجاتك</span></div>
-           </Link>
-           <Link href="/register/buyer" className="group flex min-h-[142px] flex-col justify-between rounded-2xl border border-accent/35 bg-gradient-to-br from-card to-secondary/25 p-4 shadow-warm transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-warm-lg md:min-h-[178px] md:rounded-3xl md:p-6">
-             <div className="flex items-start justify-between gap-2"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent md:h-12 md:w-12 md:rounded-2xl"><Store className="h-5 w-5 md:h-6 md:w-6" /></div><ArrowLeft className="mt-1 h-4 w-4 text-primary transition-transform group-hover:-translate-x-1" /></div>
-             <div><h2 className="text-lg font-extrabold md:text-2xl">أنا صاحب عمل</h2><p className="mt-1 text-xs font-medium text-muted-foreground md:text-sm">أبحث عن موردين</p><span className="mt-3 inline-flex text-xs font-extrabold text-primary md:text-sm">ابدأ البحث</span></div>
-           </Link>
+         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+           {homeData.categories.slice(0, 4).map((category) => {
+             const CategoryIcon = categoryIcons[category.icon] ?? Package;
+             return <Link key={category.id} href={`/category/${category.id}`} className="group flex min-h-28 items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm">
+               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><CategoryIcon className="h-5 w-5" /></span>
+               <span className="min-w-0"><span className="block font-extrabold leading-6">{category.name}</span><span className="mt-1 block text-xs text-muted-foreground">{category.productCount ?? 0} منتج</span></span>
+             </Link>;
+           })}
          </div>
        </section>
 
-       <section className="container mx-auto px-4 pb-8 pt-20">
+       <section className="container mx-auto px-4 pb-20 pt-16">
          <div className="relative overflow-hidden rounded-[2rem] border border-accent/20 bg-gradient-to-br from-accent/10 via-card to-secondary/20 p-5 shadow-warm md:p-8">
            <div className="pointer-events-none absolute -left-16 -top-20 h-48 w-48 rounded-full border-[28px] border-accent/10" />
            <div className="pointer-events-none absolute -bottom-24 -right-16 h-56 w-56 rounded-full border-[32px] border-primary/5" />
            <div className="relative mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
              <div>
                <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1.5 text-xs font-extrabold text-accent"><BadgeCheck className="h-4 w-4" /> اختيارات الدليل</p>
-               <h2 className="text-3xl font-extrabold md:text-4xl">الموردون المميزون</h2>
-               <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">موردون مختارون بعناية لسهولة الوصول إلى المنتجات والخدمات الموثوقة.</p>
+                <h2 className="text-3xl font-extrabold md:text-4xl">موردون مختارون</h2>
+                <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">مجموعة مختصرة لتتعرف على بعض الموردين، ويمكنك استعراض القائمة الكاملة في الدليل.</p>
              </div>
-             <Link href="/suppliers" data-testid="link-featured-all" className="inline-flex items-center gap-1 self-start text-sm font-bold text-primary transition-all hover:gap-2 sm:self-auto">استكشف الدليل <ArrowLeft className="h-4 w-4" /></Link>
+              <Link href="/suppliers" data-testid="link-featured-all" className="inline-flex items-center gap-1 self-start text-sm font-bold text-primary transition-all hover:gap-2 sm:self-auto">عرض جميع الموردين <ArrowLeft className="h-4 w-4" /></Link>
            </div>
            {featured.length ? <div className="relative grid grid-cols-1 gap-5 lg:grid-cols-3">{featured.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} featured products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="سيظهر الموردون المميزون هنا بعد اعتمادهم." />}
          </div>
       </section>
 
-       {showDirectorySection && <section className="container mx-auto px-4 py-12">
-         <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-primary">دليل المنطقة</p><h2 className="text-3xl font-extrabold md:text-4xl">{featured.length ? "بقية الموردين" : "كل الموردين"}</h2><p className="mt-2 text-sm text-muted-foreground">قارن بين الموردين واعثر على الأنسب لاحتياجك.</p></div><Link href="/suppliers" data-testid="link-all-suppliers" className="flex items-center gap-1 text-sm font-bold text-primary hover:gap-2">تصفح القائمة <ArrowLeft className="h-4 w-4" /></Link></div>
-         {suppliersLoading && !suppliers ? <div className="grid grid-cols-1 gap-5 md:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /><div className="h-72 animate-pulse rounded-2xl bg-muted" /></div> : suppliersError ? <EmptySuppliers text="تعذر تحميل قائمة الموردين. حاول تحديث الصفحة." /> : directorySuppliers.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{directorySuppliers.map((supplier) => <SupplierCard key={supplier.id} supplier={supplier} products={productsBySupplier.get(supplier.id) ?? []} />)}</div> : <EmptySuppliers text="لا يوجد موردون معتمدون في الدليل حالياً." />}
-       </section>}
-
-       <section className="container mx-auto px-4 pb-20 pt-8">
-        <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-warm-lg md:px-12 md:py-14">
-          <div className="absolute -left-16 -top-20 h-64 w-64 rounded-full border-[32px] border-secondary/20" />
-           <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-center"><div><p className="mb-2 text-sm font-bold text-secondary">هل تورد للمخابز والحلويات؟</p><h2 className="text-2xl font-extrabold md:text-3xl">أضف منتجاتك إلى الدليل</h2><p className="mt-2 max-w-xl text-sm font-medium leading-8 text-primary-foreground/90">عرّف أصحاب الأعمال بمنتجاتك ووصل إلى العملاء في المنطقة الشرقية.</p></div><div className="flex flex-wrap items-center gap-4"><Link href="/register/supplier" data-testid="link-register-supplier" className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-secondary px-6 py-3 font-extrabold text-secondary-foreground transition-transform hover:-translate-y-0.5">سجّل كمورد <ChevronLeft className="h-4 w-4" /></Link><Link href="/suppliers" data-testid="link-bottom-browse-suppliers" className="inline-flex shrink-0 items-center gap-1 font-bold text-primary-foreground/90 transition-colors hover:text-secondary">تصفح الموردين <ChevronLeft className="h-4 w-4" /></Link></div></div>
-        </div>
-      </section>
     </MainLayout>
   );
 }

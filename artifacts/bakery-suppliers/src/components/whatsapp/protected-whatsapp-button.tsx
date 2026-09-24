@@ -82,7 +82,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><LockKeyhole className="h-7 w-7" /></div>
                 <h2 id="whatsapp-dialog-title" className="text-2xl font-extrabold">للتواصل مع هذا المورد، سجّل الآن</h2>
                 <p className="mt-3 leading-7 text-muted-foreground">التسجيل مجاني وسريع (دقيقة واحدة)، وسيسمح لك بالتواصل المباشر مع جميع الموردين في الدليل.</p>
-                <Link href="/register/buyer" onClick={() => setDialog(null)} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 font-extrabold text-primary-foreground hover:bg-primary/90"><CheckCircle2 className="h-5 w-5" /> سجّل الآن كصاحب عمل</Link>
+                <Link href="/register?type=buyer" onClick={() => setDialog(null)} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 font-extrabold text-primary-foreground hover:bg-primary/90"><CheckCircle2 className="h-5 w-5" /> سجّل الآن كصاحب عمل</Link>
                 <p className="mt-5 text-center text-sm text-muted-foreground">مسجل بالفعل؟ <Link href="/buyer/login" onClick={() => setDialog(null)} className="font-extrabold text-primary hover:underline">تسجيل الدخول</Link></p>
                 <button type="button" onClick={() => setDialog(null)} className="mt-5 w-full rounded-xl border border-border px-5 py-3 font-bold hover:bg-muted">إلغاء</button>
               </div>

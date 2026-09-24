@@ -13,6 +13,7 @@ import {
 
 import Home from '@/pages/home';
 import CategoryPage from '@/pages/category';
+import CategoriesPage from '@/pages/categories';
 import SuppliersPage from '@/pages/suppliers';
 import SupplierProfilePage from '@/pages/supplier-profile';
 import ProductDetailPage from '@/pages/product-detail';
@@ -27,6 +28,7 @@ import BuyerLoginPage from '@/pages/buyer-login';
 import BuyerProfilePage from '@/pages/buyer-profile';
 import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
+import LoginChoicePage from '@/pages/login-choice';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 
 const queryClient = new QueryClient({
@@ -43,8 +45,10 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/categories" component={CategoriesPage} />
         <Route path="/category/:id" component={CategoryPage} />
         <Route path="/suppliers" component={SuppliersPage} />
+        <Route path="/login" component={LoginChoicePage} />
          <Route path="/supplier/login" component={SupplierLoginPage} />
          <Route path="/supplier/portal" component={SupplierPortalPage} />
          <Route path="/supplier/:id" component={SupplierProfilePage} />

@@ -1,6 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useSendContact } from "@workspace/api-client-react";
-import { Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,13 +105,6 @@ export default function ContactPage() {
               </ul>
             </div>
             
-            <div className="bg-primary/5 border border-primary/20 p-6 rounded-2xl">
-              <h3 className="font-bold mb-2 text-primary">هل أنت مورد أو صاحب نشاط؟</h3>
-              <p className="text-sm text-muted-foreground mb-4">تواصل معنا، وسنراجع طلب الانضمام ونوافق عليه قبل نشر بياناتك في الدليل.</p>
-              <Link href="/register" className="block w-full py-2 text-center bg-background border border-primary text-primary rounded-lg font-medium text-sm hover:bg-primary hover:text-primary-foreground transition-colors">
-                طلب انضمام كمورد
-              </Link>
-            </div>
           </div>
 
           <div className="md:col-span-2">
