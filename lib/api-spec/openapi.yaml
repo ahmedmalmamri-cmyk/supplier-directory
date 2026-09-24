@@ -87,6 +87,15 @@ paths:
           name: city
           schema: { type: string }
         - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: rating
+          schema: { type: number, minimum: 1, maximum: 5 }
+        - in: query
+          name: package
+          schema: { type: string, enum: [verified, featured] }
+        - in: query
           name: verified
           schema: { type: boolean }
         - in: query
@@ -367,7 +376,7 @@ components:
         productCount: { type: integer }
     Supplier:
       type: object
-      required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, averageRating, createdAt]
+      required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -383,6 +392,7 @@ components:
         googleReviewCount: { type: integer, nullable: true }
         hoursNote: { type: string, nullable: true }
         isVerified: { type: boolean }
+        isFeatured: { type: boolean }
         averageRating: { type: number }
         createdAt: { type: string }
         productCount: { type: integer }

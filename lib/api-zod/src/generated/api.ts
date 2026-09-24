@@ -36,6 +36,7 @@ export const GetHomeResponse = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()
@@ -84,6 +85,7 @@ export const SearchDirectoryResponse = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()
@@ -140,6 +142,7 @@ export const FetchCategoryResponse = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()
@@ -163,9 +166,16 @@ export const FetchCategoryResponse = zod.object({
 })
 
 
+export const listSuppliersQueryRatingMax = 5;
+
+
+
 export const ListSuppliersQueryParams = zod.object({
   "q": zod.coerce.string().optional(),
   "city": zod.coerce.string().optional(),
+  "type": zod.coerce.string().optional(),
+  "rating": zod.coerce.number().min(1).max(listSuppliersQueryRatingMax).optional(),
+  "package": zod.enum(['verified', 'featured']).optional(),
   "verified": zod.coerce.boolean().optional(),
   "sort": zod.enum(['newest', 'rating', 'alphabetical']).optional()
 })
@@ -185,6 +195,7 @@ export const ListSuppliersResponseItem = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()
@@ -211,6 +222,7 @@ export const GetSupplierResponse = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()
@@ -310,6 +322,7 @@ export const GetProductResponse = zod.object({
   "googleReviewCount": zod.number().int().nullable(),
   "hoursNote": zod.string().nullable(),
   "isVerified": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
   "productCount": zod.number().int().optional()

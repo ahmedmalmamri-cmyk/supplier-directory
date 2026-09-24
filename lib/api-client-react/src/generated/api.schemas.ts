@@ -32,6 +32,7 @@ export interface Supplier {
   googleReviewCount: number | null;
   hoursNote: string | null;
   isVerified: boolean;
+  isFeatured: boolean;
   averageRating: number;
   createdAt: string;
   productCount?: number;
@@ -322,9 +323,24 @@ export const FetchCategorySort = {
 export type ListSuppliersParams = {
 q?: string;
 city?: string;
+type?: string;
+/**
+ * @minimum 1
+ * @maximum 5
+ */
+rating?: number;
+package?: ListSuppliersPackage;
 verified?: boolean;
 sort?: ListSuppliersSort;
 };
+
+export type ListSuppliersPackage = typeof ListSuppliersPackage[keyof typeof ListSuppliersPackage];
+
+
+export const ListSuppliersPackage = {
+  verified: 'verified',
+  featured: 'featured',
+} as const;
 
 export type ListSuppliersSort = typeof ListSuppliersSort[keyof typeof ListSuppliersSort];
 
