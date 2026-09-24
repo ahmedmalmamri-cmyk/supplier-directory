@@ -210,3 +210,17 @@ mtime_ms = 1790275207733
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/9ea9b46a-87d8-47c6-8953-cbf0d1637cf5/71d1a30d-eedd-45fe-90e7-cfecee214658"
 storage_version_token = "1790275332436716"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "FloKYdLN8Lbhjoekr3g0g"
+uri = "file://screenshots/buyer-invite-activation.jpg"
+type = "image"
+title = "صفحة تفعيل دعوة صاحب العمل"
+description = "لقطة كاملة لنموذج التفعيل بعد اكتمال حقول الحساب والموافقة على الشروط."
+logical_id = "4bcdfebd-5dae-4b0d-886b-975c5c42f7c1"
+content_hash = "sha256:c199339735bde4ac130f38c73b57e83b2cfd943d1d2d81e21968e6f35066809d"
+size = 85627
+mtime_ms = 1790284449583
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/4bcdfebd-5dae-4b0d-886b-975c5c42f7c1/64985ec3-6635-4454-bdc8-3ae196d12437"
+storage_version_token = "1790284467925390"
+content_type = "image/jpeg"
