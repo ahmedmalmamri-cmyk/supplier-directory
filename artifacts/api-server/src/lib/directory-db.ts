@@ -873,6 +873,83 @@ if (!groupedItemCategoryContinuationMigration) {
   }
 }
 
+const groupedItemCategoryFinalSeed = [
+  ["بسكويت أصابع", "🍪", "البسكويت والحلويات", 91],
+  ["بسكويت فنجر", "🍪", "البسكويت والحلويات", 92],
+  ["كرز أحمر", "🍒", "البسكويت والحلويات", 93],
+  ["فواكه مشكلة", "🍇", "البسكويت والحلويات", 94],
+  ["فواكه مجففة", "🍇", "البسكويت والحلويات", 95],
+  ["عجين سمبوسة", "🥟", "العجائن والجاهز", 96],
+  ["عجين بيتزا", "🍕", "العجائن والجاهز", 97],
+  ["عجين كنافة", "🍮", "العجائن والجاهز", 98],
+  ["عجين تمر", "🍯", "العجائن والجاهز", 99],
+  ["خبز رقاق", "🫓", "العجائن والجاهز", 100],
+  ["خبز جاهز", "🥖", "العجائن والجاهز", 101],
+  ["معجنات مجمدة", "🥐", "العجائن والجاهز", 102],
+  ["علب كيك", "📦", "التغليف والطباعة", 103],
+  ["علب حلويات", "📦", "التغليف والطباعة", 104],
+  ["علب بسبوسة", "📦", "التغليف والطباعة", 105],
+  ["علب ورق عنب", "📦", "التغليف والطباعة", 106],
+  ["علب لقيمات", "📦", "التغليف والطباعة", 107],
+  ["أكياس كريمة", "🛍️", "التغليف والطباعة", 108],
+  ["أكياس تغليف", "🛍️", "التغليف والطباعة", 109],
+  ["أكياس مطبوعة", "🛍️", "التغليف والطباعة", 110],
+  ["كراتين", "📦", "التغليف والطباعة", 111],
+  ["قواعد كيك", "🎂", "التغليف والطباعة", 112],
+  ["ورق زبدة", "📄", "التغليف والطباعة", 113],
+  ["ورق سكر", "📄", "التغليف والطباعة", 114],
+  ["ورق ويفر", "📄", "التغليف والطباعة", 115],
+  ["ألمنيوم", "📄", "التغليف والطباعة", 116],
+  ["سلوفان", "📄", "التغليف والطباعة", 117],
+  ["رول تغليف", "📄", "التغليف والطباعة", 118],
+  ["أدوات تزيين", "🎨", "أدوات التزيين", 119],
+  ["رؤوس تزيين", "🎨", "أدوات التزيين", 120],
+  ["ورق ذهب", "✨", "أدوات التزيين", 121],
+  ["لولو كرات", "⚪", "أدوات التزيين", 122],
+  ["فرمسلي", "✨", "أدوات التزيين", 123],
+  ["حبر طابعة", "🖨️", "أدوات التزيين", 124],
+  ["رشات لولو", "✨", "أدوات التزيين", 125],
+  ["ماء ورد", "💧", "مواد أخرى", 126],
+  ["ماء زهر", "💧", "مواد أخرى", 127],
+  ["خل", "🧴", "مواد أخرى", 128],
+  ["كاتشب", "🍅", "مواد أخرى", 129],
+  ["مايونيز", "🥚", "مواد أخرى", 130],
+  ["صوص بيتزا", "🍕", "مواد أخرى", 131],
+  ["صوص حار", "🌶️", "مواد أخرى", 132],
+] as const;
+
+const groupedItemCategoryFinalMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("grouped-item-category-catalog-v3") as { name: string } | undefined;
+if (!groupedItemCategoryFinalMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const upsertFinalItemCategory = directoryDb.prepare(`
+      INSERT INTO item_categories
+        (name, icon, group_name, parent_id, description, display_on_home,
+         display_order, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, NULL, NULL, 0, ?, 1, ?, ?)
+      ON CONFLICT(name) DO UPDATE SET
+        icon = excluded.icon,
+        group_name = excluded.group_name,
+        display_order = excluded.display_order,
+        updated_at = excluded.updated_at
+    `);
+    for (const [name, icon, groupName, displayOrder] of groupedItemCategoryFinalSeed) {
+      upsertFinalItemCategory.run(name, icon, groupName, displayOrder, now, now);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at)
+      VALUES ('grouped-item-category-catalog-v3', ?)
+    `).run(now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
   .get() as { count: number };
