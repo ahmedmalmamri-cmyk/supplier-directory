@@ -22,6 +22,7 @@ import {
   SendContactResponse,
 } from "@workspace/api-zod";
 import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
+import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 
 const router: IRouter = Router();
 
@@ -139,6 +140,7 @@ router.get("/item-categories", (_req, res): void => {
     ...category,
     displayOnHome: Boolean(category.displayOnHome),
     isActive: Boolean(category.isActive),
+    supplierCount: itemCategorySupplierCounts(rows).get(category.id) ?? 0,
   }));
   res.json(ListItemCategoriesResponse.parse(categories));
 });

@@ -888,7 +888,7 @@ components:
         productCount: { type: integer }
     ItemCategory:
       type: object
-      required: [id, name, icon, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt]
+      required: [id, name, icon, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -901,6 +901,7 @@ components:
         isActive: { type: boolean }
         createdAt: { type: string }
         updatedAt: { type: string }
+        supplierCount: { type: integer }
     AdminItemCategory:
       allOf:
         - $ref: "#/components/schemas/ItemCategory"
