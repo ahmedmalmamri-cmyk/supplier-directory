@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, Building2, MapPin, Package, Plus, Search, ShieldCheck, Star, Users, Wheat, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, ChevronLeft, MapPin, Package, Plus, Search, ShieldCheck, Star, Users, Wheat, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useGetHome, useListItemCategories, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -79,52 +79,71 @@ export default function Home() {
 
   return (
     <MainLayout>
-       <section className="relative isolate overflow-hidden bg-[#f0e4d2] dark:bg-[#241812]">
-         <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-50 dark:opacity-75" />
-         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.82)_8%,rgba(250,246,239,.62)_48%,rgba(250,246,239,.24)_100%)] dark:bg-[linear-gradient(90deg,rgba(29,20,16,.96)_8%,rgba(29,20,16,.78)_48%,rgba(29,20,16,.2)_100%)]" />
-        <div className="container mx-auto px-4 py-24 md:py-32">
-           <div className="max-w-2xl animate-rise-in text-right text-foreground dark:text-[#fffaf1]">
-             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card/75 px-4 py-2 text-sm font-semibold text-primary shadow-sm backdrop-blur-sm dark:border-[#e1b96a]/40 dark:bg-[#e1b96a]/10 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
-            <h1 className="text-balance text-4xl font-extrabold leading-[1.22] md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
-             <p className="mt-4 text-2xl font-semibold text-primary dark:text-[#f2cf8a]">في المنطقة الشرقية</p>
-            <form onSubmit={handleSearch} className="relative mt-9 max-w-xl" data-testid="form-home-search">
-               <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border border-border/80 bg-card/95 px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 backdrop-blur-sm placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <button data-testid="button-home-search" type="submit" className="absolute left-2 top-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5"><Search className="h-5 w-5" /></button>
+      <section className="relative isolate overflow-hidden bg-[#f0e4d2] dark:bg-[#241812]">
+        <img src="/bakery-hero.jpg" alt="مواد أولية ومنتجات مخبوزة" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-35 dark:opacity-25" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.96)_0%,rgba(250,246,239,.91)_55%,rgba(250,246,239,.84)_100%)] dark:bg-[linear-gradient(90deg,rgba(20,15,12,.97)_0%,rgba(20,15,12,.94)_55%,rgba(20,15,12,.88)_100%)]" />
+        <div className="container mx-auto px-4 py-12 md:py-20">
+          <div className="max-w-2xl animate-rise-in text-right text-foreground dark:text-[#fffaf1]">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm dark:border-[#e1b96a]/40 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" /> دليل موثوق للمنطقة الشرقية</p>
+            <h1 className="text-balance text-3xl font-extrabold leading-[1.25] sm:text-4xl md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
+            <p className="mt-3 text-xl font-semibold text-primary dark:text-[#f2cf8a] md:text-2xl">في المنطقة الشرقية</p>
+            <form onSubmit={handleSearch} className="relative mt-6 max-w-xl" data-testid="form-home-search">
+              <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-14 w-full rounded-2xl border border-border bg-card px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none placeholder:text-muted-foreground md:h-16" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <button data-testid="button-home-search" type="submit" aria-label="بحث" className="absolute left-2 top-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5 md:h-12 md:w-12"><Search className="h-5 w-5" /></button>
             </form>
-              <section className="mt-7 max-w-2xl" aria-labelledby="home-category-heading">
-                <h2 id="home-category-heading" className="mb-3 text-sm font-extrabold">تصفح حسب نوع المورد</h2>
-                {isLoadingItemCategories ? (
-                  <p className="rounded-xl bg-card/80 px-4 py-3 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
-                ) : itemCategoriesError ? (
-                  <p className="rounded-xl bg-card/80 px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                    {homeCategories.map((category) => (
-                      <Link
-                        key={category.id}
-                        href={`/suppliers?category=${encodeURIComponent(category.filterCategory)}`}
-                        data-testid={`link-home-category-${category.id}`}
-                        className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-card/85 px-3 py-2 text-center text-sm font-bold text-primary shadow-sm transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                      >
-                        <span aria-hidden="true" className="text-lg">{category.icon}</span>
-                        <span>{category.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-muted/20" aria-labelledby="home-category-heading">
+        <div className="container mx-auto max-w-7xl px-4 py-7 md:py-10">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <p className="mb-1 text-xs font-bold text-primary">اختصارات شائعة</p>
+              <h2 id="home-category-heading" className="text-xl font-extrabold md:text-2xl">تصفح حسب نوع المورد</h2>
+              <p className="mt-1 text-xs text-muted-foreground md:text-sm">اختر صنفاً للوصول مباشرةً إلى الموردين المتخصصين.</p>
+            </div>
+            <Link href="/suppliers" className="hidden shrink-0 items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80 sm:inline-flex">
+              كل التصنيفات <ChevronLeft className="h-4 w-4" />
+            </Link>
+          </div>
+          {isLoadingItemCategories ? (
+            <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
+          ) : itemCategoriesError ? (
+            <p className="rounded-xl border border-destructive/20 bg-card px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {homeCategories.map((category) => (
                 <Link
-                  href="/suppliers"
-                  data-testid="link-all-categories"
-                  className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground"
+                  key={category.id}
+                  href={`/suppliers?category=${encodeURIComponent(category.filterCategory)}`}
+                  data-testid={`link-home-category-${category.id}`}
+                  className="group flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-right text-foreground shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Plus className="h-4 w-4" />
-                  عرض كل الأصناف ({itemCategories?.length ?? 32})
+                  <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl transition-colors group-hover:bg-primary/15">{category.icon}</span>
+                  <span className="min-w-0 flex-1 text-[13px] font-extrabold leading-5 md:text-sm">{category.label}</span>
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-0.5 group-hover:text-primary" />
                 </Link>
-              </section>
-              <Link href="/register/supplier" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-                <Building2 className="h-4 w-4" />
-                أنا مورد — سجّل نشاطك في الدليل
-              </Link>
+              ))}
+            </div>
+          )}
+          <Link
+            href="/suppliers"
+            data-testid="link-all-categories"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-2.5 text-sm font-extrabold text-primary transition-colors hover:bg-primary hover:text-primary-foreground sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            عرض جميع التصنيفات ({itemCategories?.length ?? 32})
+          </Link>
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-extrabold">هل أنت مورد؟</p>
+              <p className="text-xs text-muted-foreground">أضف نشاطك ليصل إليه أصحاب المخابز والحلويات.</p>
+            </div>
+            <Link href="/register/supplier" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+              <Building2 className="h-4 w-4" />
+              سجّل نشاطك في الدليل
+            </Link>
           </div>
         </div>
       </section>
