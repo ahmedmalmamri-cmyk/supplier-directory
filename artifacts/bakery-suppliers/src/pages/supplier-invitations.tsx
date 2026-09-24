@@ -197,8 +197,15 @@ export function SupplierInvitationsPanel() {
       delete next[supplierId];
       return next;
     });
-    const popup = openWhatsApp ? window.open("about:blank", "_blank") : null;
-    if (popup) popup.opener = null;
+    const popup = openWhatsApp ? (() => {
+      try {
+        const opened = window.open("about:blank", "_blank");
+        if (opened) opened.opener = null;
+        return opened;
+      } catch {
+        return null;
+      }
+    })() : null;
     generate.mutate({ id: supplierId }, {
       onSuccess: (result) => {
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
