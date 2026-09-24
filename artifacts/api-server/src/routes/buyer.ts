@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { directoryDb } from "../lib/directory-db";
 import { clearBuyerSession, getBuyerIdFromRequest, setBuyerSession } from "../lib/buyer-auth";
+import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 
 const router: IRouter = Router();
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
@@ -65,6 +66,7 @@ type BuyerRow = {
 };
 
 function getBuyer(buyerId: number) {
+  restoreExpiredBuyerSuspensions(buyerId);
   return directoryDb.prepare(`
     SELECT id, full_name AS fullName, phone, email, city, business_type AS businessType,
       business_name AS businessName, other_business_type AS otherBusinessType,

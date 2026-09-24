@@ -135,6 +135,12 @@ router.get("/search", (req, res): void => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const searchTerm = (parsed.data.q ?? "").trim().slice(0, 120);
+  if (searchTerm) {
+    directoryDb.prepare(`
+      INSERT INTO buyer_search_logs (search_term, searched_at) VALUES (?, ?)
+    `).run(searchTerm, new Date().toISOString());
+  }
   const term = `%${parsed.data.q ?? ""}%`;
   const suppliers = normalizeSuppliers(directoryDb.prepare(`
     ${supplierSelect} WHERE s.is_active = 1 AND (

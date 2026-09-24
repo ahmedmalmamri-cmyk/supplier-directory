@@ -5,6 +5,7 @@ import adminRouter from "./admin";
 import registrationsRouter from "./registrations";
 import buyerRouter from "./buyer";
 import supplierRouter from "./supplier";
+import buyerInvitationsRouter from "./buyer-invitations";
 
 const router: IRouter = Router();
 
@@ -13,6 +14,7 @@ router.use(directoryRouter);
 router.use(adminRouter);
 router.use(registrationsRouter);
 router.use(buyerRouter);
+router.use(buyerInvitationsRouter);
 router.use(supplierRouter);
 
 export default router;

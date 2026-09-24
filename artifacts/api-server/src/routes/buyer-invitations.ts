@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import {
   createHash,
   createHmac,
@@ -100,7 +100,7 @@ function csvCell(value: unknown) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-function getRequestOrigin(req: Parameters<IRouter["get"]>[1] extends never ? never : any) {
+function getRequestOrigin(req: Request) {
   const originHeader = typeof req.get("origin") === "string" ? req.get("origin") : "";
   try {
     if (originHeader) return new URL(originHeader).origin;
@@ -176,7 +176,7 @@ router.post("/admin/buyer-invitations", (req, res): void => {
       city,
       parsed.data.internalNotes?.trim() ?? "",
       nonce,
-      "pending",
+      randomBytes(32).toString("hex"),
       parsed.data.invitedAt?.toISOString() ?? now,
       now,
     );

@@ -28,7 +28,6 @@ const statuses: { id: Status; label: string; tone: string }[] = [
   { id: "suspended", label: "موقوفون مؤقتاً", tone: "bg-rose-100 text-rose-800" },
 ];
 const businessTypes = Object.values(BuyerInvitationInputBusinessType);
-const ADMIN_CONTACT_NUMBER = "0566866805";
 const emptyForm: FormState = { fullName: "", phone: "", businessName: "", businessType: "مخبز", city: "", internalNotes: "" };
 
 export function BuyerInvitationsPanel() {
@@ -76,18 +75,23 @@ export function BuyerInvitationsPanel() {
   };
   const copyLink = (item: BuyerInvitation, openWhatsApp = false) => {
     setError(""); setNotice("");
+    const whatsappWindow = openWhatsApp ? window.open("about:blank", "_blank") : null;
+    if (whatsappWindow) whatsappWindow.opener = null;
     linkMutation.mutate({ id: item.id }, {
       onSuccess: (link) => {
         void navigator.clipboard?.writeText(link.url);
         if (openWhatsApp) {
-          const message = `السلام عليكم ${item.fullName}،\nندعوك للانضمام إلى دليل موردي المخابز والحلويات المجاني لأصحاب المخابز والحلويات والمقاهي.\nلا توجد رسوم وسيط أو عمولة على التواصل مع الموردين.\nرابط تفعيل حسابك: ${link.url}\nللاستفسار مع فريق الدليل: ${ADMIN_CONTACT_NUMBER}\n\nملاحظة: سيفتح واتساب لتراجع الرسالة وتضغط إرسال بنفسك، ولا يستطيع النظام تأكيد وصولها.`;
-          window.open(`https://wa.me/${item.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+          if (!whatsappWindow) {
+            setError("تعذر فتح واتساب. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.");
+            return;
+          }
+          whatsappWindow.location.href = link.whatsappUrl;
           markSent.mutate({ id: item.id }, { onSuccess: refresh });
           setNotice("تم فتح واتساب. راجع الرسالة واضغط إرسال؛ لا يؤكد النظام التسليم.");
         } else setNotice("تم نسخ رابط الدعوة الثابت.");
         refresh();
       },
-      onError: (err) => setError(err instanceof Error ? err.message : "تعذر إنشاء الرابط."),
+      onError: (err) => { whatsappWindow?.close(); setError(err instanceof Error ? err.message : "تعذر إنشاء الرابط."); },
     });
   };
   const exportCsv = async () => {

@@ -173,6 +173,8 @@ directoryDb.exec(`
     referral_source TEXT,
     newsletter_weekly INTEGER NOT NULL DEFAULT 0,
     buyers_group INTEGER NOT NULL DEFAULT 0,
+    terms_accepted INTEGER NOT NULL DEFAULT 0,
+    terms_accepted_at TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS buyer_users (
@@ -405,6 +407,12 @@ if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => colu
 if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "other_business_type")) {
   directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN other_business_type TEXT");
 }
+if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "terms_accepted")) {
+  directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN terms_accepted INTEGER NOT NULL DEFAULT 0");
+}
+if (buyerRequestColumns.length > 0 && !buyerRequestColumns.some((column) => column.name === "terms_accepted_at")) {
+  directoryDb.exec("ALTER TABLE buyer_requests ADD COLUMN terms_accepted_at TEXT");
+}
 const buyerUserColumns = directoryDb
   .prepare("PRAGMA table_info(buyer_users)")
   .all() as Array<{ name: string; notnull: number }>;
@@ -485,7 +493,7 @@ directoryDb.exec(`
     buyer_id INTEGER UNIQUE REFERENCES buyer_users(id),
     created_at TEXT NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS idx_buyer_invitations_phone
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_buyer_invitations_phone
     ON buyer_invitations (phone);
   CREATE TABLE IF NOT EXISTS buyer_search_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
