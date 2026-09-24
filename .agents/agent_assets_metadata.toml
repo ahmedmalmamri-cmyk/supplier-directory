@@ -238,3 +238,17 @@ mtime_ms = 1790290498715
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c09fe534-de2d-4e54-a13e-f41b6f3479f8/b6c760ec-e690-4866-ab27-246f93efd34a"
 storage_version_token = "1790290535691741"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "W7Xg3wi8p6zPS2cXXXkN4"
+uri = "file://screenshots/admin-categories.jpg"
+type = "image"
+title = "لقطة مسار إدارة التصنيفات"
+description = "لقطة من /admin/categories. المعاينة الحالية غير مسجلة الدخول، لذا تعرض شاشة دخول الإدارة ولا تعرض قائمة التصنيفات المحمية."
+logical_id = "d8957aed-2113-4d43-9dfa-88c2ab5dab4d"
+content_hash = "sha256:3940f2c66c2d3046fb8ea82ba14f6a31de6045a0e21e43171aa7a0d0b0972b7a"
+size = 59972
+mtime_ms = 1790292358197
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d8957aed-2113-4d43-9dfa-88c2ab5dab4d/6ed9a3c0-d908-49bf-abfd-e1cdd708f44f"
+storage_version_token = "1790292683655713"
+content_type = "image/jpeg"
