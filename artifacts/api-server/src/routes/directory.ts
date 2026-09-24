@@ -136,11 +136,12 @@ router.get("/item-categories", (_req, res): void => {
     createdAt: string;
     updatedAt: string;
   }>;
+  const supplierCounts = itemCategorySupplierCounts(rows);
   const categories = rows.map((category) => ({
     ...category,
     displayOnHome: Boolean(category.displayOnHome),
     isActive: Boolean(category.isActive),
-    supplierCount: itemCategorySupplierCounts(rows).get(category.id) ?? 0,
+    supplierCount: supplierCounts.get(category.id) ?? 0,
   }));
   res.json(ListItemCategoriesResponse.parse(categories));
 });

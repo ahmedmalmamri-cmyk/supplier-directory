@@ -31,6 +31,7 @@ export interface ItemCategory {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  supplierCount: number;
 }
 
 export type AdminItemCategory = ItemCategory & {

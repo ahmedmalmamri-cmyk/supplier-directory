@@ -76,7 +76,8 @@ export const ListItemCategoriesResponseItem = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 })
 export const ListItemCategoriesResponse = zod.array(ListItemCategoriesResponseItem)
 
@@ -92,7 +93,8 @@ export const ListAdminItemCategoriesResponseItem = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 }).and(zod.object({
   "supplierCount": zod.number().int()
 }))
@@ -125,7 +127,8 @@ export const CreateAdminItemCategoryResponse = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 }).and(zod.object({
   "supplierCount": zod.number().int()
 }))
@@ -175,7 +178,8 @@ export const UpdateAdminItemCategoryResponse = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 }).and(zod.object({
   "supplierCount": zod.number().int()
 }))
@@ -211,7 +215,8 @@ export const TransferAdminItemCategoryResponse = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 }).and(zod.object({
   "supplierCount": zod.number().int()
 }))
@@ -1107,7 +1112,8 @@ export const GetSupplierInviteResponse = zod.object({
   "displayOrder": zod.number().int(),
   "isActive": zod.boolean(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
 })),
   "readyMixSubtypes": zod.array(zod.string())
 })
