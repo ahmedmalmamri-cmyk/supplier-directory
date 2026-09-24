@@ -275,6 +275,33 @@ directoryDb.exec(`
   );
 `);
 
+const itemCategoryColumns = directoryDb
+  .prepare("PRAGMA table_info(item_categories)")
+  .all() as Array<{ name: string }>;
+if (!itemCategoryColumns.some((column) => column.name === "parent_id")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN parent_id INTEGER REFERENCES item_categories(id)");
+}
+if (!itemCategoryColumns.some((column) => column.name === "description")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN description TEXT");
+}
+if (!itemCategoryColumns.some((column) => column.name === "created_at")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN created_at TEXT NOT NULL DEFAULT ''");
+}
+if (!itemCategoryColumns.some((column) => column.name === "updated_at")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+}
+directoryDb.exec(`
+  CREATE INDEX IF NOT EXISTS idx_item_categories_parent_order
+    ON item_categories (parent_id, display_order, id);
+`);
+const itemCategoryTimestamp = new Date().toISOString();
+directoryDb.prepare(`
+  UPDATE item_categories
+  SET created_at = CASE WHEN created_at = '' THEN ? ELSE created_at END,
+      updated_at = CASE WHEN updated_at = '' THEN ? ELSE updated_at END
+  WHERE created_at = '' OR updated_at = ''
+`).run(itemCategoryTimestamp, itemCategoryTimestamp);
+
 const registrationColumns = directoryDb
   .prepare("PRAGMA table_info(registration_interests)")
   .all() as Array<{ name: string }>;
@@ -583,15 +610,85 @@ const upsertItemCategory = directoryDb.prepare(`
   INSERT INTO item_categories
     (id, name, icon, group_name, display_on_home, display_order, is_active)
   VALUES (?, ?, ?, ?, ?, ?, 1)
-  ON CONFLICT(id) DO UPDATE SET
-    name = excluded.name,
-    icon = excluded.icon,
-    group_name = excluded.group_name,
-    display_on_home = excluded.display_on_home,
-    display_order = excluded.display_order,
-    is_active = excluded.is_active
+  ON CONFLICT(id) DO NOTHING
 `);
 itemCategorySeed.forEach((item) => upsertItemCategory.run(...item));
+
+const cakeFillingsMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("cake-fillings-item-categories") as { name: string } | undefined;
+if (!cakeFillingsMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const existingParent = directoryDb.prepare(
+      "SELECT id FROM item_categories WHERE name = ?",
+    ).get("حشوات الكيك") as { id: number } | undefined;
+    const parentId = existingParent?.id ?? (
+      directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM item_categories").get() as { id: number }
+    ).id;
+    if (existingParent) {
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET icon = '🍰', group_name = 'حشوات الكيك', parent_id = NULL,
+            display_on_home = 1, display_order = 13, is_active = 1, updated_at = ?
+        WHERE id = ?
+      `).run(now, parentId);
+    } else {
+      directoryDb.prepare(`
+        INSERT INTO item_categories
+          (id, name, icon, group_name, parent_id, description, display_on_home,
+           display_order, is_active, created_at, updated_at)
+        VALUES (?, 'حشوات الكيك', '🍰', 'حشوات الكيك', NULL,
+          'حشوات وكريمات تناسب المخابز ومحلات الحلويات.', 1, 13, 1, ?, ?)
+      `).run(parentId, now, now);
+    }
+
+    const cakeFillingSubcategories = [
+      "حشوة توت",
+      "حشوة فراولة",
+      "حشوة كريمة لوتس",
+      "حشوة كريمة فستق",
+      "حشوة كريمة نوتيلا",
+      "حشوة شوكولاتة",
+      "حشوة كراميل",
+      "حشوة مانجو",
+      "حشوة ليمون",
+      "حشوة تفاح",
+    ];
+    for (const [index, name] of cakeFillingSubcategories.entries()) {
+      const existing = directoryDb.prepare(
+        "SELECT id FROM item_categories WHERE name = ?",
+      ).get(name) as { id: number } | undefined;
+      if (existing) {
+        directoryDb.prepare(`
+          UPDATE item_categories
+          SET group_name = 'حشوات الكيك', parent_id = ?, display_on_home = 0,
+              display_order = ?, is_active = 1, updated_at = ?
+          WHERE id = ?
+        `).run(parentId, index + 1, now, existing.id);
+      } else {
+        const id = (
+          directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM item_categories").get() as { id: number }
+        ).id;
+        directoryDb.prepare(`
+          INSERT INTO item_categories
+            (id, name, icon, group_name, parent_id, display_on_home,
+             display_order, is_active, created_at, updated_at)
+          VALUES (?, ?, '🍰', 'حشوات الكيك', ?, 0, ?, 1, ?, ?)
+        `).run(id, name, parentId, index + 1, now, now);
+      }
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at)
+      VALUES ('cake-fillings-item-categories', ?)
+    `).run(now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
 
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")
