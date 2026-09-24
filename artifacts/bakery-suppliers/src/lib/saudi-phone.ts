@@ -1,4 +1,4 @@
-export const invalidSaudiPhoneMessage = "أدخل رقم جوال سعودي صحيحاً، مثل 05XXXXXXXX أو 9665XXXXXXXX.";
+export const invalidSaudiPhoneMessage = "أدخل رقم جوال سعودي صحيحاً، مثل 0551234567 أو 966551234567.";
 
 export function normalizeSaudiMobile(value: string) {
   const westernDigits = value.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
