@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  ToggleLeft,
   ToggleRight,
   Trash2,
   Users,
@@ -120,6 +121,7 @@ export default function AdminItemCategoriesTab() {
   const [form, setForm] = useState<CategoryFormState>(emptyForm);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [groupFilter, setGroupFilter] = useState("all");
   const [activityOpen, setActivityOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -192,6 +194,10 @@ export default function AdminItemCategoriesTab() {
   });
 
   const categories = categoriesQuery.data ?? [];
+  const groupNames = useMemo(
+    () => [...new Set(categories.map((category) => category.groupName))].sort((a, b) => a.localeCompare(b, "ar")),
+    [categories],
+  );
   const byId = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const childrenByParent = useMemo(() => {
     const grouped = new Map<number | null, AdminItemCategory[]>();
@@ -210,12 +216,13 @@ export default function AdminItemCategoriesTab() {
     categories.forEach((category) => {
       const matchesStatus =
         statusFilter === "all" || (statusFilter === "active" ? category.isActive : !category.isActive);
+      const matchesGroup = groupFilter === "all" || category.groupName === groupFilter;
       const matchesSearch =
         !normalizedSearch ||
         category.name.toLocaleLowerCase("ar").includes(normalizedSearch) ||
         category.groupName.toLocaleLowerCase("ar").includes(normalizedSearch) ||
         categoryPath(category, byId).toLocaleLowerCase("ar").includes(normalizedSearch);
-      if (matchesStatus && matchesSearch) {
+      if (matchesStatus && matchesGroup && matchesSearch) {
         ids.add(category.id);
         let parentId = category.parentId;
         while (parentId !== null) {
@@ -225,7 +232,7 @@ export default function AdminItemCategoriesTab() {
       }
     });
     return ids;
-  }, [categories, byId, search, statusFilter]);
+  }, [categories, byId, search, statusFilter, groupFilter]);
 
   const visibleRoots = (childrenByParent.get(null) ?? []).filter((category) => filteredIds.has(category.id));
   const activeCount = categories.filter((category) => category.isActive).length;
@@ -383,7 +390,7 @@ export default function AdminItemCategoriesTab() {
                   className="h-11 w-full rounded-xl border bg-background pr-10 pl-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <select
                   data-testid="select-category-status-filter"
@@ -395,6 +402,18 @@ export default function AdminItemCategoriesTab() {
                   <option value="all">كل الحالات</option>
                   <option value="active">النشطة فقط</option>
                   <option value="inactive">المعطلة فقط</option>
+                </select>
+                <select
+                  data-testid="select-category-group-filter"
+                  value={groupFilter}
+                  onChange={(event) => setGroupFilter(event.target.value)}
+                  className="h-11 rounded-xl border bg-background px-3 text-sm font-bold outline-none focus:border-primary"
+                  aria-label="تصفية حسب مجموعة التصنيف"
+                >
+                  <option value="all">كل المجموعات</option>
+                  {groupNames.map((groupName) => (
+                    <option key={groupName} value={groupName}>{groupName}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -456,8 +475,13 @@ export default function AdminItemCategoriesTab() {
                     setModal({ type: "transfer", category: item });
                   }}
                   onDelete={(item) => setModal({ type: "delete", category: item })}
+                  onToggleActive={(item) => updateCategory.mutate({
+                    id: item.id,
+                    data: { isActive: !item.isActive },
+                  })}
                   onReorder={reorder}
                   reorderPending={reorderCategories.isPending}
+                  togglePending={updateCategory.isPending}
                 />
               ))}
             </div>
@@ -549,8 +573,10 @@ function CategoryBranch({
   onEdit,
   onTransfer,
   onDelete,
+  onToggleActive,
   onReorder,
   reorderPending,
+  togglePending,
 }: {
   category: AdminItemCategory;
   level: number;
@@ -563,8 +589,10 @@ function CategoryBranch({
   onEdit: (category: AdminItemCategory) => void;
   onTransfer: (category: AdminItemCategory) => void;
   onDelete: (category: AdminItemCategory) => void;
+  onToggleActive: (category: AdminItemCategory) => void;
   onReorder: (category: AdminItemCategory, direction: -1 | 1) => void;
   reorderPending: boolean;
+  togglePending: boolean;
 }) {
   const children = (childrenByParent.get(category.id) ?? []).filter((child) => filteredIds.has(child.id));
   const hasChildren = children.length > 0;
@@ -606,6 +634,22 @@ function CategoryBranch({
               <button data-testid={`button-move-category-down-${category.id}`} type="button" onClick={() => onReorder(category, 1)} disabled={position < 0 || position >= siblings.length - 1 || reorderPending} className="rounded-l-lg p-2 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="نقل لأسفل"><ArrowDown className="h-4 w-4" /></button>
             </div>
             {category.parentId === null && <button data-testid={`button-add-child-category-${category.id}`} type="button" onClick={() => onCreate(category.id)} className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold hover:bg-muted"><Plus className="h-3.5 w-3.5" />فرعي</button>}
+            <button
+              data-testid={`button-toggle-active-category-${category.id}`}
+              type="button"
+              onClick={() => onToggleActive(category)}
+              disabled={togglePending}
+              aria-label={category.isActive ? `تعطيل ${category.name}` : `تفعيل ${category.name}`}
+              aria-pressed={category.isActive}
+              title={category.isActive ? "تعطيل التصنيف" : "تفعيل التصنيف"}
+              className={`rounded-lg border p-2 transition disabled:opacity-50 ${
+                category.isActive
+                  ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  : "border-amber-200 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              {category.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+            </button>
             <button data-testid={`button-edit-category-${category.id}`} type="button" onClick={() => onEdit(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`تعديل ${category.name}`}><Edit3 className="h-4 w-4" /></button>
             <button data-testid={`button-transfer-category-${category.id}`} type="button" onClick={() => onTransfer(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`نقل ${category.name}`}><Move className="h-4 w-4" /></button>
             <button data-testid={`button-delete-category-${category.id}`} type="button" onClick={() => onDelete(category)} disabled={!category.isActive} className="rounded-lg border border-rose-200 p-2 text-rose-700 hover:bg-rose-50 disabled:opacity-30" aria-label={`تعطيل ${category.name}`}><Trash2 className="h-4 w-4" /></button>
@@ -615,7 +659,7 @@ function CategoryBranch({
       {hasChildren && isExpanded && (
         <div className="mt-2 space-y-2 border-r-2 border-dashed border-secondary pr-3">
           {children.map((child) => (
-            <CategoryBranch key={child.id} category={child} level={level + 1} byId={byId} childrenByParent={childrenByParent} filteredIds={filteredIds} expanded={expanded} onToggle={onToggle} onCreate={onCreate} onEdit={onEdit} onTransfer={onTransfer} onDelete={onDelete} onReorder={onReorder} reorderPending={reorderPending} />
+            <CategoryBranch key={child.id} category={child} level={level + 1} byId={byId} childrenByParent={childrenByParent} filteredIds={filteredIds} expanded={expanded} onToggle={onToggle} onCreate={onCreate} onEdit={onEdit} onTransfer={onTransfer} onDelete={onDelete} onToggleActive={onToggleActive} onReorder={onReorder} reorderPending={reorderPending} togglePending={togglePending} />
           ))}
         </div>
       )}

@@ -41,9 +41,9 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 
-export default function AdminPage() {
+export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: Tab }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [tab, setTab] = useState<Tab>("suppliers");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [supplierRequests, setSupplierRequests] = useState<SupplierRequest[]>([]);
   const [buyerRequests, setBuyerRequests] = useState<BuyerRequest[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
