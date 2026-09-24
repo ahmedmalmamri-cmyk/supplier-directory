@@ -8,3 +8,9 @@ Supplier accounts do not receive moderation authority. An approved supplier gets
 **Why:** Existing supplier requests had no password or login identity, and trusting a supplier ID from the browser would allow fabricated reports or cross-supplier access.
 
 **How to apply:** Keep supplier identity server-derived from the signed session, keep contact logs as the evidence boundary, and preserve an admin review trail for every buyer status change.
+
+The administrator entry point should remain easy to discover from desktop and mobile navigation; hiding the URL alone is not a security control.
+
+**Why:** Removing the navigation link made routine admin work unnecessarily difficult, while admin endpoints already require an authenticated admin session.
+
+**How to apply:** Keep a compact `/admin` link in the shared layout, and rely on server-side session checks to protect admin data and actions.

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, Moon, Sun, UserRound } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, LayoutGrid, UserPlus, Rocket, Moon, Sun, UserRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 
@@ -41,6 +41,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">انضم للدليل</Link>
               <Link href={user ? "/buyer/profile" : "/login"} className="inline-flex items-center gap-1 hover:text-foreground transition-colors"><UserRound className="h-4 w-4" />{user ? "حسابي" : "دخول"}</Link>
+              <Link href="/admin" aria-label="دخول لوحة الإدارة" title="لوحة الإدارة" className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ShieldCheck className="h-4 w-4" /> الإدارة</Link>
             </nav>
           </div>
 
@@ -68,6 +69,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Users className="h-4 w-4"/> الموردون</Link>
             <Link href={user ? "/buyer/profile" : "/login"} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><UserRound className="h-4 w-4"/>{user ? "حسابي" : "دخول"}</Link>
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="mt-1 flex min-h-11 items-center gap-3 rounded-xl bg-primary px-3 py-2 font-extrabold text-primary-foreground hover:bg-primary/90"><UserPlus className="h-4 w-4"/> انضم للدليل</Link>
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="mt-2 flex min-h-11 items-center gap-3 border-t border-border px-3 pt-3 text-xs font-bold text-muted-foreground hover:text-foreground"><ShieldCheck className="h-4 w-4"/> دخول الإدارة</Link>
           </nav>
         </div>
       )}
