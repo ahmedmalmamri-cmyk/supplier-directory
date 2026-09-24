@@ -1,13 +1,11 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Search as SearchIcon, Package, Users } from "lucide-react";
 import { getSearchDirectoryQueryKey, useSearchDirectory } from "@workspace/api-client-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export default function SearchPage() {
-  const [location] = useLocation();
-  const searchParams = new URLSearchParams(location.split('?')[1] || "");
-  const q = searchParams.get("q") || "";
+  const q = new URLSearchParams(window.location.search).get("q") || "";
 
   const { data, isLoading, error } = useSearchDirectory(
     { q },

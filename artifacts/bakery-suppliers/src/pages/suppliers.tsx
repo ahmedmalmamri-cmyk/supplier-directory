@@ -2,25 +2,35 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useListSuppliers } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { Search, MapPin, Star, BadgeCheck, Phone, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { Search, MapPin, Star, BadgeCheck, CheckCircle2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // We'll create this
+import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/SupplierFilterControls";
 
 export default function SuppliersPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [city, setCity] = useState("");
-  const [verified, setVerified] = useState("");
+  const [initialParams] = useState(() => new URLSearchParams(window.location.search));
+  const [searchTerm, setSearchTerm] = useState(initialParams.get("q") ?? "");
+  const initialType = initialParams.get("type") ?? "";
+  const [city, setCity] = useState(initialParams.get("city") ?? "");
+  const [type, setType] = useState(SUPPLIER_TYPES.includes(initialType as typeof SUPPLIER_TYPES[number]) ? initialType : "");
+  const [rating, setRating] = useState(initialParams.get("rating") ?? "");
+  const initialPackage = initialParams.get("package");
+  const [supplierPackage, setSupplierPackage] = useState<"" | "verified" | "featured">(initialPackage === "verified" || initialPackage === "featured" ? initialPackage : "");
   const [sort, setSort] = useState<"newest" | "rating" | "alphabetical">("rating");
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data: suppliers, isLoading, error } = useListSuppliers(
-    {
+  const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
+  const { data: suppliers, isLoading, error } = useListSuppliers({
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
       ...(city ? { city } : {}),
-      ...(verified ? { verified: verified === "true" } : {}),
+      ...(type ? { type } : {}),
+      ...(rating ? { rating: Number(rating) } : {}),
+      ...(supplierPackage ? { package: supplierPackage } : {}),
       sort,
-    },
-    undefined
+    });
+  const cities = useMemo(
+    () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
+    [allSuppliers],
   );
 
   return (
@@ -41,21 +51,20 @@ export default function SuppliersPage() {
             />
             <Search className="w-5 h-5 absolute right-4 top-3.5 text-muted-foreground" />
           </div>
-          <div className="max-w-3xl mx-auto mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <select aria-label="فلترة حسب المدينة" value={city} onChange={(event) => setCity(event.target.value)} className="h-11 px-3 rounded-lg border bg-background text-sm">
-              <option value="">كل المدن</option>
-              {["الرياض", "جدة", "الدمام", "مكة", "المدينة"].map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-            <select aria-label="فلترة حسب التوثيق" value={verified} onChange={(event) => setVerified(event.target.value)} className="h-11 px-3 rounded-lg border bg-background text-sm">
-              <option value="">كل الموردين</option>
-              <option value="true">الموردون الموثقون</option>
-              <option value="false">غير الموثقين</option>
-            </select>
-            <select aria-label="ترتيب الموردين" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} className="h-11 px-3 rounded-lg border bg-background text-sm">
-              <option value="rating">الأعلى تقييماً</option>
-              <option value="newest">الأحدث</option>
-              <option value="alphabetical">أبجدياً</option>
-            </select>
+          <div className="mx-auto mt-4 max-w-5xl">
+            <SupplierFilterControls
+              city={city}
+              onCityChange={setCity}
+              type={type}
+              onTypeChange={setType}
+              rating={rating}
+              onRatingChange={setRating}
+              supplierPackage={supplierPackage}
+              onPackageChange={setSupplierPackage}
+              sort={sort}
+              onSortChange={setSort}
+              cities={cities}
+            />
           </div>
         </div>
       </div>
@@ -84,6 +93,12 @@ export default function SuppliersPage() {
                       <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         موثق
+                      </span>
+                    )}
+                    {supplier.isFeatured && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
+                        <BadgeCheck className="w-3.5 h-3.5" />
+                        مميز
                       </span>
                     )}
                   </div>

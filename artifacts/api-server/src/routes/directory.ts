@@ -174,11 +174,32 @@ router.get("/suppliers", (req, res): void => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { q, city, verified, sort = "rating" } = parsed.data;
+  const { q, city, type, rating, package: supplierPackage, verified, sort = "rating" } = parsed.data;
   const values: (string | number)[] = [];
   const clauses: string[] = ["s.is_active = 1"];
-  if (q) { clauses.push("(s.name LIKE ? OR s.description LIKE ?)"); values.push(`%${q}%`, `%${q}%`); }
+  if (q) {
+    clauses.push("(s.name LIKE ? OR s.description LIKE ? OR s.city LIKE ?)");
+    values.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
+  if (type) {
+    const pattern = `%${type}%`;
+    clauses.push(`(
+      EXISTS (
+        SELECT 1 FROM supplier_requests sr
+        WHERE sr.id = s.request_id AND sr.categories LIKE ?
+      )
+      OR EXISTS (
+        SELECT 1 FROM products tp
+        JOIN categories tc ON tc.id = tp.category_id
+        WHERE tp.supplier_id = s.id AND (tc.name LIKE ? OR tp.name LIKE ?)
+      )
+    )`);
+    values.push(pattern, pattern, pattern);
+  }
+  if (rating !== undefined) { clauses.push("s.average_rating >= ?"); values.push(rating); }
+  if (supplierPackage === "verified") { clauses.push("s.is_verified = 1"); }
+  if (supplierPackage === "featured") { clauses.push("s.is_featured = 1"); }
   if (verified !== undefined) { clauses.push("s.is_verified = ?"); values.push(verified ? 1 : 0); }
   const order = sort === "newest"
     ? "s.created_at DESC"

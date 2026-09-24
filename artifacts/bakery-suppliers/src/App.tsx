@@ -13,7 +13,6 @@ import {
 
 import Home from '@/pages/home';
 import CategoryPage from '@/pages/category';
-import CategoriesPage from '@/pages/categories';
 import SuppliersPage from '@/pages/suppliers';
 import SupplierProfilePage from '@/pages/supplier-profile';
 import ProductDetailPage from '@/pages/product-detail';
@@ -45,7 +44,6 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/categories" component={CategoriesPage} />
         <Route path="/category/:id" component={CategoryPage} />
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/login" component={LoginChoicePage} />
