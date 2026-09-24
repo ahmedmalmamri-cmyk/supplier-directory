@@ -1,15 +1,18 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { useAdminLogin, useAdminLogout } from "@workspace/api-client-react";
+import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
+import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "stats" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "stats" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
   deliversToOtherCities: boolean; otherCities: string | null; categories: string[]; minOrder: string | null; description: string;
   commercialLicenseUrl: string | null; idCardUrl: string | null; healthCertificateUrl: string | null;
-  status: "pending" | "approved" | "rejected"; rejectionReason: string | null; adminNote: string | null;
+  status: "pending" | "pending_review" | "approved" | "rejected"; rejectionReason: string | null; adminNote: string | null;
+  invitedSupplierId: number | null; productImages: string[];
   createdAt: string; reviewedAt: string | null;
 };
 type BuyerRequest = { id: number; requestCode: string; fullName: string; phone: string; email: string | null; city: string; businessType: string; otherBusinessType: string | null; businessName: string | null; referralSource: string | null; newsletterWeekly: boolean; buyersGroup: boolean; createdAt: string };
@@ -29,6 +32,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "moderation", label: "بلاغات أصحاب الأعمال", icon: Flag },
   { id: "contacts", label: "سجل التواصل", icon: MessageCircle },
   { id: "directory", label: "الموردون المعتمدون", icon: CheckCircle2 },
+  { id: "invitations", label: "دعوات الموردين", icon: Send },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
@@ -115,7 +119,7 @@ export default function AdminPage() {
         <aside className="lg:w-60 shrink-0">
           <div className="bg-card border rounded-2xl p-3 lg:sticky lg:top-24">
             {tabs.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" onClick={() => setTab(id)} className={`w-full flex items-center gap-3 text-right px-3 py-3 rounded-xl text-sm font-bold transition-colors ${tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+              <button data-testid={`button-admin-tab-${id}`} key={id} type="button" onClick={() => setTab(id)} className={`w-full flex items-center gap-3 text-right px-3 py-3 rounded-xl text-sm font-bold transition-colors ${tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                 <Icon className="w-4 h-4" />{label}
                 {id === "suppliers" && (stats?.pendingSupplierRequests ?? 0) > 0 && <span className="mr-auto rounded-full bg-amber-200 text-amber-900 text-[11px] px-2 py-0.5">{stats?.pendingSupplierRequests}</span>}
               </button>
@@ -136,6 +140,7 @@ export default function AdminPage() {
           {tab === "moderation" && <BuyerModerationTab reports={buyerReports} users={moderationUsers} onAction={act} />}
           {tab === "contacts" && <ContactLogsTab logs={contactLogs} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
+           {tab === "invitations" && <SupplierInvitationsPanel />}
           {tab === "stats" && <StatsTab stats={stats} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
@@ -156,12 +161,62 @@ function LoginCard({ login }: { login: ReturnType<typeof useAdminLogin> }) {
 function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { requests: SupplierRequest[]; selected: SupplierRequest | null; onSelect: (item: SupplierRequest | null) => void; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
   const [rejectReason, setRejectReason] = useState("");
   const [note, setNote] = useState("");
-  return <div className="space-y-5">{requests.length === 0 ? <Empty title="لا توجد طلبات موردين" description="ستظهر طلبات التسجيل الجديدة هنا." /> : requests.map((request) => <article key={request.id} className="bg-card border rounded-2xl p-5"><div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 mb-3"><span className="text-xs font-bold text-muted-foreground" dir="ltr">{request.requestCode}</span><h3 className="text-xl font-bold">{request.businessName}</h3><Status status={request.status} /></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-muted-foreground"><span>المدينة: {request.city}</span><span>النشاط: {request.businessType}</span><span dir="ltr" className="text-right">{request.phone}</span><span>{formatDate(request.createdAt)}</span></div></div><div className="flex flex-wrap gap-2 shrink-0"><button type="button" onClick={() => onSelect(selected?.id === request.id ? null : request)} className="rounded-xl border px-3 py-2 text-sm font-bold hover:bg-muted"><FileText className="w-4 h-4 inline ml-1" /> عرض التفاصيل</button>{request.status === "pending" && <><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-green-600 text-white px-3 py-2 text-sm font-bold hover:bg-green-700"><CheckCircle2 className="w-4 h-4 inline ml-1" /> موافقة</button><button type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-red-200 text-red-700 px-3 py-2 text-sm font-bold hover:bg-red-50"><XCircle className="w-4 h-4 inline ml-1" /> رفض</button></>}</div></div>{request.status === "pending" && rejectReason !== "" && <div className="mt-4 flex flex-col sm:flex-row gap-2"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-red-600 text-white px-4 font-bold">تأكيد الرفض</button></div>}{selected?.id === request.id && <div className="mt-5 border-t pt-5 space-y-4"><DetailGrid request={request} /><div><label className="block text-sm font-bold mb-2">طلب معلومات إضافية</label><div className="flex gap-2"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ما المعلومات المطلوبة؟" className="flex-1 h-10 px-3 rounded-lg border bg-background" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/request-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, "تم حفظ طلب المعلومات.")} className="rounded-lg border px-4 font-bold">حفظ</button></div></div></div>}</article>)}</div>;
+  return (
+    <div className="space-y-5">
+      {requests.length === 0 ? <Empty title="لا توجد طلبات موردين" description="ستظهر طلبات التسجيل الجديدة هنا." /> : requests.map((request) => {
+        const pending = request.status === "pending" || request.status === "pending_review";
+        return (
+          <article key={request.id} className="rounded-2xl border bg-card p-5">
+            <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+              <div className="min-w-0">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground" dir="ltr">{request.requestCode}</span>
+                  <h3 className="text-xl font-bold">{request.businessName}</h3>
+                  <Status status={request.status} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground md:grid-cols-4">
+                  <span>المدينة: {request.city}</span><span>النشاط: {request.businessType}</span>
+                  <span dir="ltr" className="text-right">{request.phone}</span><span>{formatDate(request.createdAt)}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button data-testid={`button-view-supplier-request-${request.id}`} type="button" onClick={() => onSelect(selected?.id === request.id ? null : request)} className="rounded-xl border px-3 py-2 text-sm font-bold hover:bg-muted"><FileText className="ml-1 inline h-4 w-4" /> عرض التفاصيل</button>
+                {pending && <>
+                  <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-green-600 px-3 py-2 text-sm font-bold text-white hover:bg-green-700"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
+                  <button data-testid={`button-reject-supplier-request-${request.id}`} type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-red-200 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-50"><XCircle className="ml-1 inline h-4 w-4" /> رفض</button>
+                </>}
+              </div>
+            </div>
+            {pending && rejectReason !== "" && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-red-600 px-4 font-bold text-white">تأكيد الرفض</button></div>}
+            {selected?.id === request.id && <div className="mt-5 space-y-4 border-t pt-5"><DetailGrid request={request} /><div><label className="mb-2 block text-sm font-bold">طلب معلومات إضافية</label><div className="flex gap-2"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ما المعلومات المطلوبة؟" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/request-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, "تم حفظ طلب المعلومات.")} className="rounded-lg border px-4 font-bold">حفظ</button></div></div></div>}
+          </article>
+        );
+      })}
+    </div>
+  );
 }
 
 function DetailGrid({ request }: { request: SupplierRequest }) {
   const docs = [["السجل التجاري", request.commercialLicenseUrl], ["الهوية", request.idCardUrl], ["الشهادة الصحية", request.healthCertificateUrl]] as const;
-  return <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm bg-muted/30 rounded-xl p-4"><Info label="الشخص المسؤول" value={request.contactPerson} /><Info label="الواتساب" value={request.whatsapp} /><Info label="البريد" value={request.email || "غير مضاف"} /><Info label="الموقع" value={request.website || "غير مضاف"} /><Info label="العنوان" value={request.address || "غير مضاف"} /><Info label="مدن أخرى" value={request.otherCities || "لا يوجد"} /><Info label="الفئات" value={request.categories.join("، ")} /><Info label="الحد الأدنى" value={request.minOrder || "غير محدد"} /><div className="md:col-span-2"><strong>النبذة:</strong><p className="text-muted-foreground leading-7 mt-1">{request.description}</p></div><div className="md:col-span-2 flex flex-wrap gap-2">{docs.map(([label, url]) => url ? <a key={label} href={url} target="_blank" rel="noreferrer" className="text-primary font-bold hover:underline">{label}</a> : <span key={label} className="text-muted-foreground">{label}: غير مرفق</span>)}</div>{request.rejectionReason && <Info label="سبب الرفض" value={request.rejectionReason} />}</div>;
+  return (
+    <div className="grid grid-cols-1 gap-3 rounded-xl bg-muted/30 p-4 text-sm md:grid-cols-2">
+      <Info label="الشخص المسؤول" value={request.contactPerson} />
+      <Info label="الواتساب" value={request.whatsapp} />
+      <Info label="البريد" value={request.email || "غير مضاف"} />
+      <Info label="الموقع" value={request.website || "غير مضاف"} />
+      <Info label="العنوان" value={request.address || "غير مضاف"} />
+      <Info label="مدن أخرى" value={request.otherCities || "لا يوجد"} />
+      <Info label="الفئات" value={request.categories.join("، ")} />
+      <Info label="الحد الأدنى" value={request.minOrder || "غير محدد"} />
+      <div className="md:col-span-2"><strong>النبذة:</strong><p className="mt-1 leading-7 text-muted-foreground">{request.description}</p></div>
+      {request.productImages.length > 0 && <div className="md:col-span-2">
+        <strong>صور المنتجات المرفقة</strong>
+        <div className="mt-2 flex flex-wrap gap-3">{request.productImages.map((image, index) => <a data-testid={`link-request-product-image-${request.id}-${index}`} key={image} href={image} target="_blank" rel="noreferrer" className="h-24 w-24 overflow-hidden rounded-lg border"><img src={image} alt={`صورة منتج ${index + 1}`} className="h-full w-full object-cover" /></a>)}</div>
+      </div>}
+      <div className="flex flex-wrap gap-2 md:col-span-2">{docs.map(([label, url]) => url ? <a key={label} href={url} target="_blank" rel="noreferrer" className="font-bold text-primary hover:underline">{label}</a> : <span key={label} className="text-muted-foreground">{label}: غير مرفق</span>)}</div>
+      {request.rejectionReason && <Info label="سبب الرفض" value={request.rejectionReason} />}
+    </div>
+  );
 }
 
 function BuyerRequestsTab({ requests, onDelete }: { requests: BuyerRequest[]; onDelete: (id: number) => void }) {
@@ -222,6 +277,7 @@ function BuyerModerationTab({ reports, users, onAction }: { reports: BuyerReport
 }
 
 function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]; settings: Settings | null; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
+  const queryClient = useQueryClient();
   const [newProduct, setNewProduct] = useState<{ supplierId: number; name: string; categoryId: string; imageUrl: string; imageDataUrl: string } | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [editing, setEditing] = useState<Pick<Supplier, "id" | "name" | "city" | "description" | "phone" | "whatsapp"> | null>(null);
@@ -229,6 +285,33 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   const [draggingProductId, setDraggingProductId] = useState<number | null>(null);
   const [orderLoading, setOrderLoading] = useState<number | null>(null);
   const [accessEditing, setAccessEditing] = useState<{ supplierId: number; password: string } | null>(null);
+  const generateInvitation = useGenerateSupplierInvitation();
+  const markInvitationSent = useMarkSupplierInvitationSent();
+
+  const sendInvitation = (supplier: Supplier) => {
+    const popup = window.open("about:blank", "_blank");
+    generateInvitation.mutate({ id: supplier.id }, {
+      onSuccess: (result) => {
+        const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const link = `${window.location.origin}${basePath}/invite/${result.token}`;
+        const message = `مرحباً ${result.supplierName}،\nيسر دليل موردي المخابز والحلويات دعوتكم لاستكمال ملف منشأتكم عبر الرابط:\n${link}\nنراجع المعلومات قبل نشرها لضمان دقة الدليل.`;
+        void navigator.clipboard?.writeText(link);
+        const whatsappUrl = `https://wa.me/${result.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+        if (popup) popup.location.href = whatsappUrl;
+        else window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+        markInvitationSent.mutate({ id: supplier.id }, {
+          onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: getListSupplierInvitationsQueryKey() });
+            void queryClient.invalidateQueries({ queryKey: getGetSupplierInvitationStatsQueryKey() });
+          },
+        });
+      },
+      onError: (error) => {
+        popup?.close();
+        window.alert(error instanceof Error ? error.message : "تعذر إنشاء الدعوة.");
+      },
+    });
+  };
 
   const openOrderEditor = async (supplierId: number) => {
     setOrderLoading(supplierId);
@@ -293,6 +376,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
            {(supplier.googleCategory || supplier.googleRating) && <p className="mt-2 text-xs font-bold text-primary">{supplier.googleCategory || "مورد"}{supplier.googleRating ? ` · تقييم Google: ${supplier.googleRating.toFixed(1)}${supplier.googleReviewCount ? ` (${supplier.googleReviewCount})` : ""}` : ""}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
+          <button data-testid={`button-send-invitation-${supplier.id}`} type="button" disabled={generateInvitation.isPending || markInvitationSent.isPending} onClick={() => sendInvitation(supplier)} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"><Send className="inline h-4 w-4 ml-1" /> {generateInvitation.isPending ? "جاري إنشاء الرابط..." : "إرسال دعوة"}</button>
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
            <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "", imageDataUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>
@@ -453,9 +537,9 @@ function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | n
   </div>;
 }
 
-function Status({ status }: { status: "pending" | "approved" | "rejected" }) {
-  const labels = { pending: "معلق", approved: "موافق", rejected: "مرفوض" };
-  const styles = { pending: "bg-amber-100 text-amber-800", approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800" };
+function Status({ status }: { status: "pending" | "pending_review" | "approved" | "rejected" }) {
+  const labels = { pending: "معلق", pending_review: "بانتظار المراجعة", approved: "موافق", rejected: "مرفوض" };
+  const styles = { pending: "bg-amber-100 text-amber-800", pending_review: "bg-amber-100 text-amber-800", approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800" };
   return <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${styles[status]}`}>{labels[status]}</span>;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><strong>{label}:</strong> <span className="text-muted-foreground">{value}</span></div>; }

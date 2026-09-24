@@ -63,6 +63,10 @@ directoryDb.exec(`
     subscription_end_date TEXT,
     max_products_allowed INTEGER NOT NULL DEFAULT 3,
     is_featured INTEGER NOT NULL DEFAULT 0,
+    invite_token TEXT,
+    invite_sent_at TEXT,
+    invite_opened_at TEXT,
+    invite_completed_at TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS subscriptions (
@@ -149,7 +153,9 @@ directoryDb.exec(`
     rejection_reason TEXT,
     admin_note TEXT,
     created_at TEXT NOT NULL,
-    reviewed_at TEXT
+    reviewed_at TEXT,
+    invited_supplier_id INTEGER REFERENCES suppliers(id),
+    product_images TEXT NOT NULL DEFAULT '[]'
   );
   CREATE TABLE IF NOT EXISTS buyer_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -301,6 +307,22 @@ if (!supplierColumns.some((column) => column.name === "google_review_count")) {
 if (!supplierColumns.some((column) => column.name === "hours_note")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN hours_note TEXT");
 }
+if (!supplierColumns.some((column) => column.name === "invite_token")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_token TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "invite_sent_at")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_sent_at TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "invite_opened_at")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_opened_at TEXT");
+}
+if (!supplierColumns.some((column) => column.name === "invite_completed_at")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_completed_at TEXT");
+}
+directoryDb.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_invite_token
+  ON suppliers (invite_token) WHERE invite_token IS NOT NULL
+`);
 
 const sugarPasteGoogleInfoMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",
@@ -329,6 +351,12 @@ const supplierRequestColumns = directoryDb
   .all() as Array<{ name: string }>;
 if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "accepted_data")) {
   directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN accepted_data INTEGER NOT NULL DEFAULT 0");
+}
+if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "invited_supplier_id")) {
+  directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN invited_supplier_id INTEGER REFERENCES suppliers(id)");
+}
+if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "product_images")) {
+  directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN product_images TEXT NOT NULL DEFAULT '[]'");
 }
 const buyerRequestColumns = directoryDb
   .prepare("PRAGMA table_info(buyer_requests)")

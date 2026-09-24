@@ -310,6 +310,113 @@ export interface RegistrationInterest {
 
 export type RegistrationInterestList = RegistrationInterest[];
 
+export interface SupplierInvitationDraftInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 10
+     * @maxLength 24
+     */
+  whatsapp: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  city: string;
+}
+
+export interface SupplierInvitation {
+  supplierId: number;
+  name: string;
+  city: string;
+  whatsapp: string;
+  /** @nullable */
+  inviteSentAt: string | null;
+  /** @nullable */
+  inviteOpenedAt: string | null;
+  /** @nullable */
+  inviteCompletedAt: string | null;
+  /** @nullable */
+  requestStatus: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface SupplierInvitationStats {
+  sent: number;
+  opened: number;
+  completed: number;
+  responseRate: number;
+}
+
+export interface SupplierInvitationLink {
+  supplierId: number;
+  token: string;
+  supplierName: string;
+  whatsapp: string;
+}
+
+export interface SupplierInvite {
+  supplierName: string;
+  initialCity: string;
+  initialWhatsapp: string;
+  alreadyCompleted: boolean;
+  cities: string[];
+  categories: ItemCategory[];
+  readyMixSubtypes: string[];
+}
+
+export interface SupplierInviteInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  businessName: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  city: string;
+  /**
+     * @minLength 10
+     * @maxLength 24
+     */
+  whatsapp: string;
+  /**
+     * @minItems 1
+     * @maxItems 40
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  categories: string[];
+  /** @maxLength 100 */
+  otherCategory?: string;
+  /** @maxLength 1000 */
+  description?: string;
+  /**
+     * @maxItems 3
+     * @items.maxLength 7000000
+     */
+  images?: string[];
+}
+
+export type SupplierInviteCompletionStatus = typeof SupplierInviteCompletionStatus[keyof typeof SupplierInviteCompletionStatus];
+
+
+export const SupplierInviteCompletionStatus = {
+  pending_review: 'pending_review',
+} as const;
+
+export interface SupplierInviteCompletion {
+  success: boolean;
+  status: SupplierInviteCompletionStatus;
+  requestCode: string;
+  message: string;
+}
+
 export type SearchDirectoryParams = {
 q?: string;
 };
@@ -360,5 +467,31 @@ export const ListSuppliersSort = {
   newest: 'newest',
   rating: 'rating',
   alphabetical: 'alphabetical',
+} as const;
+
+export type ListSupplierInvitationsParams = {
+status?: ListSupplierInvitationsStatus;
+};
+
+export type ListSupplierInvitationsStatus = typeof ListSupplierInvitationsStatus[keyof typeof ListSupplierInvitationsStatus];
+
+
+export const ListSupplierInvitationsStatus = {
+  unsent: 'unsent',
+  sent: 'sent',
+  completed: 'completed',
+} as const;
+
+export type ExportSupplierInvitationsParams = {
+status: ExportSupplierInvitationsStatus;
+};
+
+export type ExportSupplierInvitationsStatus = typeof ExportSupplierInvitationsStatus[keyof typeof ExportSupplierInvitationsStatus];
+
+
+export const ExportSupplierInvitationsStatus = {
+  unsent: 'unsent',
+  sent: 'sent',
+  completed: 'completed',
 } as const;
 

@@ -23,6 +23,7 @@ import SearchPage from '@/pages/search';
 import RegisterPage from '@/pages/register';
 import ExpansionPage from '@/pages/expansion';
 import AdminPage from '@/pages/admin';
+import SupplierInvitePage from '@/pages/supplier-invite';
 import BuyerLoginPage from '@/pages/buyer-login';
 import BuyerProfilePage from '@/pages/buyer-profile';
 import SupplierLoginPage from '@/pages/supplier-login';
@@ -62,6 +63,7 @@ function Router() {
           <Route path="/buyer/profile" component={BuyerProfilePage} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin" component={AdminPage} />
+         <Route path="/invite/:token" component={SupplierInvitePage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

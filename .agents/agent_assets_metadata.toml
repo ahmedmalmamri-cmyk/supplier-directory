@@ -154,3 +154,31 @@ mtime_ms = 1790270451783
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/7ebe3f3a-4224-41bc-ae86-b75cb2d916c7/c5abfb64-fb3d-4948-8b52-f94bdf6f7969"
 storage_version_token = "1790270488295290"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "zuG5daDxdqle675fyfp4d"
+uri = "file://screenshots/supplier-invite-form.jpg"
+type = "image"
+title = "نموذج دعوة المورد"
+description = "لقطة محفوظة لنموذج المورد العام، مع بيانات الدعوة والفئات وصور المنتجات."
+logical_id = "eb28abfc-1008-48c4-8b30-ce08835c28a7"
+content_hash = "sha256:ef69bf63d217df4c4f629186c0794656ab679596b169efff9c8e18c3ac852132"
+size = 76891
+mtime_ms = 1790273675341
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/eb28abfc-1008-48c4-8b30-ce08835c28a7/84fe517d-c13a-44a8-9187-54ff70089a14"
+storage_version_token = "1790273756303071"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "E9O_93tFcSGoNtwmVg7je"
+uri = "file://screenshots/supplier-invite-completed.jpg"
+type = "image"
+title = "حالة اكتمال دعوة المورد"
+description = "لقطة محفوظة لحالة الدعوة بعد إرسال الملف إلى مراجعة الإدارة."
+logical_id = "81a3a751-124e-484b-81a9-206e876849e6"
+content_hash = "sha256:c50c1bc8622339c7d136fe08ca3e3fc0cd9ea2962e41990e405aa4cce1aeecd3"
+size = 44641
+mtime_ms = 1790273695673
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/81a3a751-124e-484b-81a9-206e876849e6/5f461488-707c-4ffb-8e36-d02f3435cc6f"
+storage_version_token = "1790273757618297"
+content_type = "image/jpeg"

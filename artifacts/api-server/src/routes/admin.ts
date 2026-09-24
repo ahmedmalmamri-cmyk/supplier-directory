@@ -1,10 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   AdminLoginBody,
   AdminLoginResponse,
+  CreateSupplierInvitationDraftBody,
   ListRegistrationInterestsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
@@ -82,6 +83,42 @@ function createBasicSubscription(supplierId: number, startDate: string) {
       (supplier_id, plan_id, start_date, end_date, status, amount_paid, payment_method, notes, created_at)
     VALUES (?, 1, ?, NULL, 'active', 0, 'free', ?, ?)
   `).run(supplierId, startDate, "الباقة الأساسية الافتراضية", startDate);
+}
+
+function normalizeSaudiPhone(value: string) {
+  const westernDigits = value.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+  const digits = westernDigits.replace(/\D/g, "");
+  if (digits.startsWith("00966")) return `0${digits.slice(5)}`;
+  if (digits.startsWith("966")) return `0${digits.slice(3)}`;
+  return digits;
+}
+
+function supplierInvitationQuery(status?: string) {
+  const predicates = ["s.invite_token IS NOT NULL"];
+  if (status === "unsent") predicates.push("s.invite_sent_at IS NULL");
+  if (status === "sent") predicates.push("s.invite_sent_at IS NOT NULL", "s.invite_completed_at IS NULL");
+  if (status === "completed") predicates.push("s.invite_completed_at IS NOT NULL");
+  return directoryDb.prepare(`
+    SELECT s.id AS supplierId, s.name, s.city, s.whatsapp,
+      s.invite_sent_at AS inviteSentAt, s.invite_opened_at AS inviteOpenedAt,
+      s.invite_completed_at AS inviteCompletedAt,
+      (SELECT r.status FROM supplier_requests r WHERE r.invited_supplier_id = s.id
+       ORDER BY r.id DESC LIMIT 1) AS requestStatus,
+      s.is_active AS isActive, s.created_at AS createdAt
+    FROM suppliers s
+    WHERE ${predicates.join(" AND ")}
+    ORDER BY CASE WHEN s.invite_completed_at IS NOT NULL THEN 2
+      WHEN s.invite_sent_at IS NOT NULL THEN 1 ELSE 0 END, s.created_at DESC, s.id DESC
+  `).all().map((row) => ({
+    ...row as object,
+    isActive: Boolean((row as { isActive: number }).isActive),
+  }));
+}
+
+function csvCell(value: unknown) {
+  let text = value == null ? "" : String(value);
+  if (/^\s*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 router.post("/admin/login", (req, res): void => {
@@ -203,9 +240,11 @@ router.get("/admin/supplier-requests", (req, res): void => {
       health_certificate_url AS healthCertificateUrl, accepted_terms AS acceptedTerms,
       accepted_business AS acceptedBusiness, accepted_publish AS acceptedPublish,
       status, rejection_reason AS rejectionReason, admin_note AS adminNote,
-      created_at AS createdAt, reviewed_at AS reviewedAt
+      created_at AS createdAt, reviewed_at AS reviewedAt,
+      invited_supplier_id AS invitedSupplierId, product_images AS productImages
     FROM supplier_requests
-    ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+    ORDER BY CASE WHEN status IN ('pending', 'pending_review') THEN 0
+      WHEN status = 'approved' THEN 1 ELSE 2 END,
       created_at DESC, id DESC
   `).all().map((row) => {
     const item = row as Record<string, unknown>;
@@ -216,6 +255,8 @@ router.get("/admin/supplier-requests", (req, res): void => {
       acceptedTerms: Boolean(item.acceptedTerms),
       acceptedBusiness: Boolean(item.acceptedBusiness),
       acceptedPublish: Boolean(item.acceptedPublish),
+      invitedSupplierId: item.invitedSupplierId == null ? null : Number(item.invitedSupplierId),
+      productImages: JSON.parse(String(item.productImages || "[]")),
     };
   });
   res.json(rows);
@@ -233,7 +274,8 @@ router.get("/admin/supplier-requests/:id", (req, res): void => {
       health_certificate_url AS healthCertificateUrl, accepted_terms AS acceptedTerms,
       accepted_business AS acceptedBusiness, accepted_publish AS acceptedPublish,
       status, rejection_reason AS rejectionReason, admin_note AS adminNote,
-      created_at AS createdAt, reviewed_at AS reviewedAt
+      created_at AS createdAt, reviewed_at AS reviewedAt,
+      invited_supplier_id AS invitedSupplierId, product_images AS productImages
     FROM supplier_requests WHERE id = ?
   `).get(id) as Record<string, unknown> | undefined;
   if (!row) {
@@ -247,6 +289,8 @@ router.get("/admin/supplier-requests/:id", (req, res): void => {
     acceptedTerms: Boolean(row.acceptedTerms),
     acceptedBusiness: Boolean(row.acceptedBusiness),
     acceptedPublish: Boolean(row.acceptedPublish),
+    invitedSupplierId: row.invitedSupplierId == null ? null : Number(row.invitedSupplierId),
+    productImages: JSON.parse(String(row.productImages || "[]")),
   });
 });
 
@@ -258,6 +302,10 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
     res.status(404).json({ error: "طلب المورد غير موجود" });
     return;
   }
+  if (!["pending", "pending_review"].includes(String(request.status))) {
+    res.status(409).json({ error: "تمت مراجعة هذا الطلب مسبقاً." });
+    return;
+  }
   const businessName = String(request.business_name);
   const city = String(request.city);
   const phone = String(request.phone);
@@ -265,14 +313,22 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
   const reviewedAt = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
-    const existing = directoryDb.prepare("SELECT id FROM suppliers WHERE request_id = ? OR name = ?").get(id, businessName) as { id: number } | undefined;
+    const invitedSupplierId = Number(request.invited_supplier_id) || -1;
+    const existing = directoryDb.prepare(`
+      SELECT id FROM suppliers
+      WHERE id = ? OR request_id = ? OR name = ?
+      ORDER BY CASE WHEN id = ? THEN 0 WHEN request_id = ? THEN 1 ELSE 2 END
+      LIMIT 1
+    `).get(invitedSupplierId, id, businessName, invitedSupplierId, id) as { id: number } | undefined;
     const verified = request.commercial_license_url ? 1 : 0;
     if (existing) {
       directoryDb.prepare(`
         UPDATE suppliers SET name = ?, city = ?, region = 'المنطقة الشرقية', description = ?,
-          phone = ?, whatsapp = ?, is_verified = ?, is_active = 1 WHERE id = ?
-      `).run(businessName, city, String(request.description), phone, whatsapp, verified, existing.id);
+          phone = ?, whatsapp = ?, is_verified = ?, is_active = 1, request_id = ? WHERE id = ?
+      `).run(businessName, city, String(request.description), phone, whatsapp, verified, id, existing.id);
       directoryDb.prepare("UPDATE supplier_users SET phone = ? WHERE supplier_id = ?").run(phone, existing.id);
+      const subscription = directoryDb.prepare("SELECT id FROM subscriptions WHERE supplier_id = ? LIMIT 1").get(existing.id);
+      if (!subscription) createBasicSubscription(existing.id, reviewedAt);
     } else {
       const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
       directoryDb.prepare(`
@@ -295,9 +351,13 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
 router.post("/admin/supplier-requests/:id/reject", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const id = Number(req.params.id);
-  const request = directoryDb.prepare("SELECT id FROM supplier_requests WHERE id = ?").get(id);
+  const request = directoryDb.prepare("SELECT id, status FROM supplier_requests WHERE id = ?").get(id) as { id: number; status: string } | undefined;
   if (!request) {
     res.status(404).json({ error: "طلب المورد غير موجود" });
+    return;
+  }
+  if (!["pending", "pending_review"].includes(request.status)) {
+    res.status(409).json({ error: "تمت مراجعة هذا الطلب مسبقاً." });
     return;
   }
   directoryDb.prepare(`
@@ -344,6 +404,150 @@ router.delete("/admin/buyer-requests/:id", (req, res): void => {
   res.json({ success: true, message: "تم حذف طلب صاحب العمل." });
 });
 
+router.get("/admin/invitations", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+  if (status && !["unsent", "sent", "completed"].includes(status)) {
+    res.status(400).json({ error: "حالة الدعوة غير صالحة." });
+    return;
+  }
+  res.json(supplierInvitationQuery(status));
+});
+
+router.post("/admin/invitations", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const parsed = CreateSupplierInvitationDraftBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "أدخل اسم المورد ورقم واتساب والمدينة." });
+    return;
+  }
+  const name = parsed.data.name.trim();
+  const whatsapp = normalizeSaudiPhone(parsed.data.whatsapp);
+  const city = parsed.data.city.trim();
+  const allowedCitiesRow = directoryDb.prepare(
+    "SELECT value FROM directory_settings WHERE key = 'available_cities'",
+  ).get() as { value: string } | undefined;
+  let allowedCities: string[] = [];
+  try {
+    allowedCities = JSON.parse(allowedCitiesRow?.value ?? "[]") as string[];
+  } catch {
+    allowedCities = [];
+  }
+  if (name.length < 2 || !/^05\d{8}$/.test(whatsapp) || !allowedCities.includes(city)) {
+    res.status(400).json({ error: "تحقق من اسم المورد ورقم واتساب والمدينة." });
+    return;
+  }
+  const now = new Date().toISOString();
+  const draftTokenHash = createHash("sha256").update(randomBytes(32)).digest("hex");
+  const result = directoryDb.prepare(`
+    INSERT INTO suppliers
+      (name, city, region, description, phone, whatsapp, is_active, plan_id,
+       max_products_allowed, is_featured, invite_token, created_at)
+    VALUES (?, ?, 'المنطقة الشرقية', 'بانتظار استكمال بيانات المورد.', ?, ?, 0, 1, 3, 0, ?, ?)
+  `).run(name, city, whatsapp, whatsapp, draftTokenHash, now);
+  res.status(201).json({
+    supplierId: Number(result.lastInsertRowid),
+    name,
+    city,
+    whatsapp,
+    inviteSentAt: null,
+    inviteOpenedAt: null,
+    inviteCompletedAt: null,
+    requestStatus: null,
+    isActive: false,
+    createdAt: now,
+  });
+});
+
+router.get("/admin/invitations/stats", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const counts = directoryDb.prepare(`
+    SELECT
+      SUM(CASE WHEN invite_sent_at IS NOT NULL THEN 1 ELSE 0 END) AS sent,
+      SUM(CASE WHEN invite_opened_at IS NOT NULL THEN 1 ELSE 0 END) AS opened,
+      SUM(CASE WHEN invite_completed_at IS NOT NULL THEN 1 ELSE 0 END) AS completed
+    FROM suppliers WHERE invite_token IS NOT NULL
+  `).get() as { sent: number | null; opened: number | null; completed: number | null };
+  const sent = Number(counts.sent || 0);
+  const completed = Number(counts.completed || 0);
+  res.json({
+    sent,
+    opened: Number(counts.opened || 0),
+    completed,
+    responseRate: sent > 0 ? Number(((completed / sent) * 100).toFixed(1)) : 0,
+  });
+});
+
+router.get("/admin/invitations/export", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const status = typeof req.query.status === "string" ? req.query.status : "";
+  if (!["unsent", "sent", "completed"].includes(status)) {
+    res.status(400).json({ error: "حدد قائمة دعوات صالحة للتصدير." });
+    return;
+  }
+  const rows = supplierInvitationQuery(status) as Array<Record<string, unknown>>;
+  const csv = [
+    ["اسم المورد", "المدينة", "واتساب", "تاريخ الإرسال", "تاريخ الفتح", "تاريخ الإكمال", "حالة المراجعة"],
+    ...rows.map((row) => [
+      row.name, row.city, row.whatsapp, row.inviteSentAt, row.inviteOpenedAt,
+      row.inviteCompletedAt, row.requestStatus,
+    ]),
+  ].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="supplier-invitations-${status}.csv"`);
+  res.send(`\uFEFF${csv}`);
+});
+
+router.post("/admin/suppliers/:id/invite", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  if (!Number.isInteger(supplierId) || supplierId <= 0) {
+    res.status(400).json({ error: "معرّف المورد غير صالح." });
+    return;
+  }
+  const supplier = directoryDb.prepare(`
+    SELECT id, name, whatsapp, invite_completed_at AS inviteCompletedAt,
+      (SELECT status FROM supplier_requests r WHERE r.invited_supplier_id = suppliers.id
+       ORDER BY r.id DESC LIMIT 1) AS latestRequestStatus
+    FROM suppliers WHERE id = ?
+  `).get(supplierId) as { id: number; name: string; whatsapp: string; inviteCompletedAt: string | null; latestRequestStatus: string | null } | undefined;
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود." });
+    return;
+  }
+  if (supplier.inviteCompletedAt && supplier.latestRequestStatus !== "rejected") {
+    res.status(409).json({ error: "أكمل المورد هذه الدعوة بالفعل." });
+    return;
+  }
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  directoryDb.prepare(`
+    UPDATE suppliers SET invite_token = ?, invite_sent_at = NULL,
+      invite_opened_at = NULL, invite_completed_at = NULL WHERE id = ?
+  `).run(tokenHash, supplierId);
+  res.json({ supplierId, token, supplierName: supplier.name, whatsapp: supplier.whatsapp });
+});
+
+router.post("/admin/suppliers/:id/invite-sent", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const supplierId = Number(req.params.id);
+  const supplier = directoryDb.prepare(
+    "SELECT id, invite_token AS inviteToken, invite_completed_at AS inviteCompletedAt FROM suppliers WHERE id = ?",
+  ).get(supplierId) as { id: number; inviteToken: string | null; inviteCompletedAt: string | null } | undefined;
+  if (!supplier) {
+    res.status(404).json({ error: "المورد غير موجود." });
+    return;
+  }
+  if (!supplier.inviteToken || supplier.inviteCompletedAt) {
+    res.status(409).json({ error: "أنشئ رابط دعوة صالحاً قبل تسجيل الإرسال." });
+    return;
+  }
+  directoryDb.prepare(
+    "UPDATE suppliers SET invite_sent_at = COALESCE(invite_sent_at, ?) WHERE id = ?",
+  ).run(new Date().toISOString(), supplierId);
+  res.json({ success: true, message: "تم تسجيل فتح رابط الإرسال. لا يمكن للنظام التحقق من إرسال الرسالة فعلياً." });
+});
+
 router.get("/admin/suppliers", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   res.json(directoryDb.prepare(`
@@ -357,7 +561,9 @@ router.get("/admin/suppliers", (req, res): void => {
       is_featured AS isFeatured,
       (SELECT name FROM plans p WHERE p.id = s.plan_id) AS planName,
       (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id) AS productCount
-    FROM suppliers s ORDER BY is_active DESC, created_at DESC, id DESC
+     FROM suppliers s
+     WHERE s.is_active = 1 OR s.request_id IS NOT NULL OR s.invite_token IS NULL
+     ORDER BY is_active DESC, created_at DESC, id DESC
   `).all().map((row) => ({
     ...row as object,
     isVerified: Boolean((row as { isVerified: number }).isVerified),
@@ -693,7 +899,7 @@ router.get("/admin/stats", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const stats = directoryDb.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM supplier_requests WHERE status = 'pending') AS pendingSupplierRequests,
+      (SELECT COUNT(*) FROM supplier_requests WHERE status IN ('pending', 'pending_review')) AS pendingSupplierRequests,
       (SELECT COUNT(*) FROM suppliers WHERE is_active = 1) AS approvedSuppliers,
       (SELECT COUNT(*) FROM buyer_requests) AS buyers,
       (SELECT COUNT(*) FROM products) AS products,

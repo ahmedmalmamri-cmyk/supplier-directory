@@ -32,10 +32,12 @@ import type {
   CategoryDetail,
   ContactInput,
   ContactResponse,
+  ExportSupplierInvitationsParams,
   FetchCategoryParams,
   HealthStatus,
   HomeData,
   ItemCategory,
+  ListSupplierInvitationsParams,
   ListSuppliersParams,
   ProductDetail,
   RegisterInput,
@@ -46,7 +48,14 @@ import type {
   SearchDirectoryParams,
   SearchResults,
   Supplier,
-  SupplierDetail
+  SupplierDetail,
+  SupplierInvitation,
+  SupplierInvitationDraftInput,
+  SupplierInvitationLink,
+  SupplierInvitationStats,
+  SupplierInvite,
+  SupplierInviteCompletion,
+  SupplierInviteInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1657,5 +1666,672 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRejectRegistrationMutationOptions(options));
+    }
+
+export const getListSupplierInvitationsUrl = (params?: ListSupplierInvitationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/invitations?${stringifiedParams}` : `/api/admin/invitations`
+}
+
+export const listSupplierInvitations = async (params?: ListSupplierInvitationsParams, options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvitation[]> => {
+
+  return customFetch<SupplierInvitation[]>(getListSupplierInvitationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSupplierInvitationsQueryKey = (params?: ListSupplierInvitationsParams,) => {
+    return [
+    `/api/admin/invitations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSupplierInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listSupplierInvitations>>, TError = ErrorType<void>>(params?: ListSupplierInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSupplierInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSupplierInvitationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSupplierInvitations>>> = ({ signal }) => listSupplierInvitations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSupplierInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSupplierInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listSupplierInvitations>>>
+export type ListSupplierInvitationsQueryError = ErrorType<void>
+
+
+
+export function useListSupplierInvitations<TData = Awaited<ReturnType<typeof listSupplierInvitations>>, TError = ErrorType<void>>(
+ params?: ListSupplierInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSupplierInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSupplierInvitationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSupplierInvitationDraftUrl = () => {
+
+
+
+
+  return `/api/admin/invitations`
+}
+
+export const createSupplierInvitationDraft = async (supplierInvitationDraftInput: SupplierInvitationDraftInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvitation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierInvitation>(getCreateSupplierInvitationDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierInvitationDraftInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSupplierInvitationDraftMutationKey = () => ['createSupplierInvitationDraft'] as const;
+
+export const getCreateSupplierInvitationDraftMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierInvitationDraft>>, TError,CreateSupplierInvitationDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSupplierInvitationDraft>>, TError,CreateSupplierInvitationDraftMutationVariables, TContext> => {
+
+const mutationKey = getCreateSupplierInvitationDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSupplierInvitationDraft>>, CreateSupplierInvitationDraftMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSupplierInvitationDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSupplierInvitationDraftMutationResult = NonNullable<Awaited<ReturnType<typeof createSupplierInvitationDraft>>>
+    export type CreateSupplierInvitationDraftMutationBody = BodyType<SupplierInvitationDraftInput>
+    export type CreateSupplierInvitationDraftMutationError = ErrorType<void>
+    export type CreateSupplierInvitationDraftMutationVariables = {data: BodyType<SupplierInvitationDraftInput>}
+
+    export const useCreateSupplierInvitationDraft = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierInvitationDraft>>, TError,CreateSupplierInvitationDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSupplierInvitationDraft>>,
+        TError,
+        CreateSupplierInvitationDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSupplierInvitationDraftMutationOptions(options));
+    }
+
+export const getGetSupplierInvitationStatsUrl = () => {
+
+
+
+
+  return `/api/admin/invitations/stats`
+}
+
+export const getSupplierInvitationStats = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvitationStats> => {
+
+  return customFetch<SupplierInvitationStats>(getGetSupplierInvitationStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupplierInvitationStatsQueryKey = () => {
+    return [
+    `/api/admin/invitations/stats`
+    ] as const;
+    }
+
+
+export const getGetSupplierInvitationStatsQueryOptions = <TData = Awaited<ReturnType<typeof getSupplierInvitationStats>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupplierInvitationStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupplierInvitationStats>>> = ({ signal }) => getSupplierInvitationStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupplierInvitationStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getSupplierInvitationStats>>>
+export type GetSupplierInvitationStatsQueryError = ErrorType<void>
+
+
+
+export function useGetSupplierInvitationStats<TData = Awaited<ReturnType<typeof getSupplierInvitationStats>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupplierInvitationStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportSupplierInvitationsUrl = (params: ExportSupplierInvitationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/invitations/export?${stringifiedParams}` : `/api/admin/invitations/export`
+}
+
+export const exportSupplierInvitations = async (params: ExportSupplierInvitationsParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExportSupplierInvitationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportSupplierInvitationsQueryKey = (params?: ExportSupplierInvitationsParams,) => {
+    return [
+    `/api/admin/invitations/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportSupplierInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof exportSupplierInvitations>>, TError = ErrorType<void>>(params: ExportSupplierInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportSupplierInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportSupplierInvitationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportSupplierInvitations>>> = ({ signal }) => exportSupplierInvitations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportSupplierInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportSupplierInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof exportSupplierInvitations>>>
+export type ExportSupplierInvitationsQueryError = ErrorType<void>
+
+
+
+export function useExportSupplierInvitations<TData = Awaited<ReturnType<typeof exportSupplierInvitations>>, TError = ErrorType<void>>(
+ params: ExportSupplierInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportSupplierInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportSupplierInvitationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateSupplierInvitationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/suppliers/${id}/invite`
+}
+
+export const generateSupplierInvitation = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvitationLink> => {
+
+  return customFetch<SupplierInvitationLink>(getGenerateSupplierInvitationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateSupplierInvitationMutationKey = () => ['generateSupplierInvitation'] as const;
+
+export const getGenerateSupplierInvitationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSupplierInvitation>>, TError,GenerateSupplierInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSupplierInvitation>>, TError,GenerateSupplierInvitationMutationVariables, TContext> => {
+
+const mutationKey = getGenerateSupplierInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSupplierInvitation>>, GenerateSupplierInvitationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateSupplierInvitation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSupplierInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof generateSupplierInvitation>>>
+
+    export type GenerateSupplierInvitationMutationError = ErrorType<void>
+    export type GenerateSupplierInvitationMutationVariables = {id: number}
+
+    export const useGenerateSupplierInvitation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSupplierInvitation>>, TError,GenerateSupplierInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateSupplierInvitation>>,
+        TError,
+        GenerateSupplierInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateSupplierInvitationMutationOptions(options));
+    }
+
+export const getMarkSupplierInvitationSentUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/suppliers/${id}/invite-sent`
+}
+
+export const markSupplierInvitationSent = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+
+  return customFetch<BasicSuccessResponse>(getMarkSupplierInvitationSentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkSupplierInvitationSentMutationKey = () => ['markSupplierInvitationSent'] as const;
+
+export const getMarkSupplierInvitationSentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSupplierInvitationSent>>, TError,MarkSupplierInvitationSentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markSupplierInvitationSent>>, TError,MarkSupplierInvitationSentMutationVariables, TContext> => {
+
+const mutationKey = getMarkSupplierInvitationSentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markSupplierInvitationSent>>, MarkSupplierInvitationSentMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  markSupplierInvitationSent(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkSupplierInvitationSentMutationResult = NonNullable<Awaited<ReturnType<typeof markSupplierInvitationSent>>>
+
+    export type MarkSupplierInvitationSentMutationError = ErrorType<void>
+    export type MarkSupplierInvitationSentMutationVariables = {id: number}
+
+    export const useMarkSupplierInvitationSent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSupplierInvitationSent>>, TError,MarkSupplierInvitationSentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markSupplierInvitationSent>>,
+        TError,
+        MarkSupplierInvitationSentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkSupplierInvitationSentMutationOptions(options));
+    }
+
+export const getGetSupplierInviteUrl = (token: string,) => {
+
+
+
+
+  return `/api/invites/${token}`
+}
+
+export const getSupplierInvite = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvite> => {
+
+  return customFetch<SupplierInvite>(getGetSupplierInviteUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupplierInviteQueryKey = (token: string,) => {
+    return [
+    `/api/invites/${token}`
+    ] as const;
+    }
+
+
+export const getGetSupplierInviteQueryOptions = <TData = Awaited<ReturnType<typeof getSupplierInvite>>, TError = ErrorType<void>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupplierInviteQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupplierInvite>>> = ({ signal }) => getSupplierInvite(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvite>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupplierInviteQueryResult = NonNullable<Awaited<ReturnType<typeof getSupplierInvite>>>
+export type GetSupplierInviteQueryError = ErrorType<void>
+
+
+
+export function useGetSupplierInvite<TData = Awaited<ReturnType<typeof getSupplierInvite>>, TError = ErrorType<void>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupplierInviteQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordSupplierInviteOpenedUrl = (token: string,) => {
+
+
+
+
+  return `/api/invites/${token}/open`
+}
+
+export const recordSupplierInviteOpened = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+
+  return customFetch<BasicSuccessResponse>(getRecordSupplierInviteOpenedUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRecordSupplierInviteOpenedMutationKey = () => ['recordSupplierInviteOpened'] as const;
+
+export const getRecordSupplierInviteOpenedMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSupplierInviteOpened>>, TError,RecordSupplierInviteOpenedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordSupplierInviteOpened>>, TError,RecordSupplierInviteOpenedMutationVariables, TContext> => {
+
+const mutationKey = getRecordSupplierInviteOpenedMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordSupplierInviteOpened>>, RecordSupplierInviteOpenedMutationVariables> = (props) => {
+          const {token} = props ?? {};
+
+          return  recordSupplierInviteOpened(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordSupplierInviteOpenedMutationResult = NonNullable<Awaited<ReturnType<typeof recordSupplierInviteOpened>>>
+
+    export type RecordSupplierInviteOpenedMutationError = ErrorType<void>
+    export type RecordSupplierInviteOpenedMutationVariables = {token: string}
+
+    export const useRecordSupplierInviteOpened = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSupplierInviteOpened>>, TError,RecordSupplierInviteOpenedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordSupplierInviteOpened>>,
+        TError,
+        RecordSupplierInviteOpenedMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordSupplierInviteOpenedMutationOptions(options));
+    }
+
+export const getCompleteSupplierInviteUrl = (token: string,) => {
+
+
+
+
+  return `/api/invites/${token}/complete`
+}
+
+export const completeSupplierInvite = async (token: string,
+    supplierInviteInput: SupplierInviteInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierInviteCompletion> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierInviteCompletion>(getCompleteSupplierInviteUrl(token),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierInviteInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteSupplierInviteMutationKey = () => ['completeSupplierInvite'] as const;
+
+export const getCompleteSupplierInviteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeSupplierInvite>>, TError,CompleteSupplierInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeSupplierInvite>>, TError,CompleteSupplierInviteMutationVariables, TContext> => {
+
+const mutationKey = getCompleteSupplierInviteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeSupplierInvite>>, CompleteSupplierInviteMutationVariables> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  completeSupplierInvite(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteSupplierInviteMutationResult = NonNullable<Awaited<ReturnType<typeof completeSupplierInvite>>>
+    export type CompleteSupplierInviteMutationBody = BodyType<SupplierInviteInput>
+    export type CompleteSupplierInviteMutationError = ErrorType<void>
+    export type CompleteSupplierInviteMutationVariables = {token: string;data: BodyType<SupplierInviteInput>}
+
+    export const useCompleteSupplierInvite = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeSupplierInvite>>, TError,CompleteSupplierInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeSupplierInvite>>,
+        TError,
+        CompleteSupplierInviteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteSupplierInviteMutationOptions(options));
     }
 

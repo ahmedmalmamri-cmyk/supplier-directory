@@ -373,6 +373,160 @@ paths:
                 $ref: "#/components/schemas/AdminResponse"
         "401": { description: Admin authentication required }
         "404": { description: Registration not found }
+  /admin/invitations:
+    get:
+      operationId: listSupplierInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [unsent, sent, completed] }
+      responses:
+        "200":
+          description: Supplier invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierInvitation" }
+        "401": { description: Admin authentication required }
+    post:
+      operationId: createSupplierInvitationDraft
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInvitationDraftInput" }
+      responses:
+        "201":
+          description: Supplier invitation draft created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitation" }
+        "400": { description: Invalid supplier details }
+        "401": { description: Admin authentication required }
+  /admin/invitations/stats:
+    get:
+      operationId: getSupplierInvitationStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier invitation statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationStats" }
+        "401": { description: Admin authentication required }
+  /admin/invitations/export:
+    get:
+      operationId: exportSupplierInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string, enum: [unsent, sent, completed] }
+      responses:
+        "200":
+          description: Excel-compatible CSV export
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid invitation status }
+        "401": { description: Admin authentication required }
+  /admin/suppliers/{id}/invite:
+    post:
+      operationId: generateSupplierInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: New invitation link generated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Supplier not found }
+        "409": { description: Invitation already completed }
+  /admin/suppliers/{id}/invite-sent:
+    post:
+      operationId: markSupplierInvitationSent
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Invitation dispatch recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Supplier invitation not found }
+        "409": { description: Invitation cannot be marked as sent }
+  /invites/{token}:
+    get:
+      operationId: getSupplierInvite
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Public invitation details and form options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvite" }
+        "404": { description: Invitation is invalid or no longer available }
+        "409": { description: Invitation already completed }
+  /invites/{token}/open:
+    post:
+      operationId: recordSupplierInviteOpened
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Invitation open recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already completed }
+  /invites/{token}/complete:
+    post:
+      operationId: completeSupplierInvite
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInviteInput" }
+      responses:
+        "201":
+          description: Supplier information submitted for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInviteCompletion" }
+        "400": { description: Invalid supplier submission }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already completed }
 components:
   schemas:
     HealthStatus:
@@ -654,3 +808,83 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/RegistrationInterest"
+    SupplierInvitationDraftInput:
+      type: object
+      required: [name, whatsapp, city]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        whatsapp: { type: string, minLength: 10, maxLength: 24 }
+        city: { type: string, minLength: 2, maxLength: 80 }
+    SupplierInvitation:
+      type: object
+      required: [supplierId, name, city, whatsapp, inviteSentAt, inviteOpenedAt, inviteCompletedAt, requestStatus, isActive, createdAt]
+      properties:
+        supplierId: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        whatsapp: { type: string }
+        inviteSentAt: { type: [string, "null"] }
+        inviteOpenedAt: { type: [string, "null"] }
+        inviteCompletedAt: { type: [string, "null"] }
+        requestStatus: { type: [string, "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    SupplierInvitationStats:
+      type: object
+      required: [sent, opened, completed, responseRate]
+      properties:
+        sent: { type: integer }
+        opened: { type: integer }
+        completed: { type: integer }
+        responseRate: { type: number }
+    SupplierInvitationLink:
+      type: object
+      required: [supplierId, token, supplierName, whatsapp]
+      properties:
+        supplierId: { type: integer }
+        token: { type: string }
+        supplierName: { type: string }
+        whatsapp: { type: string }
+    SupplierInvite:
+      type: object
+      required: [supplierName, initialCity, initialWhatsapp, cities, categories, readyMixSubtypes, alreadyCompleted]
+      properties:
+        supplierName: { type: string }
+        initialCity: { type: string }
+        initialWhatsapp: { type: string }
+        alreadyCompleted: { type: boolean }
+        cities:
+          type: array
+          items: { type: string }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/ItemCategory" }
+        readyMixSubtypes:
+          type: array
+          items: { type: string }
+    SupplierInviteInput:
+      type: object
+      required: [businessName, city, whatsapp, categories]
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        whatsapp: { type: string, minLength: 10, maxLength: 24 }
+        categories:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { type: string, minLength: 1, maxLength: 100 }
+        otherCategory: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        images:
+          type: array
+          maxItems: 3
+          items: { type: string, maxLength: 7000000 }
+    SupplierInviteCompletion:
+      type: object
+      required: [success, status, requestCode, message]
+      properties:
+        success: { type: boolean }
+        status: { type: string, enum: [pending_review] }
+        requestCode: { type: string }
+        message: { type: string }

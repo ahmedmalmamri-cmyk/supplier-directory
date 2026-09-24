@@ -574,3 +574,180 @@ export const RejectRegistrationResponse = zod.object({
 })
 
 
+export const ListSupplierInvitationsQueryParams = zod.object({
+  "status": zod.enum(['unsent', 'sent', 'completed']).optional()
+})
+
+export const ListSupplierInvitationsResponseItem = zod.object({
+  "supplierId": zod.number().int(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "whatsapp": zod.string(),
+  "inviteSentAt": zod.string().nullable(),
+  "inviteOpenedAt": zod.string().nullable(),
+  "inviteCompletedAt": zod.string().nullable(),
+  "requestStatus": zod.string().nullable(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const ListSupplierInvitationsResponse = zod.array(ListSupplierInvitationsResponseItem)
+
+
+export const createSupplierInvitationDraftBodyNameMin = 2;
+export const createSupplierInvitationDraftBodyNameMax = 120;
+
+export const createSupplierInvitationDraftBodyWhatsappMin = 10;
+export const createSupplierInvitationDraftBodyWhatsappMax = 24;
+
+export const createSupplierInvitationDraftBodyCityMin = 2;
+export const createSupplierInvitationDraftBodyCityMax = 80;
+
+
+
+export const CreateSupplierInvitationDraftBody = zod.object({
+  "name": zod.string().min(createSupplierInvitationDraftBodyNameMin).max(createSupplierInvitationDraftBodyNameMax),
+  "whatsapp": zod.string().min(createSupplierInvitationDraftBodyWhatsappMin).max(createSupplierInvitationDraftBodyWhatsappMax),
+  "city": zod.string().min(createSupplierInvitationDraftBodyCityMin).max(createSupplierInvitationDraftBodyCityMax)
+})
+
+export const CreateSupplierInvitationDraftResponse = zod.object({
+  "supplierId": zod.number().int(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "whatsapp": zod.string(),
+  "inviteSentAt": zod.string().nullable(),
+  "inviteOpenedAt": zod.string().nullable(),
+  "inviteCompletedAt": zod.string().nullable(),
+  "requestStatus": zod.string().nullable(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+export const GetSupplierInvitationStatsResponse = zod.object({
+  "sent": zod.number().int(),
+  "opened": zod.number().int(),
+  "completed": zod.number().int(),
+  "responseRate": zod.number()
+})
+
+
+export const ExportSupplierInvitationsQueryParams = zod.object({
+  "status": zod.enum(['unsent', 'sent', 'completed'])
+})
+
+export const ExportSupplierInvitationsResponse = zod.unknown()
+
+
+export const GenerateSupplierInvitationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GenerateSupplierInvitationResponse = zod.object({
+  "supplierId": zod.number().int(),
+  "token": zod.string(),
+  "supplierName": zod.string(),
+  "whatsapp": zod.string()
+})
+
+
+export const MarkSupplierInvitationSentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const MarkSupplierInvitationSentResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const getSupplierInvitePathTokenMin = 32;
+
+
+
+export const GetSupplierInviteParams = zod.object({
+  "token": zod.coerce.string().min(getSupplierInvitePathTokenMin)
+})
+
+export const GetSupplierInviteResponse = zod.object({
+  "supplierName": zod.string(),
+  "initialCity": zod.string(),
+  "initialWhatsapp": zod.string(),
+  "alreadyCompleted": zod.boolean(),
+  "cities": zod.array(zod.string()),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "groupName": zod.string(),
+  "displayOnHome": zod.boolean(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean()
+})),
+  "readyMixSubtypes": zod.array(zod.string())
+})
+
+
+export const recordSupplierInviteOpenedPathTokenMin = 32;
+
+
+
+export const RecordSupplierInviteOpenedParams = zod.object({
+  "token": zod.coerce.string().min(recordSupplierInviteOpenedPathTokenMin)
+})
+
+export const RecordSupplierInviteOpenedResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const completeSupplierInvitePathTokenMin = 32;
+
+
+
+export const CompleteSupplierInviteParams = zod.object({
+  "token": zod.coerce.string().min(completeSupplierInvitePathTokenMin)
+})
+
+export const completeSupplierInviteBodyBusinessNameMin = 2;
+export const completeSupplierInviteBodyBusinessNameMax = 120;
+
+export const completeSupplierInviteBodyCityMin = 2;
+export const completeSupplierInviteBodyCityMax = 80;
+
+export const completeSupplierInviteBodyWhatsappMin = 10;
+export const completeSupplierInviteBodyWhatsappMax = 24;
+
+export const completeSupplierInviteBodyCategoriesItemMax = 100;
+
+export const completeSupplierInviteBodyCategoriesMax = 40;
+
+export const completeSupplierInviteBodyOtherCategoryMax = 100;
+
+export const completeSupplierInviteBodyDescriptionMax = 1000;
+
+export const completeSupplierInviteBodyImagesItemMax = 7000000;
+
+export const completeSupplierInviteBodyImagesMax = 3;
+
+
+
+export const CompleteSupplierInviteBody = zod.object({
+  "businessName": zod.string().min(completeSupplierInviteBodyBusinessNameMin).max(completeSupplierInviteBodyBusinessNameMax),
+  "city": zod.string().min(completeSupplierInviteBodyCityMin).max(completeSupplierInviteBodyCityMax),
+  "whatsapp": zod.string().min(completeSupplierInviteBodyWhatsappMin).max(completeSupplierInviteBodyWhatsappMax),
+  "categories": zod.array(zod.string().min(1).max(completeSupplierInviteBodyCategoriesItemMax)).min(1).max(completeSupplierInviteBodyCategoriesMax),
+  "otherCategory": zod.string().max(completeSupplierInviteBodyOtherCategoryMax).optional(),
+  "description": zod.string().max(completeSupplierInviteBodyDescriptionMax).optional(),
+  "images": zod.array(zod.string().max(completeSupplierInviteBodyImagesItemMax)).max(completeSupplierInviteBodyImagesMax).optional()
+})
+
+export const CompleteSupplierInviteResponse = zod.object({
+  "success": zod.boolean(),
+  "status": zod.enum(['pending_review']),
+  "requestCode": zod.string(),
+  "message": zod.string()
+})
+
+
