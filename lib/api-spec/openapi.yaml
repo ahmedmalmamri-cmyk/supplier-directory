@@ -43,6 +43,127 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/ItemCategory" }
+  /admin/item-categories:
+    get:
+      operationId: listAdminItemCategories
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier category tree for administration
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminItemCategory" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminItemCategory
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryInput" }
+      responses:
+        "201":
+          description: Created supplier category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid category or duplicate name }
+        "401": { description: Admin login required }
+  /admin/item-categories/order:
+    patch:
+      operationId: reorderAdminItemCategories
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryOrderInput" }
+      responses:
+        "200":
+          description: Category order saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryOrderResponse" }
+        "400": { description: Invalid sibling order }
+        "401": { description: Admin login required }
+  /admin/item-categories/{id}:
+    patch:
+      operationId: updateAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryUpdate" }
+      responses:
+        "200":
+          description: Updated supplier category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid category or duplicate name }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+    delete:
+      operationId: deleteAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Category and its children deactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryDeleteResponse" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+  /admin/item-categories/{id}/transfer:
+    post:
+      operationId: transferAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryTransferInput" }
+      responses:
+        "200":
+          description: Category transferred without changing supplier selections
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: "Invalid destination, name conflict, or category cycle" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+  /admin/activity-log:
+    get:
+      operationId: listAdminActivityLog
+      tags: [admin]
+      responses:
+        "200":
+          description: Recent category activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ActivityLogEntry" }
+        "401": { description: Admin login required }
   /search:
     get:
       operationId: searchDirectory
@@ -767,15 +888,80 @@ components:
         productCount: { type: integer }
     ItemCategory:
       type: object
-      required: [id, name, icon, groupName, displayOnHome, displayOrder, isActive]
+      required: [id, name, icon, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt]
       properties:
         id: { type: integer }
         name: { type: string }
         icon: { type: string }
         groupName: { type: string }
+        parentId: { type: ["integer", "null"] }
+        description: { type: ["string", "null"] }
         displayOnHome: { type: boolean }
         displayOrder: { type: integer }
         isActive: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    AdminItemCategory:
+      allOf:
+        - $ref: "#/components/schemas/ItemCategory"
+        - type: object
+          required: [supplierCount]
+          properties:
+            supplierCount: { type: integer }
+    ItemCategoryInput:
+      type: object
+      required: [name, icon]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        parentId: { type: ["integer", "null"] }
+        description: { type: ["string", "null"], maxLength: 500 }
+    ItemCategoryUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        isActive: { type: boolean }
+        displayOnHome: { type: boolean }
+    ItemCategoryTransferInput:
+      type: object
+      required: [destinationId, moveSubcategories]
+      properties:
+        destinationId: { type: ["integer", "null"] }
+        moveSubcategories: { type: boolean }
+    ItemCategoryOrderInput:
+      type: object
+      required: [parentId, categoryIds]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        categoryIds:
+          type: array
+          minItems: 1
+          items: { type: integer }
+    ItemCategoryDeleteResponse:
+      type: object
+      required: [success, deactivatedCount]
+      properties:
+        success: { type: boolean }
+        deactivatedCount: { type: integer }
+    ItemCategoryOrderResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    ActivityLogEntry:
+      type: object
+      required: [id, adminId, actionType, entityType, entityId, oldValue, newValue, createdAt]
+      properties:
+        id: { type: integer }
+        adminId: { type: integer }
+        actionType: { type: string, enum: [add, edit, transfer, delete] }
+        entityType: { type: string, enum: [category, supplier, buyer] }
+        entityId: { type: integer }
+        oldValue: { type: ["object", "null"], additionalProperties: true }
+        newValue: { type: ["object", "null"], additionalProperties: true }
+        createdAt: { type: string }
     Supplier:
       type: object
       required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]

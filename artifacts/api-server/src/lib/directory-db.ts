@@ -621,6 +621,27 @@ if (!cakeFillingsMigration) {
   const now = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
+    const homeCategoryOrder = [
+      "دقيق",
+      "سكر",
+      "زبدة ودهون",
+      "حليب ومشتقاته",
+      "أجبان",
+      "شوكولاتة وكاكاو",
+      "خلطات جاهزة",
+      "مكسرات",
+      "خمائر ومحسنات",
+      "نكهات وألوان",
+      "علب وتغليف",
+      "معدات وأفران",
+    ];
+    homeCategoryOrder.forEach((name, index) => {
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET display_order = ?, updated_at = ?
+        WHERE name = ? AND parent_id IS NULL AND display_on_home = 1
+      `).run(index + 1, now, name);
+    });
     const existingParent = directoryDb.prepare(
       "SELECT id FROM item_categories WHERE name = ?",
     ).get("حشوات الكيك") as { id: number } | undefined;

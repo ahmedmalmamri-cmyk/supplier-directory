@@ -22,9 +22,123 @@ export interface ItemCategory {
   name: string;
   icon: string;
   groupName: string;
+  /** @nullable */
+  parentId: number | null;
+  /** @nullable */
+  description: string | null;
   displayOnHome: boolean;
   displayOrder: number;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdminItemCategory = ItemCategory & {
+  supplierCount: number;
+};
+
+export interface ItemCategoryInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 24
+     */
+  icon: string;
+  /** @nullable */
+  parentId?: number | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+}
+
+export interface ItemCategoryUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @minLength 1
+     * @maxLength 24
+     */
+  icon?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  isActive?: boolean;
+  displayOnHome?: boolean;
+}
+
+export interface ItemCategoryTransferInput {
+  /** @nullable */
+  destinationId: number | null;
+  moveSubcategories: boolean;
+}
+
+export interface ItemCategoryOrderInput {
+  /** @nullable */
+  parentId: number | null;
+  /** @minItems 1 */
+  categoryIds: number[];
+}
+
+export interface ItemCategoryDeleteResponse {
+  success: boolean;
+  deactivatedCount: number;
+}
+
+export interface ItemCategoryOrderResponse {
+  success: boolean;
+}
+
+export type ActivityLogEntryActionType = typeof ActivityLogEntryActionType[keyof typeof ActivityLogEntryActionType];
+
+
+export const ActivityLogEntryActionType = {
+  add: 'add',
+  edit: 'edit',
+  transfer: 'transfer',
+  delete: 'delete',
+} as const;
+
+export type ActivityLogEntryEntityType = typeof ActivityLogEntryEntityType[keyof typeof ActivityLogEntryEntityType];
+
+
+export const ActivityLogEntryEntityType = {
+  category: 'category',
+  supplier: 'supplier',
+  buyer: 'buyer',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ActivityLogEntryOldValue = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type ActivityLogEntryNewValue = { [key: string]: unknown } | null;
+
+export interface ActivityLogEntry {
+  id: number;
+  adminId: number;
+  actionType: ActivityLogEntryActionType;
+  entityType: ActivityLogEntryEntityType;
+  entityId: number;
+  /** @nullable */
+  oldValue: ActivityLogEntryOldValue;
+  /** @nullable */
+  newValue: ActivityLogEntryNewValue;
+  createdAt: string;
 }
 
 export interface Supplier {

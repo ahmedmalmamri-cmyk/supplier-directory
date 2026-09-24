@@ -224,3 +224,17 @@ mtime_ms = 1790284449583
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/4bcdfebd-5dae-4b0d-886b-975c5c42f7c1/64985ec3-6635-4454-bdc8-3ae196d12437"
 storage_version_token = "1790284467925390"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "OIg6AnWQFQmPXzPFzwYnL"
+uri = "file://artifacts/bakery-suppliers/screenshots/homepage.jpg"
+type = "image"
+title = "الصفحة الرئيسية بعد تحديث التصنيفات"
+description = "لقطة شاشة للصفحة الرئيسية وتُظهر تصنيف حشوات الكيك ضمن 13 تصنيفاً رئيسياً."
+logical_id = "c09fe534-de2d-4e54-a13e-f41b6f3479f8"
+content_hash = "sha256:1baa860e1a480bb5236f5cd9d30df4ddf42bad5b12c39d9638bea2e4286930b5"
+size = 88367
+mtime_ms = 1790290498715
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c09fe534-de2d-4e54-a13e-f41b6f3479f8/b6c760ec-e690-4866-ab27-246f93efd34a"
+storage_version_token = "1790290535691741"
+content_type = "image/jpeg"

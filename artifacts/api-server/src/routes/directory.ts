@@ -107,19 +107,33 @@ router.get("/home", (_req, res): void => {
 
 router.get("/item-categories", (_req, res): void => {
   const rows = directoryDb.prepare(`
-    SELECT id, name, icon, group_name AS groupName,
-      display_on_home AS displayOnHome, display_order AS displayOrder, is_active AS isActive
+    WITH RECURSIVE active_category_tree(id) AS (
+      SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
+      UNION ALL
+      SELECT child.id
+      FROM item_categories child
+      JOIN active_category_tree parent ON child.parent_id = parent.id
+      WHERE child.is_active = 1
+    )
+    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+      description, display_on_home AS displayOnHome, display_order AS displayOrder,
+      is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
-    WHERE is_active = 1
-    ORDER BY display_order, id
+    WHERE id IN (SELECT id FROM active_category_tree)
+    ORDER BY COALESCE(parent_id, id),
+      CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, display_order, id
   `).all() as Array<{
     id: number;
     name: string;
     icon: string;
     groupName: string;
+    parentId: number | null;
+    description: string | null;
     displayOnHome: number;
     displayOrder: number;
     isActive: number;
+    createdAt: string;
+    updatedAt: string;
   }>;
   const categories = rows.map((category) => ({
     ...category,
@@ -240,6 +254,22 @@ router.get("/suppliers", (req, res): void => {
   }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (category) {
+    const itemCategories = directoryDb.prepare(`
+      SELECT id, name, parent_id AS parentId FROM item_categories WHERE is_active = 1
+    `).all() as Array<{ id: number; name: string; parentId: number | null }>;
+    const selectedItemCategory = itemCategories.find((item) => item.name === category);
+    const itemCategoryNames = new Set<string>();
+    if (selectedItemCategory) {
+      const pendingIds = [selectedItemCategory.id];
+      while (pendingIds.length) {
+        const parentId = pendingIds.pop()!;
+        const item = itemCategories.find((candidate) => candidate.id === parentId);
+        if (item) itemCategoryNames.add(item.name);
+        itemCategories
+          .filter((candidate) => candidate.parentId === parentId)
+          .forEach((child) => pendingIds.push(child.id));
+      }
+    }
     const categoryTerms = ({
       "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
       "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
@@ -250,7 +280,12 @@ router.get("/suppliers", (req, res): void => {
       "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
     } as Record<string, string[]>)[category] ?? [category];
     const patterns = categoryTerms.map((term) => `%${term}%`);
-    const requestCategoryFilters = patterns.map(() => "sr.categories LIKE ?").join(" OR ");
+    const exactRequestCategoryFilters = [...itemCategoryNames]
+      .map(() => "EXISTS (SELECT 1 FROM json_each(sr.categories) selected WHERE selected.value = ?)");
+    const requestCategoryFilters = [
+      ...exactRequestCategoryFilters,
+      ...patterns.map(() => "sr.categories LIKE ?"),
+    ].join(" OR ");
     const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
     clauses.push(`(
       EXISTS (
@@ -263,7 +298,7 @@ router.get("/suppliers", (req, res): void => {
         WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
       )
     )`);
-    values.push(...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
+    values.push(...itemCategoryNames, ...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
   }
   if (type) {
     const pattern = `%${type}%`;

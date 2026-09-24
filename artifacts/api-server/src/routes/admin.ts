@@ -104,6 +104,134 @@ function csvCell(value: unknown) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+type ItemCategoryRow = {
+  id: number;
+  name: string;
+  icon: string;
+  groupName: string;
+  parentId: number | null;
+  description: string | null;
+  displayOnHome: number;
+  displayOrder: number;
+  isActive: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function getItemCategoryRows() {
+  return directoryDb.prepare(`
+    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+      description, display_on_home AS displayOnHome, display_order AS displayOrder,
+      is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
+    FROM item_categories
+    ORDER BY COALESCE(parent_id, id),
+      CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, display_order, id
+  `).all() as ItemCategoryRow[];
+}
+
+function getItemCategory(id: number) {
+  return directoryDb.prepare(`
+    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+      description, display_on_home AS displayOnHome, display_order AS displayOrder,
+      is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
+    FROM item_categories WHERE id = ?
+  `).get(id) as ItemCategoryRow | undefined;
+}
+
+function itemCategorySnapshot(row: ItemCategoryRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    groupName: row.groupName,
+    parentId: row.parentId,
+    description: row.description,
+    displayOnHome: Boolean(row.displayOnHome),
+    displayOrder: row.displayOrder,
+    isActive: Boolean(row.isActive),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function itemCategorySupplierCounts(categories: ItemCategoryRow[]) {
+  const categoryIdByName = new Map(categories.map((category) => [category.name, category.id]));
+  const parentById = new Map(categories.map((category) => [category.id, category.parentId]));
+  const suppliers = directoryDb.prepare(`
+    SELECT s.id, sr.categories
+    FROM suppliers s
+    JOIN supplier_requests sr ON sr.id = s.request_id
+    WHERE s.is_active = 1
+  `).all() as Array<{ id: number; categories: string }>;
+  const suppliersByCategory = new Map<number, Set<number>>();
+  for (const supplier of suppliers) {
+    let selected: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(supplier.categories);
+      if (Array.isArray(parsed)) selected = parsed.filter((name): name is string => typeof name === "string");
+    } catch {
+      selected = [];
+    }
+    const included = new Set<number>();
+    for (const name of selected) {
+      let categoryId = categoryIdByName.get(name);
+      while (categoryId !== undefined && !included.has(categoryId)) {
+        included.add(categoryId);
+        categoryId = parentById.get(categoryId) ?? undefined;
+      }
+    }
+    for (const categoryId of included) {
+      const supplierIds = suppliersByCategory.get(categoryId) ?? new Set<number>();
+      supplierIds.add(supplier.id);
+      suppliersByCategory.set(categoryId, supplierIds);
+    }
+  }
+  return new Map([...suppliersByCategory].map(([id, supplierIds]) => [id, supplierIds.size]));
+}
+
+function recordItemCategoryActivity(
+  actionType: "add" | "edit" | "transfer" | "delete",
+  entityId: number,
+  oldValue: unknown,
+  newValue: unknown,
+) {
+  directoryDb.prepare(`
+    INSERT INTO activity_log
+      (admin_id, action_type, entity_type, entity_id, old_value, new_value, created_at)
+    VALUES (1, ?, 'category', ?, ?, ?, ?)
+  `).run(
+    actionType,
+    entityId,
+    oldValue == null ? null : JSON.stringify(oldValue),
+    newValue == null ? null : JSON.stringify(newValue),
+    new Date().toISOString(),
+  );
+}
+
+function parseActivityValue(value: string | null) {
+  if (value == null) return null;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function categoryDescendantIds(categories: ItemCategoryRow[], parentId: number) {
+  const descendants: number[] = [];
+  const pending = [parentId];
+  while (pending.length) {
+    const current = pending.pop()!;
+    const children = categories.filter((category) => category.parentId === current);
+    for (const child of children) {
+      if (descendants.includes(child.id)) continue;
+      descendants.push(child.id);
+      pending.push(child.id);
+    }
+  }
+  return descendants;
+}
+
 router.post("/admin/login", (req, res): void => {
   const parsed = AdminLoginBody.safeParse(req.body);
   const configuredPassword = process.env.ADMIN_PASSWORD;
@@ -1032,6 +1160,397 @@ router.post("/admin/settings/cities", (req, res): void => {
   if (!cities.includes(city)) cities.push(city);
   directoryDb.prepare("INSERT OR REPLACE INTO directory_settings (key, value) VALUES ('available_cities', ?)").run(JSON.stringify(cities));
   res.json({ success: true, cities, message: "تم تحديث المدن." });
+});
+
+router.get("/admin/item-categories", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const categories = getItemCategoryRows();
+  const supplierCounts = itemCategorySupplierCounts(categories);
+  res.json(categories.map((category) => ({
+    ...itemCategorySnapshot(category),
+    supplierCount: supplierCounts.get(category.id) ?? 0,
+  })));
+});
+
+router.post("/admin/item-categories", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const body = req.body as Record<string, unknown>;
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const icon = typeof body.icon === "string" ? body.icon.trim() : "";
+  const rawParentId = body.parentId;
+  const parentId = rawParentId === undefined || rawParentId === null
+    ? null
+    : typeof rawParentId === "number"
+      ? rawParentId
+      : Number.NaN;
+  const description = body.description === undefined || body.description === null
+    ? null
+    : typeof body.description === "string"
+      ? body.description.trim() || null
+      : undefined;
+  if (!name || name.length > 100 || !icon || icon.length > 24 || description === undefined ||
+      description && description.length > 500 ||
+      (parentId !== null && !Number.isInteger(parentId)) ||
+      (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
+    res.status(400).json({ error: "تحقق من اسم التصنيف وأيقونته ووصفه." });
+    return;
+  }
+  if (directoryDb.prepare("SELECT id FROM item_categories WHERE lower(trim(name)) = lower(?)").get(name)) {
+    res.status(409).json({ error: "يوجد تصنيف بهذا الاسم بالفعل." });
+    return;
+  }
+  const parent = parentId === null ? undefined : getItemCategory(parentId);
+  if (parentId !== null && (!parent || !parent.isActive)) {
+    res.status(400).json({ error: "التصنيف الأب غير موجود أو غير مفعّل." });
+    return;
+  }
+  const displayOnHome = parentId === null && typeof body.displayOnHome === "boolean"
+    ? body.displayOnHome
+    : parentId === null;
+  const displayOrder = (
+    directoryDb.prepare(`
+      SELECT COALESCE(MAX(display_order), 0) + 1 AS nextOrder
+      FROM item_categories WHERE parent_id IS ?
+    `).get(parentId) as { nextOrder: number }
+  ).nextOrder;
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const result = directoryDb.prepare(`
+      INSERT INTO item_categories
+        (name, icon, group_name, parent_id, description, display_on_home,
+         display_order, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).run(
+      name,
+      icon,
+      parent ? parent.groupName : name,
+      parentId as number | null,
+      description,
+      displayOnHome ? 1 : 0,
+      displayOrder,
+      now,
+      now,
+    );
+    const id = Number(result.lastInsertRowid);
+    const created = getItemCategory(id)!;
+    recordItemCategoryActivity("add", id, null, itemCategorySnapshot(created));
+    directoryDb.exec("COMMIT");
+    res.status(201).json({ ...itemCategorySnapshot(created), supplierCount: 0 });
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not create item category");
+    res.status(500).json({ error: "تعذر حفظ التصنيف." });
+  }
+});
+
+router.patch("/admin/item-categories/order", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const parentId = req.body?.parentId == null ? null : Number(req.body.parentId);
+  const categoryIds = Array.isArray(req.body?.categoryIds)
+    ? req.body.categoryIds.map(Number)
+    : [];
+  if ((parentId !== null && !Number.isInteger(parentId)) ||
+      !categoryIds.length || categoryIds.some((id: number) => !Number.isInteger(id)) ||
+      new Set(categoryIds).size !== categoryIds.length) {
+    res.status(400).json({ error: "قائمة ترتيب التصنيفات غير صالحة." });
+    return;
+  }
+  const siblings = directoryDb.prepare(`
+    SELECT id, display_order AS displayOrder FROM item_categories
+    WHERE parent_id IS ? ORDER BY display_order, id
+  `).all(parentId) as Array<{ id: number; displayOrder: number }>;
+  if (siblings.length !== categoryIds.length ||
+      siblings.some((category) => !categoryIds.includes(category.id))) {
+    res.status(400).json({ error: "يجب ترتيب جميع التصنيفات في المستوى نفسه." });
+    return;
+  }
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    categoryIds.forEach((id: number, index: number) => {
+      const previous = siblings.find((category) => category.id === id)!;
+      const displayOrder = index + 1;
+      if (previous.displayOrder === displayOrder) return;
+      directoryDb.prepare(`
+        UPDATE item_categories SET display_order = ?, updated_at = ? WHERE id = ?
+      `).run(displayOrder, now, id);
+      recordItemCategoryActivity("edit", id, { displayOrder: previous.displayOrder }, { displayOrder });
+    });
+    directoryDb.exec("COMMIT");
+    res.json({ success: true });
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not reorder item categories");
+    res.status(500).json({ error: "تعذر حفظ ترتيب التصنيفات." });
+  }
+});
+
+router.patch("/admin/item-categories/:id", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "معرف التصنيف غير صحيح." });
+    return;
+  }
+  const existing = getItemCategory(id);
+  if (!existing) {
+    res.status(404).json({ error: "التصنيف غير موجود." });
+    return;
+  }
+  const body = req.body as Record<string, unknown>;
+  const name = body.name === undefined ? existing.name : typeof body.name === "string" ? body.name.trim() : "";
+  const icon = body.icon === undefined ? existing.icon : typeof body.icon === "string" ? body.icon.trim() : "";
+  const description = body.description === undefined
+    ? existing.description
+    : body.description === null
+      ? null
+      : typeof body.description === "string"
+        ? body.description.trim() || null
+        : undefined;
+  if (!name || name.length > 100 || !icon || icon.length > 24 ||
+      description === undefined || description && description.length > 500 ||
+      (body.isActive !== undefined && typeof body.isActive !== "boolean") ||
+      (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
+    res.status(400).json({ error: "تحقق من بيانات التصنيف." });
+    return;
+  }
+  const duplicate = directoryDb.prepare(`
+    SELECT id FROM item_categories WHERE lower(trim(name)) = lower(?) AND id != ?
+  `).get(name, id);
+  if (duplicate) {
+    res.status(409).json({ error: "يوجد تصنيف بهذا الاسم بالفعل." });
+    return;
+  }
+  const isActive = body.isActive === undefined ? Boolean(existing.isActive) : body.isActive as boolean;
+  const displayOnHome = existing.parentId !== null
+    ? false
+    : body.displayOnHome === undefined
+      ? Boolean(existing.displayOnHome)
+      : body.displayOnHome as boolean;
+  const groupName = existing.parentId === null && existing.groupName === existing.name
+    ? name
+    : existing.groupName;
+  const descendants = categoryDescendantIds(getItemCategoryRows(), id);
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.prepare(`
+      UPDATE item_categories
+      SET name = ?, icon = ?, group_name = ?, description = ?, is_active = ?,
+          display_on_home = ?, updated_at = ?
+      WHERE id = ?
+    `).run(name, icon, groupName, description, isActive ? 1 : 0, displayOnHome ? 1 : 0, now, id);
+    if (name !== existing.name) {
+      directoryDb.prepare(`
+        UPDATE supplier_requests
+        SET categories = (
+          SELECT json_group_array(
+            CASE WHEN selected.value = ? THEN ? ELSE selected.value END
+          )
+          FROM json_each(supplier_requests.categories) selected
+        )
+        WHERE json_valid(categories)
+          AND EXISTS (
+            SELECT 1 FROM json_each(supplier_requests.categories) selected
+            WHERE selected.value = ?
+          )
+      `).run(existing.name, name, existing.name);
+    }
+    if (existing.groupName !== groupName) {
+      for (const descendantId of descendants) {
+        directoryDb.prepare(`
+          UPDATE item_categories SET group_name = ?, updated_at = ?
+          WHERE id = ? AND group_name = ?
+        `).run(groupName, now, descendantId, existing.groupName);
+      }
+    }
+    const updated = getItemCategory(id)!;
+    recordItemCategoryActivity("edit", id, itemCategorySnapshot(existing), itemCategorySnapshot(updated));
+    directoryDb.exec("COMMIT");
+    res.json({
+      ...itemCategorySnapshot(updated),
+      supplierCount: itemCategorySupplierCounts(getItemCategoryRows()).get(id) ?? 0,
+    });
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not update item category");
+    res.status(500).json({ error: "تعذر تحديث التصنيف." });
+  }
+});
+
+router.post("/admin/item-categories/:id/transfer", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const id = Number(req.params.id);
+  const rawDestinationId = req.body?.destinationId;
+  const destinationId = rawDestinationId == null ? null : Number(rawDestinationId);
+  const moveSubcategories = req.body?.moveSubcategories;
+  if (!Number.isInteger(id) ||
+      (destinationId !== null && !Number.isInteger(destinationId)) ||
+      typeof moveSubcategories !== "boolean") {
+    res.status(400).json({ error: "بيانات نقل التصنيف غير صالحة." });
+    return;
+  }
+  const existing = getItemCategory(id);
+  if (!existing) {
+    res.status(404).json({ error: "التصنيف غير موجود." });
+    return;
+  }
+  const categories = getItemCategoryRows();
+  const descendants = categoryDescendantIds(categories, id);
+  if (destinationId === id || destinationId !== null && descendants.includes(destinationId)) {
+    res.status(400).json({ error: "لا يمكن نقل التصنيف إلى نفسه أو إلى أحد تصنيفاته الفرعية." });
+    return;
+  }
+  const destination = destinationId === null ? undefined : getItemCategory(destinationId);
+  if (destinationId !== null && (!destination || !destination.isActive)) {
+    res.status(400).json({ error: "التصنيف المستهدف غير موجود أو غير مفعّل." });
+    return;
+  }
+  const nameConflict = directoryDb.prepare(`
+    SELECT id FROM item_categories
+    WHERE parent_id IS ? AND lower(trim(name)) = lower(?) AND id != ?
+  `).get(destinationId, existing.name, id);
+  if (nameConflict) {
+    res.status(409).json({ error: "يوجد تصنيف بالاسم نفسه في الوجهة المحددة." });
+    return;
+  }
+  const directChildren = categories.filter((category) => category.parentId === id);
+  const previousParent = existing.parentId === null ? undefined : getItemCategory(existing.parentId);
+  const nextGroupName = destination ? destination.groupName : existing.name;
+  const nextOrder = (
+    directoryDb.prepare(`
+      SELECT COALESCE(MAX(display_order), 0) + 1 AS nextOrder
+      FROM item_categories WHERE parent_id IS ?
+    `).get(destinationId) as { nextOrder: number }
+  ).nextOrder;
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    if (!moveSubcategories && directChildren.length) {
+      for (const child of directChildren) {
+        const childGroupName = previousParent?.groupName ?? child.name;
+        directoryDb.prepare(`
+          UPDATE item_categories
+          SET parent_id = ?, group_name = ?, updated_at = ?
+          WHERE id = ?
+        `).run(existing.parentId, childGroupName, now, child.id);
+        for (const descendantId of categoryDescendantIds(categories, child.id)) {
+          directoryDb.prepare(`
+            UPDATE item_categories SET group_name = ?, updated_at = ?
+            WHERE id = ? AND group_name = ?
+          `).run(childGroupName, now, descendantId, child.groupName);
+        }
+      }
+    } else if (moveSubcategories) {
+      for (const descendantId of descendants) {
+        directoryDb.prepare(`
+          UPDATE item_categories SET group_name = ?, updated_at = ?
+          WHERE id = ? AND group_name = ?
+        `).run(nextGroupName, now, descendantId, existing.groupName);
+      }
+    }
+    directoryDb.prepare(`
+      UPDATE item_categories
+      SET parent_id = ?, group_name = ?, display_on_home = ?, display_order = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      destinationId,
+      nextGroupName,
+      destinationId === null ? 1 : 0,
+      nextOrder,
+      now,
+      id,
+    );
+    const updated = getItemCategory(id)!;
+    recordItemCategoryActivity(
+      "transfer",
+      id,
+      {
+        category: itemCategorySnapshot(existing),
+        subcategories: directChildren.map(itemCategorySnapshot),
+      },
+      {
+        category: itemCategorySnapshot(updated),
+        moveSubcategories,
+        detachedSubcategoryIds: moveSubcategories ? [] : directChildren.map((child) => child.id),
+      },
+    );
+    directoryDb.exec("COMMIT");
+    const currentCategories = getItemCategoryRows();
+    res.json({
+      ...itemCategorySnapshot(updated),
+      supplierCount: itemCategorySupplierCounts(currentCategories).get(id) ?? 0,
+    });
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not transfer item category");
+    res.status(500).json({ error: "تعذر نقل التصنيف." });
+  }
+});
+
+router.delete("/admin/item-categories/:id", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "معرف التصنيف غير صحيح." });
+    return;
+  }
+  const categories = getItemCategoryRows();
+  const existing = categories.find((category) => category.id === id);
+  if (!existing) {
+    res.status(404).json({ error: "التصنيف غير موجود." });
+    return;
+  }
+  const ids = [id, ...categoryDescendantIds(categories, id)];
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    for (const categoryId of ids) {
+      const previous = getItemCategory(categoryId)!;
+      directoryDb.prepare(`
+        UPDATE item_categories SET is_active = 0, display_on_home = 0, updated_at = ?
+        WHERE id = ?
+      `).run(now, categoryId);
+      if (categoryId === id) {
+        recordItemCategoryActivity("delete", categoryId, itemCategorySnapshot(previous), {
+          ...itemCategorySnapshot(getItemCategory(categoryId)!),
+          deactivatedSubcategoryIds: ids.slice(1),
+        });
+      }
+    }
+    directoryDb.exec("COMMIT");
+    res.json({ success: true, deactivatedCount: ids.length });
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not delete item category");
+    res.status(500).json({ error: "تعذر حذف التصنيف." });
+  }
+});
+
+router.get("/admin/activity-log", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const rows = directoryDb.prepare(`
+    SELECT id, admin_id AS adminId, action_type AS actionType,
+      entity_type AS entityType, entity_id AS entityId,
+      old_value AS oldValue, new_value AS newValue, created_at AS createdAt
+    FROM activity_log
+    ORDER BY created_at DESC, id DESC LIMIT 500
+  `).all() as Array<{
+    id: number;
+    adminId: number;
+    actionType: string;
+    entityType: string;
+    entityId: number;
+    oldValue: string | null;
+    newValue: string | null;
+    createdAt: string;
+  }>;
+  res.json(rows.map((row) => ({
+    ...row,
+    oldValue: parseActivityValue(row.oldValue),
+    newValue: parseActivityValue(row.newValue),
+  })));
 });
 
 router.post("/admin/settings/categories", (req, res): void => {

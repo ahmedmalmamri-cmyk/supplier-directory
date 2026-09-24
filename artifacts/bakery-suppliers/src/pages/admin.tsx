@@ -1,12 +1,13 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import AdminItemCategoriesTab from "@/components/admin-item-categories-tab";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -36,6 +37,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "invitations", label: "دعوات الموردين", icon: Send },
   { id: "buyer-invitations", label: "دعوات أصحاب الأعمال", icon: UserRound },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
+  { id: "item-categories", label: "تصنيفات الموردين", icon: FolderTree },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -145,6 +147,7 @@ export default function AdminPage() {
            {tab === "invitations" && <SupplierInvitationsPanel />}
             {tab === "buyer-invitations" && <BuyerInvitationsPanel />}
           {tab === "stats" && <StatsTab stats={stats} />}
+          {tab === "item-categories" && <AdminItemCategoriesTab />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
       </div>
@@ -530,7 +533,7 @@ function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | n
       </div>
     </section>
     <section className="bg-card border rounded-2xl p-6">
-      <h3 className="text-xl font-bold mb-4">إدارة التصنيفات</h3>
+      <h3 className="text-xl font-bold mb-4">تصنيفات المنتجات في بيانات المنتجات</h3>
       <div className="flex flex-wrap gap-2 mb-4">{settings?.categories.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-sm">{item.name}</span>)}</div>
       <div className="flex gap-2 max-w-md">
         <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="تصنيف جديد" className="flex-1 h-10 px-3 rounded-lg border bg-background" />

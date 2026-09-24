@@ -6,10 +6,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
 import { useMemo, useState } from "react";
 
-const HOME_CATEGORY_ORDER = [
-  "دقيق", "سكر", "زبدة ودهون", "حليب ومشتقاته", "أجبان", "شوكولاتة وكاكاو",
-  "مكسرات", "خمائر ومحسنات", "نكهات وألوان", "خلطات جاهزة", "علب وتغليف", "معدات وأفران",
-];
 const HOME_CATEGORY_PRESENTATION: Record<string, { label?: string; icon?: string; filterCategory?: string }> = {
   "نكهات وألوان": { icon: "🍯" },
   "علب وتغليف": { label: "تغليف وعلب", filterCategory: "تغليف وعلب" },
@@ -43,22 +39,18 @@ export default function Home() {
     [allSuppliers],
   );
   const homeCategories = useMemo(() => {
-    const categoriesByName = new Map(
-      (itemCategories ?? [])
-        .filter((category) => category.isActive && category.displayOnHome)
-        .map((category) => [category.name, category]),
-    );
-    return HOME_CATEGORY_ORDER.flatMap((name) => {
-      const category = categoriesByName.get(name);
-      if (!category) return [];
-      const presentation = HOME_CATEGORY_PRESENTATION[name] ?? {};
-      return [{
-        ...category,
-        label: presentation.label ?? category.name,
-        icon: presentation.icon ?? category.icon,
-        filterCategory: presentation.filterCategory ?? category.name,
-      }];
-    });
+    return (itemCategories ?? [])
+      .filter((category) => category.isActive && category.displayOnHome && category.parentId === null)
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.id - right.id)
+      .map((category) => {
+        const presentation = HOME_CATEGORY_PRESENTATION[category.name] ?? {};
+        return {
+          ...category,
+          label: presentation.label ?? category.name,
+          icon: presentation.icon ?? category.icon,
+          filterCategory: presentation.filterCategory ?? category.name,
+        };
+      });
   }, [itemCategories]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -133,7 +125,7 @@ export default function Home() {
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-2.5 text-sm font-extrabold text-primary transition-colors hover:bg-primary hover:text-primary-foreground sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            عرض جميع التصنيفات ({itemCategories?.length ?? 32})
+            عرض جميع التصنيفات ({itemCategories?.length ?? 43})
           </Link>
           <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

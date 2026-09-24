@@ -18,7 +18,7 @@ type BuyerForm = {
   fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
   businessName: string; otherBusinessType: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
-type RegistrationCategory = { value: string; label: string; icon: string; description?: string };
+type RegistrationCategory = { value: string; label: string; icon: string; description?: string; children?: RegistrationCategory[] };
 type RegistrationCategoryGroup = { label: string; items: RegistrationCategory[] };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
@@ -106,13 +106,20 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const { data: itemCategories, isLoading: isLoadingItemCategories, error: itemCategoriesError } = useListItemCategories();
   const categoryGroups = useMemo<RegistrationCategoryGroup[]>(() => {
     const groups = new Map<string, RegistrationCategoryGroup>();
-    for (const category of itemCategories ?? []) {
-      if (!category.isActive) continue;
+    const activeCategories = (itemCategories ?? []).filter((category) => category.isActive);
+    const makeCategory = (category: NonNullable<typeof itemCategories>[number]): RegistrationCategory => ({
+      value: category.name,
+      label: category.name,
+      icon: category.icon,
+      ...(category.description ? { description: category.description } : {}),
+      children: activeCategories
+        .filter((child) => child.parentId === category.id)
+        .map(makeCategory),
+    });
+    for (const category of activeCategories.filter((item) => item.parentId === null)) {
       const group = groups.get(category.groupName) ?? { label: category.groupName, items: [] };
       group.items.push({
-        value: category.name,
-        label: category.name,
-        icon: category.icon,
+        ...makeCategory(category),
         ...(category.name === "خلطات جاهزة" ? { description: "خلطات الكيك والحلويات الجاهزة" } : {}),
       });
       groups.set(category.groupName, group);
@@ -351,6 +358,62 @@ function SupplierWizard({ form, categoryGroups, categoriesLoading, categoriesErr
   );
 }
 
+function flattenRegistrationCategories(categories: RegistrationCategory[]): RegistrationCategory[] {
+  return categories.flatMap((category) => [category, ...flattenRegistrationCategories(category.children ?? [])]);
+}
+
+function countSelectedCategoryValues(categories: RegistrationCategory[], selected: string[]): number {
+  return categories.reduce(
+    (count, category) =>
+      count + Number(selected.includes(category.value)) +
+      countSelectedCategoryValues(category.children ?? [], selected),
+    0,
+  );
+}
+
+function RegistrationCategoryOption({
+  category,
+  selected,
+  onToggle,
+  depth = 0,
+}: {
+  category: RegistrationCategory;
+  selected: string[];
+  onToggle: (value: string, checked: boolean) => void;
+  depth?: number;
+}) {
+  const isSelected = selected.includes(category.value);
+  const children = category.children ?? [];
+  return (
+    <div className="space-y-2">
+      <label className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-primary bg-primary/5 font-bold text-primary" : "hover:border-primary/50"}`} style={depth > 0 ? { marginRight: Math.min(depth * 12, 24) } : undefined}>
+        <input
+          type="checkbox"
+          data-testid={`checkbox-supplier-category-${category.value}`}
+          checked={isSelected}
+          onChange={(event) => onToggle(category.value, event.target.checked)}
+          className="h-4 w-4 accent-primary"
+        />
+        <span aria-hidden="true" className="text-xl">{category.icon}</span>
+        <span className="min-w-0">
+          <span className="block">{category.label}</span>
+          {category.description && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{category.description}</span>}
+        </span>
+      </label>
+      {isSelected && children.length > 0 && (
+        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
+          <p className="mb-2 text-xs font-bold text-muted-foreground">الأصناف الفرعية (اختيارية)</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {children.map((child) => (
+              <RegistrationCategoryOption key={child.value} category={child} selected={selected} onToggle={onToggle} depth={depth + 1} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, onChange, onNext }: {
   selected: string[];
   groups: RegistrationCategoryGroup[];
@@ -375,6 +438,9 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
       return;
     }
     const removedValues = new Set([value]);
+    const parentCategory = flattenRegistrationCategories(groups.flatMap((group) => group.items))
+      .find((item) => item.value === value);
+    flattenRegistrationCategories(parentCategory?.children ?? []).forEach((child) => removedValues.add(child.value));
     if (value === "خلطات جاهزة") {
       readyMixOptions.forEach((option) => {
         removedValues.add(option.value);
@@ -397,7 +463,7 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
       ) : (
         <div className="mt-5 space-y-3">
           {groups.map((group, groupIndex) => {
-            const selectedInGroup = group.items.filter((item) => selected.includes(item.value)).length;
+            const selectedInGroup = countSelectedCategoryValues(group.items, selected);
             return (
               <details key={group.label} open={groupIndex === 0} className="rounded-2xl border bg-card">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-extrabold marker:hidden">
@@ -408,25 +474,9 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
                   </span>
                 </summary>
                 <div className="grid gap-2 border-t p-3 sm:grid-cols-2">
-                  {group.items.map((category) => {
-                    const isSelected = selected.includes(category.value);
-                    return (
-                      <label key={category.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-primary bg-primary/5 font-bold text-primary" : "hover:border-primary/50"}`}>
-                        <input
-                          type="checkbox"
-                          data-testid={`checkbox-supplier-category-${category.value}`}
-                          checked={isSelected}
-                          onChange={(event) => toggleCategory(category.value, event.target.checked)}
-                          className="h-4 w-4 accent-primary"
-                        />
-                        <span aria-hidden="true" className="text-xl">{category.icon}</span>
-                        <span className="min-w-0">
-                          <span className="block">{category.label}</span>
-                          {category.description && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{category.description}</span>}
-                        </span>
-                      </label>
-                    );
-                  })}
+                  {group.items.map((category) => (
+                    <RegistrationCategoryOption key={category.value} category={category} selected={selected} onToggle={toggleCategory} />
+                  ))}
                 </div>
               </details>
             );

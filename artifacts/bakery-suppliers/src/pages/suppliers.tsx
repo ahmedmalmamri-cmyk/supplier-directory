@@ -39,12 +39,17 @@ export default function SuppliersPage() {
   const categoryGroups = useMemo(() => {
     const groups = new Map<string, { groupName: string; categories: NonNullable<typeof itemCategories> }>();
     for (const item of itemCategories ?? []) {
+      if (item.parentId !== null) continue;
       const group = groups.get(item.groupName) ?? { groupName: item.groupName, categories: [] };
       group.categories.push(item);
       groups.set(item.groupName, group);
     }
     return [...groups.values()];
   }, [itemCategories]);
+  const selectedTaxonomyCategory = (itemCategories ?? []).find((item) => item.name === category);
+  const selectedSubcategories = selectedTaxonomyCategory
+    ? (itemCategories ?? []).filter((item) => item.parentId === selectedTaxonomyCategory.id)
+    : [];
   const selectCategory = (nextCategory: string) => {
     setCategory(nextCategory);
     setType("");
@@ -108,7 +113,9 @@ export default function SuppliersPage() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 id="supplier-category-heading" className="text-xl font-extrabold">تصفح حسب التصنيف</h2>
-              <p className="mt-1 text-sm text-muted-foreground">اختر من {itemCategories?.length ?? 32} تصنيفاً للعثور على الموردين المناسبين.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                اختر من {categoryGroups.reduce((count, group) => count + group.categories.length, 0) || 33} تصنيفاً رئيسياً للعثور على الموردين المناسبين.
+              </p>
             </div>
             {category && <button type="button" onClick={() => selectCategory("")} className="text-sm font-bold text-primary hover:underline">مسح التصنيف</button>}
           </div>
@@ -147,6 +154,34 @@ export default function SuppliersPage() {
                   </div>
                 </div>
               ))}
+              {selectedTaxonomyCategory && selectedSubcategories.length > 0 && (
+                <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
+                  <h3 className="mb-1 font-extrabold">الأصناف الفرعية في {selectedTaxonomyCategory.name}</h3>
+                  <p className="mb-3 text-sm text-muted-foreground">اختر صنفاً لعرض الموردين المرتبطين به، أو اترك التصنيف الرئيسي محدداً لعرض جميع الأصناف الفرعية.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={category === selectedTaxonomyCategory.name}
+                      onClick={() => selectCategory(selectedTaxonomyCategory.name)}
+                      className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${category === selectedTaxonomyCategory.name ? "border-primary bg-primary text-primary-foreground" : "border-primary/25 bg-card text-primary hover:bg-primary/5"}`}
+                    >
+                      كل {selectedTaxonomyCategory.name}
+                    </button>
+                    {selectedSubcategories.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        data-testid={`button-category-child-${item.id}`}
+                        aria-pressed={category === item.name}
+                        onClick={() => selectCategory(item.name)}
+                        className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${category === item.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50 hover:text-primary"}`}
+                      >
+                        <span aria-hidden="true" className="ml-1">{item.icon}</span>{item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
