@@ -18,9 +18,11 @@ export function buildWhatsAppChatUrl(value: string) {
   return phone ? `https://wa.me/${phone.international}` : null;
 }
 
+export function buildWhatsAppMessageUrl(value: string, message: string) {
+  const chatUrl = buildWhatsAppChatUrl(value);
+  return chatUrl ? `${chatUrl}?text=${encodeURIComponent(message)}` : null;
+}
+
 export function buildWhatsAppTestUrl(value: string) {
-  const phone = normalizeSaudiMobile(value);
-  return phone
-    ? `https://wa.me/${phone.international}?text=${encodeURIComponent("مرحباً، هذا اختبار")}`
-    : null;
+  return buildWhatsAppMessageUrl(value, "مرحباً، هذا اختبار");
 }
