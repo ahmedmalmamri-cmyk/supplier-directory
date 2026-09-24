@@ -35,6 +35,7 @@ import type {
   FetchCategoryParams,
   HealthStatus,
   HomeData,
+  ItemCategory,
   ListSuppliersParams,
   ProductDetail,
   RegisterInput,
@@ -205,6 +206,77 @@ export function useGetHome<TData = Awaited<ReturnType<typeof getHome>>, TError =
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetHomeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListItemCategoriesUrl = () => {
+
+
+
+
+  return `/api/item-categories`
+}
+
+export const listItemCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<ItemCategory[]> => {
+
+  return customFetch<ItemCategory[]>(getListItemCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListItemCategoriesQueryKey = () => {
+    return [
+    `/api/item-categories`
+    ] as const;
+    }
+
+
+export const getListItemCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listItemCategories>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listItemCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListItemCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listItemCategories>>> = ({ signal }) => listItemCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listItemCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListItemCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listItemCategories>>>
+export type ListItemCategoriesQueryError = ErrorType<unknown>
+
+
+
+export function useListItemCategories<TData = Awaited<ReturnType<typeof listItemCategories>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listItemCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListItemCategoriesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

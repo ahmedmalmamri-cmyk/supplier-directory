@@ -17,6 +17,16 @@ export interface Category {
   productCount?: number;
 }
 
+export interface ItemCategory {
+  id: number;
+  name: string;
+  icon: string;
+  groupName: string;
+  displayOnHome: boolean;
+  displayOrder: number;
+  isActive: boolean;
+}
+
 export interface Supplier {
   id: number;
   name: string;
@@ -324,6 +334,7 @@ export type ListSuppliersParams = {
 q?: string;
 city?: string;
 type?: string;
+category?: string;
 /**
  * @minimum 1
  * @maximum 5

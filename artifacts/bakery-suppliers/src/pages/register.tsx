@@ -1,8 +1,9 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
+import { useListItemCategories } from "@workspace/api-client-react";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, CakeSlice, CheckCircle2, ChevronLeft, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
+import { Building2, CakeSlice, CheckCircle2, ChevronDown, ChevronLeft, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
 type SupplierForm = {
@@ -17,6 +18,8 @@ type BuyerForm = {
   fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
   businessName: string; otherBusinessType: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
+type RegistrationCategory = { value: string; label: string; icon: string; description?: string };
+type RegistrationCategoryGroup = { label: string; items: RegistrationCategory[] };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const buyerCities = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة", "بريدة", "تبوك", "أبها", "حائل", "جازان", "نجران", "سكاكا", "عرعر", "الطائف", "ينبع"];
@@ -29,82 +32,6 @@ const buyerBusinessTypes = [
   { value: "فندق", icon: Hotel },
   { value: "آخر", icon: Building2 },
 ];
-const categoryGroups = [
-  {
-    label: "المواد الأساسية",
-    items: [
-      { value: "دقيق", label: "دقيق", icon: "🥖" },
-      { value: "سميد وبرغل", label: "سميد وبرغل", icon: "🌾" },
-      { value: "سكر", label: "سكر", icon: "🍰" },
-      { value: "زبدة ودهون", label: "زبدة ودهون", icon: "🧈" },
-      { value: "مارجرين", label: "مارجرين", icon: "🧴" },
-      { value: "سمن", label: "سمن", icon: "🧈" },
-    ],
-  },
-  {
-    label: "منتجات الألبان",
-    items: [
-      { value: "حليب ومشتقاته", label: "حليب ومشتقاته", icon: "🥛" },
-      { value: "أجبان", label: "أجبان", icon: "🧀" },
-      { value: "زبادي وقشطة", label: "زبادي وقشطة", icon: "🍶" },
-      { value: "كريمة", label: "كريمة", icon: "🍦" },
-    ],
-  },
-  {
-    label: "الشوكولاتة والحلويات",
-    items: [
-      { value: "شوكولاتة", label: "شوكولاتة", icon: "🍫" },
-      { value: "كاكاو", label: "كاكاو", icon: "🍫" },
-      { value: "حلوى وسكاكر", label: "حلوى وسكاكر", icon: "🍬" },
-      { value: "جيلاتين وكاسترد", label: "جيلاتين وكاسترد", icon: "🍮" },
-      { value: "خلطات جاهزة", label: "خلطات جاهزة", icon: "🍰", description: "خلطات الكيك والحلويات الجاهزة" },
-    ],
-  },
-  {
-    label: "المكسرات والفواكه",
-    items: [
-      { value: "مكسرات", label: "مكسرات", icon: "🥜" },
-      { value: "فواكه مجففة", label: "فواكه مجففة", icon: "🍇" },
-      { value: "عسل ومحليات", label: "عسل ومحليات", icon: "🍯" },
-      { value: "دبس", label: "دبس", icon: "🍯" },
-    ],
-  },
-  {
-    label: "المواد الفنية",
-    items: [
-      { value: "خمائر ومحسنات", label: "خمائر ومحسنات", icon: "🧪" },
-      { value: "نكهات وألوان", label: "نكهات وألوان", icon: "🌿" },
-      { value: "فانيليا ومستخلصات", label: "فانيليا ومستخلصات", icon: "🎨" },
-    ],
-  },
-  {
-    label: "العجائن والجاهز",
-    items: [
-      { value: "عجين سمبوسة", label: "عجين سمبوسة", icon: "🥟" },
-      { value: "عجين بيتزا", label: "عجين بيتزا", icon: "🥙" },
-      { value: "خبز رقاق", label: "خبز رقاق", icon: "🫓" },
-      { value: "خبز جاهز", label: "خبز جاهز", icon: "🥖" },
-      { value: "معجنات مجمدة", label: "معجنات مجمدة", icon: "🥐" },
-    ],
-  },
-  {
-    label: "التغليف والطباعة",
-    items: [
-      { value: "علب وتغليف", label: "علب وتغليف", icon: "📦" },
-      { value: "أكياس مطبوعة", label: "أكياس مطبوعة", icon: "🛍️" },
-      { value: "كراتين مطبوعة", label: "كراتين مطبوعة", icon: "📦" },
-      { value: "أدوات تزيين", label: "أدوات تزيين", icon: "🎀" },
-    ],
-  },
-  {
-    label: "المعدات",
-    items: [
-      { value: "معدات وأفران", label: "معدات وأفران", icon: "⚙️" },
-      { value: "أدوات صغيرة", label: "أدوات صغيرة", icon: "🔧" },
-    ],
-  },
-];
-const categories = categoryGroups.flatMap((group) => group.items);
 const readyMixOptions = [
   {
     value: "خليط الكيك",
@@ -147,9 +74,11 @@ const legacyCategoryAliases: Record<string, string> = {
   "سكر ومحليات": "سكر",
   زبدة: "زبدة ودهون",
   "دهون وزبدة": "زبدة ودهون",
-  "شوكولاتة وكاكاو": "شوكولاتة",
+  شوكولاتة: "شوكولاتة وكاكاو",
+  كاكاو: "شوكولاتة وكاكاو",
   "عبوات وتغليف": "علب وتغليف",
   "معدات وأدوات": "معدات وأفران",
+  خمائر: "خمائر ومحسنات",
 };
 
 const emptySupplier: SupplierForm = {
@@ -174,6 +103,22 @@ const emptyBuyer: BuyerForm = {
 };
 
 export default function RegisterPage({ defaultType }: { defaultType?: RegistrationType } = {}) {
+  const { data: itemCategories, isLoading: isLoadingItemCategories, error: itemCategoriesError } = useListItemCategories();
+  const categoryGroups = useMemo<RegistrationCategoryGroup[]>(() => {
+    const groups = new Map<string, RegistrationCategoryGroup>();
+    for (const category of itemCategories ?? []) {
+      if (!category.isActive) continue;
+      const group = groups.get(category.groupName) ?? { label: category.groupName, items: [] };
+      group.items.push({
+        value: category.name,
+        label: category.name,
+        icon: category.icon,
+        ...(category.name === "خلطات جاهزة" ? { description: "خلطات الكيك والحلويات الجاهزة" } : {}),
+      });
+      groups.set(category.groupName, group);
+    }
+    return [...groups.values()];
+  }, [itemCategories]);
   const requestedType = new URLSearchParams(window.location.search).get("type");
   const initialType = defaultType ?? (requestedType === "supplier" || requestedType === "buyer" ? requestedType : null);
   const [type, setType] = useState<RegistrationType | null>(initialType);
@@ -182,9 +127,9 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
     const categories = Array.isArray(draft.categories) ? draft.categories : [];
     return {
       ...draft,
-      categories: [...new Set(categories.map((category) =>
-        category === "زبدة" || category === "دهون وزبدة" ? "زبدة ودهون" : category
-      ))],
+      categories: [...new Set(categories
+        .map((category) => legacyCategoryAliases[category] ?? category)
+        .filter((category) => category !== "أخرى"))],
     };
   });
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
@@ -192,6 +137,23 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState<{ code: string; type: RegistrationType } | null>(null);
   const { refresh } = useBuyerAuth();
+
+  useEffect(() => {
+    if (!itemCategories) return;
+    const allowedCategories = new Set([
+      ...itemCategories.map((category) => category.name),
+      ...readyMixOptions.flatMap((option) => [option.value, ...option.flavors.map((flavor) => flavor.value)]),
+    ]);
+    setSupplier((current) => {
+      const categories = [...new Set(current.categories
+        .map((category) => legacyCategoryAliases[category] ?? category)
+        .filter((category) => allowedCategories.has(category)))];
+      return categories.length === current.categories.length &&
+        categories.every((category, index) => category === current.categories[index])
+        ? current
+        : { ...current, categories };
+    });
+  }, [itemCategories]);
 
   useEffect(() => saveDraft("supplier", supplier), [supplier]);
   useEffect(() => saveDraft("buyer", buyer), [buyer]);
@@ -217,6 +179,9 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
         ) : type === "supplier" ? (
           <SupplierWizard
             form={supplier}
+            categoryGroups={categoryGroups}
+            categoriesLoading={isLoadingItemCategories}
+            categoriesError={Boolean(itemCategoriesError)}
             error={error}
             isSubmitting={isSubmitting}
             onChange={updateSupplier}
@@ -298,8 +263,9 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
   );
 }
 
-function SupplierWizard({ form, error, isSubmitting, onChange, onBack, onSubmit }: {
-  form: SupplierForm; error: string; isSubmitting: boolean; onChange: (patch: Partial<SupplierForm>) => void;
+function SupplierWizard({ form, categoryGroups, categoriesLoading, categoriesError, error, isSubmitting, onChange, onBack, onSubmit }: {
+  form: SupplierForm; categoryGroups: RegistrationCategoryGroup[]; categoriesLoading: boolean; categoriesError: boolean;
+  error: string; isSubmitting: boolean; onChange: (patch: Partial<SupplierForm>) => void;
   onBack: () => void; onSubmit: () => void;
 }) {
   const [step, setStep] = useState(0);
@@ -314,10 +280,16 @@ function SupplierWizard({ form, error, isSubmitting, onChange, onBack, onSubmit 
       {step === 0 ? (
         <SupplierCategoryStep
           selected={form.categories}
+          groups={categoryGroups}
+          isLoading={categoriesLoading}
+          hasError={categoriesError}
           error={stepError}
           onChange={(selected) => { onChange({ categories: selected }); setStepError(""); }}
           onNext={() => {
-            if (!form.categories.length) { setStepError("اختر فئة واحدة على الأقل."); return; }
+            if (categoriesLoading) { setStepError("جارٍ تحميل التصنيفات. انتظر لحظة ثم أعد المحاولة."); return; }
+            if (categoriesError || !categoryGroups.length) { setStepError("تعذر تحميل التصنيفات. حاول تحديث الصفحة."); return; }
+            const primaryCategories = new Set(categoryGroups.flatMap((group) => group.items.map((item) => item.value)));
+            if (!form.categories.some((category) => primaryCategories.has(category))) { setStepError("اختر فئة واحدة على الأقل."); return; }
             setStep(1);
             setStepError("");
           }}
@@ -379,36 +351,148 @@ function SupplierWizard({ form, error, isSubmitting, onChange, onBack, onSubmit 
   );
 }
 
-function SupplierCategoryStep({ selected, error, onChange, onNext }: {
+function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, onChange, onNext }: {
   selected: string[];
+  groups: RegistrationCategoryGroup[];
+  isLoading: boolean;
+  hasError: boolean;
   error: string;
   onChange: (selected: string[]) => void;
   onNext: () => void;
 }) {
   const selectedCount = selected.length;
+  const [flavorSearch, setFlavorSearch] = useState("");
+  const normalizedFlavorSearch = flavorSearch.trim().toLocaleLowerCase("ar");
+  const hasSelectedMix = readyMixOptions.some((option) => selected.includes(option.value));
+  const hasMatchingFlavor = readyMixOptions.some((option) =>
+    selected.includes(option.value) && option.flavors.some((flavor) =>
+      !normalizedFlavorSearch || flavor.label.toLocaleLowerCase("ar").includes(normalizedFlavorSearch)
+    )
+  );
+  const toggleCategory = (value: string, checked: boolean) => {
+    if (checked) {
+      onChange([...new Set([...selected, value])]);
+      return;
+    }
+    const removedValues = new Set([value]);
+    if (value === "خلطات جاهزة") {
+      readyMixOptions.forEach((option) => {
+        removedValues.add(option.value);
+        option.flavors.forEach((flavor) => removedValues.add(flavor.value));
+      });
+    } else {
+      const selectedMix = readyMixOptions.find((option) => option.value === value);
+      selectedMix?.flavors.forEach((flavor) => removedValues.add(flavor.value));
+    }
+    onChange(selected.filter((item) => !removedValues.has(item)));
+  };
   return (
     <div>
       <h2 className="text-2xl font-extrabold">ما الذي تبيعه؟</h2>
       <p className="mt-1 text-sm text-muted-foreground">اختر كل ما ينطبق. يكفي تحديد الفئة؛ تفاصيل الأنواع والتوفر تُعرف عبر واتساب.</p>
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        {categories.map((category) => {
-          const isSelected = selected.includes(category.value);
-          return (
-            <label key={category.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-primary bg-primary/5 font-bold text-primary" : "hover:border-primary/50"}`}>
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={(event) => onChange(event.target.checked
-                  ? [...selected, category.value]
-                  : selected.filter((item) => item !== category.value))}
-                className="h-4 w-4 accent-primary"
-              />
-              <span aria-hidden="true" className="text-xl">{category.icon}</span>
-              <span>{category.label}</span>
-            </label>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <p className="mt-5 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
+      ) : hasError ? (
+        <p className="mt-5 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات. حاول تحديث الصفحة.</p>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {groups.map((group, groupIndex) => {
+            const selectedInGroup = group.items.filter((item) => selected.includes(item.value)).length;
+            return (
+              <details key={group.label} open={groupIndex === 0} className="rounded-2xl border bg-card">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 font-extrabold marker:hidden">
+                  <span>{group.label}</span>
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    {selectedInGroup ? `${selectedInGroup} محدد` : "اختر من المجموعة"}
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </summary>
+                <div className="grid gap-2 border-t p-3 sm:grid-cols-2">
+                  {group.items.map((category) => {
+                    const isSelected = selected.includes(category.value);
+                    return (
+                      <label key={category.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-primary bg-primary/5 font-bold text-primary" : "hover:border-primary/50"}`}>
+                        <input
+                          type="checkbox"
+                          data-testid={`checkbox-supplier-category-${category.value}`}
+                          checked={isSelected}
+                          onChange={(event) => toggleCategory(category.value, event.target.checked)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <span aria-hidden="true" className="text-xl">{category.icon}</span>
+                        <span className="min-w-0">
+                          <span className="block">{category.label}</span>
+                          {category.description && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{category.description}</span>}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+      {selected.includes("خلطات جاهزة") && (
+        <section className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" aria-labelledby="ready-mix-options-title">
+          <h3 id="ready-mix-options-title" className="font-extrabold">الأصناف الفرعية (اختيارية)</h3>
+          <p className="mt-1 text-sm text-muted-foreground">حدد الخلطات والنكهات التي توفرها. يمكنك تركها دون تحديد.</p>
+          <label className="mt-4 block text-sm font-semibold" htmlFor="ready-mix-flavor-search">ابحث عن نكهة</label>
+          <input
+            id="ready-mix-flavor-search"
+            data-testid="input-ready-mix-flavor-search"
+            type="search"
+            value={flavorSearch}
+            onChange={(event) => setFlavorSearch(event.target.value)}
+            placeholder="مثال: ريد فيلفت"
+            className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          />
+          {!hasSelectedMix && (
+            <p className="mt-2 text-xs text-muted-foreground">اختر خليطاً فرعياً أولاً لعرض نكهاته وتصفية النتائج.</p>
+          )}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {readyMixOptions.map((option) => {
+              const isSelected = selected.includes(option.value);
+              return (
+                <div key={option.value} className="rounded-xl border bg-card p-3">
+                  <label className="flex cursor-pointer items-center gap-2 font-bold">
+                    <input
+                      type="checkbox"
+                      data-testid={`checkbox-ready-mix-${option.value}`}
+                      checked={isSelected}
+                      onChange={(event) => toggleCategory(option.value, event.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span aria-hidden="true" className="text-lg">{option.icon}</span>
+                    <span>{option.label}</span>
+                  </label>
+                  {isSelected && option.flavors.length > 0 && (
+                    <div className="mt-3 space-y-2 border-r-2 border-primary/20 pr-4">
+                      {option.flavors.filter((flavor) =>
+                        !normalizedFlavorSearch || flavor.label.toLocaleLowerCase("ar").includes(normalizedFlavorSearch)
+                      ).map((flavor) => (
+                        <label key={flavor.value} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            data-testid={`checkbox-ready-mix-flavor-${flavor.value}`}
+                            checked={selected.includes(flavor.value)}
+                            onChange={(event) => toggleCategory(flavor.value, event.target.checked)}
+                            className="h-4 w-4 accent-primary"
+                          />
+                          <span>{flavor.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {normalizedFlavorSearch && hasSelectedMix && !hasMatchingFlavor && (
+            <p className="mt-3 text-sm text-muted-foreground" role="status">لا توجد نكهات مطابقة للخلطات المحددة.</p>
+          )}
+        </section>
+      )}
       <p className="mt-4 rounded-xl bg-muted/30 px-4 py-3 text-sm font-bold" aria-live="polite">
         {selectedCount
           ? `اخترت ${selectedCount} ${selectedCount === 1 ? "صنفاً" : "أصناف"}`

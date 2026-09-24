@@ -7,6 +7,7 @@ import {
   FetchCategoryQueryParams,
   FetchCategoryResponse,
   GetHomeResponse,
+  ListItemCategoriesResponse,
   GetProductParams,
   GetProductResponse,
   GetSupplierParams,
@@ -104,6 +105,30 @@ router.get("/home", (_req, res): void => {
   res.json(GetHomeResponse.parse({ categories, featuredSuppliers, latestProducts, stats }));
 });
 
+router.get("/item-categories", (_req, res): void => {
+  const rows = directoryDb.prepare(`
+    SELECT id, name, icon, group_name AS groupName,
+      display_on_home AS displayOnHome, display_order AS displayOrder, is_active AS isActive
+    FROM item_categories
+    WHERE is_active = 1
+    ORDER BY display_order, id
+  `).all() as Array<{
+    id: number;
+    name: string;
+    icon: string;
+    groupName: string;
+    displayOnHome: number;
+    displayOrder: number;
+    isActive: number;
+  }>;
+  const categories = rows.map((category) => ({
+    ...category,
+    displayOnHome: Boolean(category.displayOnHome),
+    isActive: Boolean(category.isActive),
+  }));
+  res.json(ListItemCategoriesResponse.parse(categories));
+});
+
 router.get("/search", (req, res): void => {
   const parsed = SearchDirectoryQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -187,7 +212,7 @@ router.get("/suppliers", (req, res): void => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { q, city, type, rating, package: supplierPackage, verified, sort = "rating" } = parsed.data;
+  const { q, city, type, category, rating, package: supplierPackage, verified, sort = "rating" } = parsed.data;
   const values: (string | number)[] = [];
   const clauses: string[] = ["s.is_active = 1"];
   if (q) {
@@ -208,6 +233,32 @@ router.get("/suppliers", (req, res): void => {
     values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern);
   }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
+  if (category) {
+    const categoryTerms = ({
+      "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
+      "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
+      "علب وتغليف": ["علب وتغليف", "عبوات وتغليف"],
+      "تغليف وعلب": ["علب وتغليف", "عبوات وتغليف", "أكياس مطبوعة", "كراتين مطبوعة"],
+      "معدات وأفران": ["معدات وأفران", "معدات وأدوات"],
+      "أدوات صغيرة": ["أدوات صغيرة", "معدات وأدوات"],
+      "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
+    } as Record<string, string[]>)[category] ?? [category];
+    const patterns = categoryTerms.map((term) => `%${term}%`);
+    const requestCategoryFilters = patterns.map(() => "sr.categories LIKE ?").join(" OR ");
+    const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
+    clauses.push(`(
+      EXISTS (
+        SELECT 1 FROM supplier_requests sr
+        WHERE sr.id = s.request_id AND (${requestCategoryFilters})
+      )
+      OR EXISTS (
+        SELECT 1 FROM products tp
+        JOIN categories tc ON tc.id = tp.category_id
+        WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
+      )
+    )`);
+    values.push(...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
+  }
   if (type) {
     const pattern = `%${type}%`;
     clauses.push(`(

@@ -1,10 +1,20 @@
-import { ArrowLeft, BadgeCheck, Building2, MapPin, Package, Search, ShieldCheck, Star, Users, Wheat, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, MapPin, Package, Plus, Search, ShieldCheck, Star, Users, Wheat, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useGetHome, useListSuppliers } from "@workspace/api-client-react";
+import { useGetHome, useListItemCategories, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/SupplierFilterControls";
+import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
 import { useMemo, useState } from "react";
+
+const HOME_CATEGORY_ORDER = [
+  "دقيق", "سكر", "زبدة ودهون", "حليب ومشتقاته", "أجبان", "شوكولاتة وكاكاو",
+  "مكسرات", "خمائر ومحسنات", "نكهات وألوان", "خلطات جاهزة", "علب وتغليف", "معدات وأفران",
+];
+const HOME_CATEGORY_PRESENTATION: Record<string, { label?: string; icon?: string; filterCategory?: string }> = {
+  "نكهات وألوان": { icon: "🍯" },
+  "علب وتغليف": { label: "تغليف وعلب", filterCategory: "تغليف وعلب" },
+  "معدات وأفران": { label: "معدات وأدوات", filterCategory: "معدات وأدوات" },
+};
 
 function Rating({ value }: { value: number }) {
   return <span className="inline-flex items-center gap-1 text-sm font-bold text-accent"><Star className="h-4 w-4 fill-current" />{value.toFixed(1)}</span>;
@@ -12,6 +22,7 @@ function Rating({ value }: { value: number }) {
 
 export default function Home() {
   const { data: homeData, isLoading, error } = useGetHome();
+  const { data: itemCategories, isLoading: isLoadingItemCategories, error: itemCategoriesError } = useListItemCategories();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [city, setCity] = useState("");
@@ -31,6 +42,24 @@ export default function Home() {
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
+  const homeCategories = useMemo(() => {
+    const categoriesByName = new Map(
+      (itemCategories ?? [])
+        .filter((category) => category.isActive && category.displayOnHome)
+        .map((category) => [category.name, category]),
+    );
+    return HOME_CATEGORY_ORDER.flatMap((name) => {
+      const category = categoriesByName.get(name);
+      if (!category) return [];
+      const presentation = HOME_CATEGORY_PRESENTATION[name] ?? {};
+      return [{
+        ...category,
+        label: presentation.label ?? category.name,
+        icon: presentation.icon ?? category.icon,
+        filterCategory: presentation.filterCategory ?? category.name,
+      }];
+    });
+  }, [itemCategories]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +91,36 @@ export default function Home() {
                <input data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-16 w-full rounded-2xl border border-border/80 bg-card/95 px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none ring-0 backdrop-blur-sm placeholder:text-muted-foreground" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               <button data-testid="button-home-search" type="submit" className="absolute left-2 top-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5"><Search className="h-5 w-5" /></button>
             </form>
-             <div className="mt-5 flex max-w-2xl flex-wrap items-center gap-2" aria-label="تصفح حسب نوع المورد">
-               <span className="ml-1 text-sm font-bold">تصفح حسب نوع المورد:</span>
-               {SUPPLIER_TYPES.map((type) => <Link key={type} href={`/suppliers?type=${encodeURIComponent(type)}`} className="rounded-full border border-primary/25 bg-card/80 px-3 py-1.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground">{type}</Link>)}
-             </div>
+              <section className="mt-7 max-w-2xl" aria-labelledby="home-category-heading">
+                <h2 id="home-category-heading" className="mb-3 text-sm font-extrabold">تصفح حسب نوع المورد</h2>
+                {isLoadingItemCategories ? (
+                  <p className="rounded-xl bg-card/80 px-4 py-3 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
+                ) : itemCategoriesError ? (
+                  <p className="rounded-xl bg-card/80 px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    {homeCategories.map((category) => (
+                      <Link
+                        key={category.id}
+                        href={`/suppliers?category=${encodeURIComponent(category.filterCategory)}`}
+                        data-testid={`link-home-category-${category.id}`}
+                        className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-card/85 px-3 py-2 text-center text-sm font-bold text-primary shadow-sm transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <span aria-hidden="true" className="text-lg">{category.icon}</span>
+                        <span>{category.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                <Link
+                  href="/suppliers"
+                  data-testid="link-all-categories"
+                  className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground"
+                >
+                  <Plus className="h-4 w-4" />
+                  عرض كل الأصناف ({itemCategories?.length ?? 32})
+                </Link>
+              </section>
               <Link href="/register/supplier" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
                 <Building2 className="h-4 w-4" />
                 أنا مورد — سجّل نشاطك في الدليل

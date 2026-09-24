@@ -1,7 +1,7 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useListSuppliers } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { useListItemCategories, useListSuppliers } from "@workspace/api-client-react";
+import { Link, useLocation } from "wouter";
 import { Search, MapPin, Star, BadgeCheck, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // We'll create this
@@ -11,6 +11,7 @@ export default function SuppliersPage() {
   const [initialParams] = useState(() => new URLSearchParams(window.location.search));
   const [searchTerm, setSearchTerm] = useState(initialParams.get("q") ?? "");
   const initialType = initialParams.get("type") ?? "";
+  const [category, setCategory] = useState(initialParams.get("category") ?? "");
   const [city, setCity] = useState(initialParams.get("city") ?? "");
   const [type, setType] = useState(SUPPLIER_TYPES.includes(initialType as typeof SUPPLIER_TYPES[number]) ? initialType : "");
   const [rating, setRating] = useState(initialParams.get("rating") ?? "");
@@ -18,10 +19,13 @@ export default function SuppliersPage() {
   const [supplierPackage, setSupplierPackage] = useState<"" | "verified" | "featured">(initialPackage === "verified" || initialPackage === "featured" ? initialPackage : "");
   const [sort, setSort] = useState<"newest" | "rating" | "alphabetical">("rating");
   const debouncedSearch = useDebounce(searchTerm, 500);
+  const [, setLocation] = useLocation();
 
+  const { data: itemCategories, isLoading: isLoadingCategories, error: categoriesError } = useListItemCategories();
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
   const { data: suppliers, isLoading, error } = useListSuppliers({
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
+      ...(category ? { category } : {}),
       ...(city ? { city } : {}),
       ...(type ? { type } : {}),
       ...(rating ? { rating: Number(rating) } : {}),
@@ -32,6 +36,34 @@ export default function SuppliersPage() {
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<string, { groupName: string; categories: NonNullable<typeof itemCategories> }>();
+    for (const item of itemCategories ?? []) {
+      const group = groups.get(item.groupName) ?? { groupName: item.groupName, categories: [] };
+      group.categories.push(item);
+      groups.set(item.groupName, group);
+    }
+    return [...groups.values()];
+  }, [itemCategories]);
+  const selectCategory = (nextCategory: string) => {
+    setCategory(nextCategory);
+    setType("");
+    const params = new URLSearchParams(window.location.search);
+    params.delete("type");
+    if (nextCategory) params.set("category", nextCategory);
+    else params.delete("category");
+    const query = params.toString();
+    setLocation(query ? `/suppliers?${query}` : "/suppliers");
+  };
+  const resetFilters = () => {
+    setCategory("");
+    setType("");
+    setCity("");
+    setRating("");
+    setSupplierPackage("");
+    setSearchTerm("");
+    setLocation("/suppliers");
+  };
 
   return (
     <MainLayout>
@@ -43,8 +75,10 @@ export default function SuppliersPage() {
           </p>
           <div className="max-w-xl mx-auto relative">
             <input 
+              aria-label="البحث عن مورد أو تصنيف"
+              data-testid="input-suppliers-search"
               type="text" 
-              placeholder="ابحث باسم المورد، المدينة..." 
+              placeholder="ابحث باسم المورد، المدينة أو التصنيف..." 
               className="w-full h-12 pl-4 pr-12 rounded-lg border bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none shadow-sm transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -70,6 +104,53 @@ export default function SuppliersPage() {
       </div>
 
       <div className="container mx-auto px-4 py-12">
+        <section className="mb-10" aria-labelledby="supplier-category-heading">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 id="supplier-category-heading" className="text-xl font-extrabold">تصفح حسب التصنيف</h2>
+              <p className="mt-1 text-sm text-muted-foreground">اختر من {itemCategories?.length ?? 32} تصنيفاً للعثور على الموردين المناسبين.</p>
+            </div>
+            {category && <button type="button" onClick={() => selectCategory("")} className="text-sm font-bold text-primary hover:underline">مسح التصنيف</button>}
+          </div>
+          {isLoadingCategories ? (
+            <p className="rounded-xl bg-muted/30 px-4 py-3 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
+          ) : categoriesError ? (
+            <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
+          ) : (
+            <div className="space-y-5">
+              <button
+                type="button"
+                data-testid="button-category-all"
+                aria-pressed={!category}
+                onClick={() => selectCategory("")}
+                className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50"}`}
+              >
+                كل الموردين
+              </button>
+              {categoryGroups.map((group) => (
+                <div key={group.groupName}>
+                  <h3 className="mb-2 text-sm font-extrabold text-muted-foreground">{group.groupName}</h3>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                    {group.categories.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        data-testid={`button-category-${item.id}`}
+                        aria-pressed={category === item.name}
+                        onClick={() => selectCategory(item.name)}
+                        className={`inline-flex min-h-11 items-center justify-start gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${category === item.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50 hover:text-primary"}`}
+                      >
+                        <span aria-hidden="true">{item.icon}</span>
+                        <span>{item.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {error ? (
           <div className="text-center text-destructive py-10">حدث خطأ في تحميل قائمة الموردين.</div>
         ) : isLoading && !suppliers ? (
@@ -77,8 +158,21 @@ export default function SuppliersPage() {
         ) : suppliers?.length === 0 ? (
           <div className="text-center py-20 bg-muted/20 rounded-2xl border border-dashed">
             <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-bold mb-2">لا يوجد نتائج</h3>
-            <p className="text-muted-foreground">لم نتمكن من العثور على موردين يطابقون بحثك.</p>
+            {category ? (
+              <>
+                <h3 className="text-lg font-bold mb-2">لا يوجد موردون في هذا التصنيف حالياً.</h3>
+                <p className="text-muted-foreground">سجّل نشاطك في الدليل أو تصفح الموردين في بقية التصنيفات.</p>
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <Link href="/register/supplier" className="rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground hover:bg-primary/90">سجّل كمورد</Link>
+                  <button type="button" onClick={resetFilters} className="rounded-xl border px-5 py-3 text-sm font-extrabold hover:bg-muted">تصفح كل الموردين</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold mb-2">لا يوجد نتائج</h3>
+                <p className="text-muted-foreground">لم نتمكن من العثور على موردين يطابقون بحثك.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

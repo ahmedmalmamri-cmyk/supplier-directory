@@ -17,6 +17,15 @@ directoryDb.exec(`
     icon TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE
   );
+  CREATE TABLE IF NOT EXISTS item_categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    icon TEXT NOT NULL,
+    group_name TEXT NOT NULL,
+    display_on_home INTEGER NOT NULL DEFAULT 0 CHECK (display_on_home IN (0, 1)),
+    display_order INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+  );
   CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -417,6 +426,54 @@ directoryDb.prepare(`
   INSERT OR IGNORE INTO directory_settings (key, value)
   VALUES ('admin_address', ?)
 `).run("الدمام، المنطقة الشرقية\nالمملكة العربية السعودية");
+
+const itemCategorySeed = [
+  [1, "دقيق", "🥖", "المواد الأساسية", 1, 1],
+  [2, "سميد وبرغل", "🌾", "المواد الأساسية", 0, 2],
+  [3, "سكر", "🍰", "المواد الأساسية", 1, 3],
+  [4, "زبدة ودهون", "🧈", "المواد الأساسية", 1, 4],
+  [5, "مارجرين", "🧴", "المواد الأساسية", 0, 5],
+  [6, "سمن", "🧈", "المواد الأساسية", 0, 6],
+  [7, "حليب ومشتقاته", "🥛", "منتجات الألبان", 1, 7],
+  [8, "أجبان", "🧀", "منتجات الألبان", 1, 8],
+  [9, "زبادي وقشطة", "🍶", "منتجات الألبان", 0, 9],
+  [10, "كريمة", "🍦", "منتجات الألبان", 0, 10],
+  [11, "شوكولاتة وكاكاو", "🍫", "الشوكولاتة والحلويات", 1, 11],
+  [12, "حلوى وسكاكر", "🍬", "الشوكولاتة والحلويات", 0, 12],
+  [13, "جيلاتين وكاسترد", "🍮", "الشوكولاتة والحلويات", 0, 13],
+  [14, "خلطات جاهزة", "🍰", "الشوكولاتة والحلويات", 1, 14],
+  [15, "مكسرات", "🥜", "المكسرات والفواكه", 1, 15],
+  [16, "فواكه مجففة", "🍇", "المكسرات والفواكه", 0, 16],
+  [17, "عسل ومحليات", "🍯", "المكسرات والفواكه", 0, 17],
+  [18, "دبس", "🍯", "المكسرات والفواكه", 0, 18],
+  [19, "خمائر ومحسنات", "🧪", "المواد الفنية", 1, 19],
+  [20, "نكهات وألوان", "🌿", "المواد الفنية", 1, 20],
+  [21, "فانيليا ومستخلصات", "🎨", "المواد الفنية", 0, 21],
+  [22, "عجين سمبوسة", "🥟", "العجائن والجاهز", 0, 22],
+  [23, "عجين بيتزا", "🥙", "العجائن والجاهز", 0, 23],
+  [24, "خبز رقاق", "🫓", "العجائن والجاهز", 0, 24],
+  [25, "خبز جاهز", "🥖", "العجائن والجاهز", 0, 25],
+  [26, "معجنات مجمدة", "🥐", "العجائن والجاهز", 0, 26],
+  [27, "علب وتغليف", "📦", "التغليف والطباعة", 1, 27],
+  [28, "أكياس مطبوعة", "🛍️", "التغليف والطباعة", 0, 28],
+  [29, "كراتين مطبوعة", "📦", "التغليف والطباعة", 0, 29],
+  [30, "أدوات تزيين", "🎀", "التغليف والطباعة", 0, 30],
+  [31, "معدات وأفران", "⚙️", "المعدات", 1, 31],
+  [32, "أدوات صغيرة", "🔧", "المعدات", 0, 32],
+] as const;
+const upsertItemCategory = directoryDb.prepare(`
+  INSERT INTO item_categories
+    (id, name, icon, group_name, display_on_home, display_order, is_active)
+  VALUES (?, ?, ?, ?, ?, ?, 1)
+  ON CONFLICT(id) DO UPDATE SET
+    name = excluded.name,
+    icon = excluded.icon,
+    group_name = excluded.group_name,
+    display_on_home = excluded.display_on_home,
+    display_order = excluded.display_order,
+    is_active = excluded.is_active
+`);
+itemCategorySeed.forEach((item) => upsertItemCategory.run(...item));
 
 const categoryCount = directoryDb
   .prepare("SELECT COUNT(*) AS count FROM categories")

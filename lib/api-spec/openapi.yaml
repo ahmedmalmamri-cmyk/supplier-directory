@@ -31,6 +31,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HomeData"
+  /item-categories:
+    get:
+      operationId: listItemCategories
+      tags: [directory]
+      responses:
+        "200":
+          description: Active supplier categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ItemCategory" }
   /search:
     get:
       operationId: searchDirectory
@@ -88,6 +100,9 @@ paths:
           schema: { type: string }
         - in: query
           name: type
+          schema: { type: string }
+        - in: query
+          name: category
           schema: { type: string }
         - in: query
           name: rating
@@ -374,6 +389,17 @@ components:
         icon: { type: string }
         slug: { type: string }
         productCount: { type: integer }
+    ItemCategory:
+      type: object
+      required: [id, name, icon, groupName, displayOnHome, displayOrder, isActive]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        icon: { type: string }
+        groupName: { type: string }
+        displayOnHome: { type: boolean }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
     Supplier:
       type: object
       required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]

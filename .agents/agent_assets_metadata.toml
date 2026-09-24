@@ -112,3 +112,45 @@ mtime_ms = 1790116483981
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/03597f82-85f3-4875-8155-ac1fa205cd96/89895ff2-b228-41c6-ab35-f2effbe00c8d"
 storage_version_token = "1790116508428610"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "nGDGPYn3p35r8NRu7UcfA"
+uri = "file://screenshots/bakery-homepage.jpg"
+type = "image"
+title = "Homepage — desktop"
+description = "Directory homepage showing the 12 featured supplier categories and the link to all 32 categories."
+logical_id = "e387b0d4-0802-40b1-b936-0b9b9f81b27f"
+content_hash = "sha256:1378d93711421ceec25aa957200c6888ce085e2d0b2d4db01c28568453358f31"
+size = 112855
+mtime_ms = 1790270122671
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/e387b0d4-0802-40b1-b936-0b9b9f81b27f/c49e5cba-50ac-448b-baad-0ab77727be9b"
+storage_version_token = "1790270485528876"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "_cnWCmlFf4ieTN9xHA2q2"
+uri = "file://screenshots/bakery-homepage-mobile.jpg"
+type = "image"
+title = "Homepage — mobile"
+description = "Mobile homepage showing the two-column category layout."
+logical_id = "9fcc8f9c-fc43-45d8-add7-6c74995791f8"
+content_hash = "sha256:1f319a4fe31a76fa218f508e3b5ee26fdc7e4f90ea07d0cf7c1c2e88db97720e"
+size = 41626
+mtime_ms = 1790270145799
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/9fcc8f9c-fc43-45d8-add7-6c74995791f8/ddc806db-33a0-44c1-a685-92e1d94ef445"
+storage_version_token = "1790270486889551"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "uV_LEr4TUHJEg-4N9i4Xy"
+uri = "file://screenshots/bakery-suppliers-page.jpg"
+type = "image"
+title = "Suppliers page — desktop"
+description = "Suppliers directory with all 32 categories grouped for browsing."
+logical_id = "7ebe3f3a-4224-41bc-ae86-b75cb2d916c7"
+content_hash = "sha256:fa22fb07a5f33378b534ca2d06b72b7c60dfbe072b8262f98ff62dd7a1a0bee7"
+size = 96011
+mtime_ms = 1790270451783
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/7ebe3f3a-4224-41bc-ae86-b75cb2d916c7/c5abfb64-fb3d-4948-8b52-f94bdf6f7969"
+storage_version_token = "1790270488295290"
+content_type = "image/jpeg"

@@ -65,6 +65,18 @@ export const GetHomeResponse = zod.object({
 })
 
 
+export const ListItemCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "groupName": zod.string(),
+  "displayOnHome": zod.boolean(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean()
+})
+export const ListItemCategoriesResponse = zod.array(ListItemCategoriesResponseItem)
+
+
 export const SearchDirectoryQueryParams = zod.object({
   "q": zod.coerce.string().optional()
 })
@@ -174,6 +186,7 @@ export const ListSuppliersQueryParams = zod.object({
   "q": zod.coerce.string().optional(),
   "city": zod.coerce.string().optional(),
   "type": zod.coerce.string().optional(),
+  "category": zod.coerce.string().optional(),
   "rating": zod.coerce.number().min(1).max(listSuppliersQueryRatingMax).optional(),
   "package": zod.enum(['verified', 'featured']).optional(),
   "verified": zod.coerce.boolean().optional(),
