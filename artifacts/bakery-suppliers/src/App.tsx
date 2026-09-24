@@ -64,7 +64,7 @@ function Router() {
           <Route path="/buyer/profile" component={BuyerProfilePage} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin/categories" component={() => <AdminPage initialTab="item-categories" />} />
-        <Route path="/admin" component={AdminPage} />
+        <Route path="/admin" component={() => <AdminPage />} />
          <Route path="/invite/buyer/:token" component={BuyerInvitePage} />
          <Route path="/invite/:token" component={SupplierInvitePage} />
         <Route component={NotFound} />
