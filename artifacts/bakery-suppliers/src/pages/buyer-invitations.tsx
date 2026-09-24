@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   BuyerInvitation,
@@ -39,6 +39,39 @@ function getDeviceContactPicker() {
   return (navigator as Navigator & { contacts?: DeviceContactPicker }).contacts;
 }
 
+function parseSingleVCard(content: string) {
+  const cards = content.replace(/=\r?\n/g, "").split(/BEGIN:VCARD/i).slice(1)
+    .map((card) => card.split(/END:VCARD/i)[0] ?? "");
+  if (cards.length !== 1) return null;
+  const lines = cards[0].replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
+  const readValue = (property: "FN" | "TEL") => {
+    const line = lines.find((value) => new RegExp(`^(?:[A-Z0-9-]+\\.)?${property}(?:;[^:]*)?:`, "i").test(value));
+    if (!line) return "";
+    const colon = line.indexOf(":");
+    const metadata = line.slice(0, colon);
+    let value = line.slice(colon + 1);
+    if (/ENCODING=QUOTED-PRINTABLE/i.test(metadata)) {
+      const bytes: number[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const hex = value.slice(index + 1, index + 3);
+        if (value[index] === "=" && /^[\da-f]{2}$/i.test(hex)) {
+          bytes.push(Number.parseInt(hex, 16));
+          index += 2;
+        } else bytes.push(value.charCodeAt(index) & 0xff);
+      }
+      try {
+        value = new TextDecoder(metadata.match(/CHARSET=([^;:]+)/i)?.[1] ?? "utf-8").decode(new Uint8Array(bytes));
+      } catch {
+        value = new TextDecoder().decode(new Uint8Array(bytes));
+      }
+    }
+    return value.replace(/\\n/gi, "\n").replace(/\\([,;\\])/g, "$1").trim();
+  };
+  const fullName = readValue("FN");
+  const phone = readValue("TEL").replace(/^tel:/i, "").trim();
+  return phone ? { fullName, phone } : null;
+}
+
 export function BuyerInvitationsPanel() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>("invited");
@@ -49,6 +82,7 @@ export function BuyerInvitationsPanel() {
   const [contactPickerLoading, setContactPickerLoading] = useState(false);
   const [contactPickerMessage, setContactPickerMessage] = useState("");
   const [openWhatsAppAfterSave, setOpenWhatsAppAfterSave] = useState(false);
+  const contactVCardInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [details, setDetails] = useState<number | null>(null);
@@ -80,7 +114,8 @@ export function BuyerInvitationsPanel() {
     setOpenWhatsAppAfterSave(false);
     const picker = getDeviceContactPicker();
     if (!picker?.select) {
-      setContactPickerMessage("هذا المتصفح لا يدعم اختيار جهة اتصال تلقائياً. انسخ الرقم من واتساب والصقه في الحقل.");
+      setContactPickerMessage("هذا المتصفح لا يفتح دفتر الهاتف مباشرةً؛ اختر ملف VCF أو انسخ الرقم والصقه.");
+      contactVCardInput.current?.click();
       return;
     }
     setContactPickerLoading(true);
@@ -100,9 +135,36 @@ export function BuyerInvitationsPanel() {
       setContactPickerMessage("تمت تعبئة بيانات الجهة. بعد الحفظ سيفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.");
     } catch (pickerError) {
       if (pickerError instanceof DOMException && pickerError.name === "AbortError") return;
-      setContactPickerMessage("تعذر اختيار جهة الاتصال. يمكنك نسخ الرقم من واتساب ولصقه يدوياً.");
+      setContactPickerMessage(pickerError instanceof DOMException && pickerError.name === "NotAllowedError"
+        ? "منع المتصفح الوصول إلى دفتر الهاتف. استورد ملف VCF أو انسخ الرقم من واتساب والصقه."
+        : "لم يفتح دفتر الهاتف في هذا المتصفح. استورد ملف VCF أو انسخ الرقم من واتساب والصقه.");
+      contactVCardInput.current?.click();
     } finally {
       setContactPickerLoading(false);
+    }
+  };
+  const importVCard = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setOpenWhatsAppAfterSave(false);
+    setContactPickerMessage("");
+    try {
+      if (file.size > 512_000) {
+        setContactPickerMessage("ملف جهة الاتصال كبير جداً؛ اختر ملف VCF لجهة واحدة.");
+        return;
+      }
+      const contact = parseSingleVCard(await file.text());
+      if (!contact) {
+        setContactPickerMessage("تعذر قراءة جهة اتصال واحدة ورقم هاتف من الملف. اختر ملف VCF صحيحاً.");
+        return;
+      }
+      setForm((current) => ({ ...current, ...(contact.fullName ? { fullName: contact.fullName } : {}), phone: contact.phone }));
+      setOpenWhatsAppAfterSave(true);
+      setContactPickerMessage("تمت تعبئة الجهة. بعد الحفظ سيفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.");
+    } catch {
+      setContactPickerMessage("تعذر قراءة الملف. اختر بطاقة جهة اتصال بصيغة VCF أو الصق الرقم يدوياً.");
+    } finally {
+      event.target.value = "";
     }
   };
   const submit = (event: FormEvent) => {
@@ -199,10 +261,16 @@ export function BuyerInvitationsPanel() {
           <div className="block">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <label htmlFor="input-buyer-invitation-phone" className="text-sm font-bold">رقم الجوال</label>
-              {!editing && <button data-testid="button-select-buyer-contact" type="button" onClick={() => void chooseDeviceContact()} disabled={contactPickerLoading} className="inline-flex shrink-0 items-center gap-1 rounded-lg border bg-card px-2.5 py-1.5 text-xs font-bold hover:bg-muted disabled:opacity-60"><ContactRound className="h-3.5 w-3.5" />{contactPickerLoading ? "جاري الاختيار..." : "اختيار جهة اتصال"}</button>}
+              {!editing && <div className="flex shrink-0 items-center gap-1">
+                <button data-testid="button-select-buyer-contact" type="button" onClick={() => void chooseDeviceContact()} disabled={contactPickerLoading} className="inline-flex items-center gap-1 rounded-lg border bg-card px-2.5 py-1.5 text-xs font-bold hover:bg-muted disabled:opacity-60"><ContactRound className="h-3.5 w-3.5" />{contactPickerLoading ? "جاري الاختيار..." : "اختيار جهة اتصال"}</button>
+                <button data-testid="button-import-buyer-contact-vcard" type="button" onClick={() => contactVCardInput.current?.click()} className="rounded-lg border bg-card px-2 py-1.5 text-xs font-bold hover:bg-muted">استيراد VCF</button>
+              </div>}
             </div>
             <input id="input-buyer-invitation-phone" data-testid="input-buyer-invitation-phone" required value={form.phone} onChange={(event) => { setForm((current) => ({ ...current, phone: event.target.value })); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); }} dir="ltr" inputMode="tel" autoComplete="tel" className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-            {!editing && <p data-testid="text-buyer-contact-picker-help" className="mt-1.5 text-xs text-muted-foreground">اختر من دفتر الهاتف؛ لا يمكن للموقع قراءة قائمة واتساب مباشرةً أو إرسال الرسالة دون تأكيدك.</p>}
+            {!editing && <>
+              <p data-testid="text-buyer-contact-picker-help" className="mt-1.5 text-xs text-muted-foreground">اختر من دفتر الهاتف أو استورد ملف VCF؛ لا يمكن للموقع قراءة قائمة واتساب مباشرةً.</p>
+              <input ref={contactVCardInput} data-testid="input-buyer-contact-vcard" type="file" accept=".vcf,text/vcard" className="sr-only" tabIndex={-1} aria-label="استيراد جهة اتصال من ملف VCF" onChange={(event) => void importVCard(event)} />
+            </>}
             {contactPickerMessage && <p data-testid="status-buyer-contact-picker" role="status" className="mt-1.5 text-xs text-muted-foreground">{contactPickerMessage}</p>}
           </div>
           <Field id="input-buyer-invitation-business-name" label="اسم المنشأة" value={form.businessName} onChange={(value) => setForm({ ...form, businessName: value })} required />
