@@ -1,11 +1,12 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
+import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "stats" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -33,6 +34,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "contacts", label: "سجل التواصل", icon: MessageCircle },
   { id: "directory", label: "الموردون المعتمدون", icon: CheckCircle2 },
   { id: "invitations", label: "دعوات الموردين", icon: Send },
+  { id: "buyer-invitations", label: "دعوات أصحاب الأعمال", icon: UserRound },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
@@ -141,6 +143,7 @@ export default function AdminPage() {
           {tab === "contacts" && <ContactLogsTab logs={contactLogs} />}
           {tab === "directory" && <DirectoryTab suppliers={suppliers} settings={settings} onAction={act} />}
            {tab === "invitations" && <SupplierInvitationsPanel />}
+            {tab === "buyer-invitations" && <BuyerInvitationsPanel />}
           {tab === "stats" && <StatsTab stats={stats} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
