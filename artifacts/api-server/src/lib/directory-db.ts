@@ -63,6 +63,7 @@ directoryDb.exec(`
     subscription_end_date TEXT,
     max_products_allowed INTEGER NOT NULL DEFAULT 3,
     is_featured INTEGER NOT NULL DEFAULT 0,
+     added_via TEXT NOT NULL DEFAULT 'legacy',
     invite_token TEXT,
     invite_sent_at TEXT,
     invite_opened_at TEXT,
@@ -319,6 +320,9 @@ if (!supplierColumns.some((column) => column.name === "invite_opened_at")) {
 if (!supplierColumns.some((column) => column.name === "invite_completed_at")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_completed_at TEXT");
 }
+if (!supplierColumns.some((column) => column.name === "added_via")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN added_via TEXT NOT NULL DEFAULT 'legacy'");
+}
 directoryDb.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_invite_token
   ON suppliers (invite_token) WHERE invite_token IS NOT NULL
@@ -357,6 +361,30 @@ if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) =
 }
 if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "product_images")) {
   directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN product_images TEXT NOT NULL DEFAULT '[]'");
+}
+const supplierSourceMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get("classify-existing-supplier-sources") as { name: string } | undefined;
+if (!supplierSourceMigration && supplierRequestColumns.length > 0) {
+  directoryDb.exec(`
+    UPDATE suppliers SET added_via = 'legacy';
+    UPDATE suppliers
+    SET added_via = 'manual'
+    WHERE is_active = 0
+      AND invite_token IS NOT NULL
+      AND description = 'بانتظار استكمال بيانات المورد.';
+    UPDATE suppliers
+    SET added_via = 'self_registered'
+    WHERE added_via = 'legacy'
+      AND request_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM supplier_requests r
+        WHERE r.id = suppliers.request_id AND r.invited_supplier_id IS NULL
+      )
+  `);
+  directoryDb.prepare(
+    "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
+  ).run("classify-existing-supplier-sources", new Date().toISOString());
 }
 const buyerRequestColumns = directoryDb
   .prepare("PRAGMA table_info(buyer_requests)")

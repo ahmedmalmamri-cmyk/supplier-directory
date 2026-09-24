@@ -52,10 +52,12 @@ import type {
   SupplierInvitation,
   SupplierInvitationDraftInput,
   SupplierInvitationLink,
+  SupplierInvitationOptions,
   SupplierInvitationStats,
   SupplierInvite,
   SupplierInviteCompletion,
-  SupplierInviteInput
+  SupplierInviteInput,
+  SupplierSourceStats
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1887,6 +1889,148 @@ export function useGetSupplierInvitationStats<TData = Awaited<ReturnType<typeof 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSupplierInvitationStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSupplierInvitationOptionsUrl = () => {
+
+
+
+
+  return `/api/admin/invitations/options`
+}
+
+export const getSupplierInvitationOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierInvitationOptions> => {
+
+  return customFetch<SupplierInvitationOptions>(getGetSupplierInvitationOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupplierInvitationOptionsQueryKey = () => {
+    return [
+    `/api/admin/invitations/options`
+    ] as const;
+    }
+
+
+export const getGetSupplierInvitationOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getSupplierInvitationOptions>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupplierInvitationOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupplierInvitationOptions>>> = ({ signal }) => getSupplierInvitationOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupplierInvitationOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getSupplierInvitationOptions>>>
+export type GetSupplierInvitationOptionsQueryError = ErrorType<void>
+
+
+
+export function useGetSupplierInvitationOptions<TData = Awaited<ReturnType<typeof getSupplierInvitationOptions>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierInvitationOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupplierInvitationOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSupplierSourceStatsUrl = () => {
+
+
+
+
+  return `/api/admin/suppliers/source-stats`
+}
+
+export const getSupplierSourceStats = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierSourceStats> => {
+
+  return customFetch<SupplierSourceStats>(getGetSupplierSourceStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupplierSourceStatsQueryKey = () => {
+    return [
+    `/api/admin/suppliers/source-stats`
+    ] as const;
+    }
+
+
+export const getGetSupplierSourceStatsQueryOptions = <TData = Awaited<ReturnType<typeof getSupplierSourceStats>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierSourceStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupplierSourceStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupplierSourceStats>>> = ({ signal }) => getSupplierSourceStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupplierSourceStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupplierSourceStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getSupplierSourceStats>>>
+export type GetSupplierSourceStatsQueryError = ErrorType<void>
+
+
+
+export function useGetSupplierSourceStats<TData = Awaited<ReturnType<typeof getSupplierSourceStats>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierSourceStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupplierSourceStatsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

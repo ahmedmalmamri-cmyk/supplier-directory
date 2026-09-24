@@ -6,6 +6,8 @@ import {
   AdminLoginBody,
   AdminLoginResponse,
   CreateSupplierInvitationDraftBody,
+  GetSupplierInvitationOptionsResponse,
+  GetSupplierSourceStatsResponse,
   ListRegistrationInterestsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
@@ -194,8 +196,8 @@ function reviewRegistration(req: Request, res: Response, status: "approved" | "r
         directoryDb.prepare(`
           INSERT INTO suppliers
             (id, name, city, region, description, phone, whatsapp, is_verified,
-             plan_id, max_products_allowed, is_featured, created_at)
-          VALUES (?, ?, ?, ?, ?, '', '', 0, 1, 3, 0, ?)
+             plan_id, max_products_allowed, is_featured, added_via, created_at)
+          VALUES (?, ?, ?, ?, ?, '', '', 0, 1, 3, 0, 'self_registered', ?)
         `).run(
           nextId,
           registration.name,
@@ -334,8 +336,8 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       directoryDb.prepare(`
         INSERT INTO suppliers
           (id, name, city, region, description, phone, whatsapp, is_verified, request_id,
-           is_active, plan_id, max_products_allowed, is_featured, created_at)
-        VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, 1, 3, 0, ?)
+           is_active, plan_id, max_products_allowed, is_featured, added_via, created_at)
+        VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, 1, 3, 0, 'self_registered', ?)
       `).run(nextId, businessName, city, String(request.description), phone, whatsapp, verified, id, reviewedAt);
       createBasicSubscription(nextId, reviewedAt);
     }
@@ -414,6 +416,20 @@ router.get("/admin/invitations", (req, res): void => {
   res.json(supplierInvitationQuery(status));
 });
 
+router.get("/admin/invitations/options", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const citiesRow = directoryDb.prepare(
+    "SELECT value FROM directory_settings WHERE key = 'available_cities'",
+  ).get() as { value: string } | undefined;
+  try {
+    res.json(GetSupplierInvitationOptionsResponse.parse({
+      cities: JSON.parse(citiesRow?.value ?? "[]"),
+    }));
+  } catch {
+    res.status(500).json({ error: "تعذر تحميل اقتراحات المدن." });
+  }
+});
+
 router.post("/admin/invitations", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const parsed = CreateSupplierInvitationDraftBody.safeParse(req.body);
@@ -424,6 +440,7 @@ router.post("/admin/invitations", (req, res): void => {
   const name = parsed.data.name.trim();
   const whatsapp = normalizeSaudiPhone(parsed.data.whatsapp);
   const city = parsed.data.city.trim();
+  const source = parsed.data.source ?? "manual";
   const allowedCitiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
@@ -442,9 +459,9 @@ router.post("/admin/invitations", (req, res): void => {
   const result = directoryDb.prepare(`
     INSERT INTO suppliers
       (name, city, region, description, phone, whatsapp, is_active, plan_id,
-       max_products_allowed, is_featured, invite_token, created_at)
-    VALUES (?, ?, 'المنطقة الشرقية', 'بانتظار استكمال بيانات المورد.', ?, ?, 0, 1, 3, 0, ?, ?)
-  `).run(name, city, whatsapp, whatsapp, draftTokenHash, now);
+       max_products_allowed, is_featured, added_via, invite_token, created_at)
+    VALUES (?, ?, 'المنطقة الشرقية', 'بانتظار استكمال بيانات المورد.', ?, ?, 0, 1, 3, 0, ?, ?, ?)
+  `).run(name, city, whatsapp, whatsapp, source, draftTokenHash, now);
   res.status(201).json({
     supplierId: Number(result.lastInsertRowid),
     name,
@@ -476,6 +493,22 @@ router.get("/admin/invitations/stats", (req, res): void => {
     completed,
     responseRate: sent > 0 ? Number(((completed / sent) * 100).toFixed(1)) : 0,
   });
+});
+
+router.get("/admin/suppliers/source-stats", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const counts = directoryDb.prepare(`
+    SELECT
+      SUM(CASE WHEN added_via = 'manual' THEN 1 ELSE 0 END) AS manual,
+      SUM(CASE WHEN added_via = 'whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
+      SUM(CASE WHEN added_via = 'self_registered' THEN 1 ELSE 0 END) AS selfRegistered
+    FROM suppliers
+  `).get() as { manual: number | null; whatsapp: number | null; selfRegistered: number | null };
+  res.json(GetSupplierSourceStatsResponse.parse({
+    manual: Number(counts.manual ?? 0),
+    whatsapp: Number(counts.whatsapp ?? 0),
+    selfRegistered: Number(counts.selfRegistered ?? 0),
+  }));
 });
 
 router.get("/admin/invitations/export", (req, res): void => {

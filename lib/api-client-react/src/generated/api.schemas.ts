@@ -310,6 +310,14 @@ export interface RegistrationInterest {
 
 export type RegistrationInterestList = RegistrationInterest[];
 
+export type SupplierInvitationDraftInputSource = typeof SupplierInvitationDraftInputSource[keyof typeof SupplierInvitationDraftInputSource];
+
+
+export const SupplierInvitationDraftInputSource = {
+  manual: 'manual',
+  whatsapp: 'whatsapp',
+} as const;
+
 export interface SupplierInvitationDraftInput {
   /**
      * @minLength 2
@@ -326,6 +334,20 @@ export interface SupplierInvitationDraftInput {
      * @maxLength 80
      */
   city: string;
+  source?: SupplierInvitationDraftInputSource;
+}
+
+export interface SupplierInvitationOptions {
+  cities: string[];
+}
+
+export interface SupplierSourceStats {
+  /** @minimum 0 */
+  manual: number;
+  /** @minimum 0 */
+  whatsapp: number;
+  /** @minimum 0 */
+  selfRegistered: number;
 }
 
 export interface SupplierInvitation {

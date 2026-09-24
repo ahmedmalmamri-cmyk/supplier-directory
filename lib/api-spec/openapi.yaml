@@ -417,6 +417,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SupplierInvitationStats" }
         "401": { description: Admin authentication required }
+  /admin/invitations/options:
+    get:
+      operationId: getSupplierInvitationOptions
+      tags: [admin]
+      responses:
+        "200":
+          description: City suggestions for supplier invitation forms
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationOptions" }
+        "401": { description: Admin authentication required }
+  /admin/suppliers/source-stats:
+    get:
+      operationId: getSupplierSourceStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier counts by creation source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierSourceStats" }
+        "401": { description: Admin authentication required }
   /admin/invitations/export:
     get:
       operationId: exportSupplierInvitations
@@ -815,6 +837,21 @@ components:
         name: { type: string, minLength: 2, maxLength: 120 }
         whatsapp: { type: string, minLength: 10, maxLength: 24 }
         city: { type: string, minLength: 2, maxLength: 80 }
+        source: { type: string, enum: [manual, whatsapp], default: manual }
+    SupplierInvitationOptions:
+      type: object
+      required: [cities]
+      properties:
+        cities:
+          type: array
+          items: { type: string }
+    SupplierSourceStats:
+      type: object
+      required: [manual, whatsapp, selfRegistered]
+      properties:
+        manual: { type: integer, minimum: 0 }
+        whatsapp: { type: integer, minimum: 0 }
+        selfRegistered: { type: integer, minimum: 0 }
     SupplierInvitation:
       type: object
       required: [supplierId, name, city, whatsapp, inviteSentAt, inviteOpenedAt, inviteCompletedAt, requestStatus, isActive, createdAt]

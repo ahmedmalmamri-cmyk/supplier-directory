@@ -602,12 +602,13 @@ export const createSupplierInvitationDraftBodyWhatsappMax = 24;
 export const createSupplierInvitationDraftBodyCityMin = 2;
 export const createSupplierInvitationDraftBodyCityMax = 80;
 
-
+export const createSupplierInvitationDraftBodySourceDefault = `manual`;
 
 export const CreateSupplierInvitationDraftBody = zod.object({
   "name": zod.string().min(createSupplierInvitationDraftBodyNameMin).max(createSupplierInvitationDraftBodyNameMax),
   "whatsapp": zod.string().min(createSupplierInvitationDraftBodyWhatsappMin).max(createSupplierInvitationDraftBodyWhatsappMax),
-  "city": zod.string().min(createSupplierInvitationDraftBodyCityMin).max(createSupplierInvitationDraftBodyCityMax)
+  "city": zod.string().min(createSupplierInvitationDraftBodyCityMin).max(createSupplierInvitationDraftBodyCityMax),
+  "source": zod.enum(['manual', 'whatsapp']).default(createSupplierInvitationDraftBodySourceDefault)
 })
 
 export const CreateSupplierInvitationDraftResponse = zod.object({
@@ -629,6 +630,26 @@ export const GetSupplierInvitationStatsResponse = zod.object({
   "opened": zod.number().int(),
   "completed": zod.number().int(),
   "responseRate": zod.number()
+})
+
+
+export const GetSupplierInvitationOptionsResponse = zod.object({
+  "cities": zod.array(zod.string())
+})
+
+
+export const getSupplierSourceStatsResponseManualMin = 0;
+
+export const getSupplierSourceStatsResponseWhatsappMin = 0;
+
+export const getSupplierSourceStatsResponseSelfRegisteredMin = 0;
+
+
+
+export const GetSupplierSourceStatsResponse = zod.object({
+  "manual": zod.number().int().min(getSupplierSourceStatsResponseManualMin),
+  "whatsapp": zod.number().int().min(getSupplierSourceStatsResponseWhatsappMin),
+  "selfRegistered": zod.number().int().min(getSupplierSourceStatsResponseSelfRegisteredMin)
 })
 
 

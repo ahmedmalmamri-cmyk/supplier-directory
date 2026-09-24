@@ -182,3 +182,31 @@ mtime_ms = 1790273695673
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/81a3a751-124e-484b-81a9-206e876849e6/5f461488-707c-4ffb-8e36-d02f3435cc6f"
 storage_version_token = "1790273757618297"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "d8u-D2tVENv08eA99neHN"
+uri = "file://screenshots/supplier-entry-panel.jpg"
+type = "image"
+title = "واجهة إدارة دعوات الموردين"
+description = "لقطة للواجهة بعد التحديث؛ الأرقام والسجل الظاهر بيانات عرض تجريبية."
+logical_id = "83651e72-0e5c-4ce0-ac14-005e02a965cc"
+content_hash = "sha256:347bd6297fa5e4855806aed5b243229ce6fe9bf5cb98159cb0f5ed1b4f26dc51"
+size = 64687
+mtime_ms = 1790275162654
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/83651e72-0e5c-4ce0-ac14-005e02a965cc/e448fe7a-e6d8-47c3-8b58-3de4b7fd7f17"
+storage_version_token = "1790275331088968"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "AvT_tCnfG1Fv1bqFIrGbX"
+uri = "file://screenshots/supplier-whatsapp-modal.jpg"
+type = "image"
+title = "نافذة إضافة مورد عبر واتساب"
+description = "لقطة للنافذة والحقول اليدوية؛ رقم الجوال الظاهر رقم مثال، وبيانات الاسم والمدينة فارغة."
+logical_id = "9ea9b46a-87d8-47c6-8953-cbf0d1637cf5"
+content_hash = "sha256:732ada6a9f51c7223da4b607d0718d302ea9f2686253e06990ba016fcfe3bea4"
+size = 58270
+mtime_ms = 1790275207733
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/9ea9b46a-87d8-47c6-8953-cbf0d1637cf5/71d1a30d-eedd-45fe-90e7-cfecee214658"
+storage_version_token = "1790275332436716"
+content_type = "image/jpeg"
