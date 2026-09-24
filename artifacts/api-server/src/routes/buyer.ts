@@ -276,7 +276,7 @@ router.post("/buyer/contact", (req, res): void => {
     ? buyer.otherBusinessType || "نشاط آخر"
     : buyer.businessType;
   const activityIcons: Record<string, string> = {
-    "مخبز": "🍞",
+    "مخبز": "🥖",
     "محل حلويات": "🍰",
     "مخبز وحلويات": "🧁",
     "كافيه": "☕",
@@ -286,30 +286,13 @@ router.post("/buyer/contact", (req, res): void => {
     "فندق": "🏨",
     "آخر": "🏢",
   };
-  const originHeader = req.get("origin") || req.get("referer") || "";
-  let siteLink = "";
-  try {
-    const parsedOrigin = new URL(originHeader);
-    if (parsedOrigin.protocol === "https:" || parsedOrigin.protocol === "http:") {
-      siteLink = parsedOrigin.origin;
-    }
-  } catch {
-    // Some non-browser clients omit Origin and Referer; keep the message valid.
-  }
   const message = [
     "السلام عليكم ورحمة الله وبركاته",
     "",
     "📢 رسالة من دليل موردي المخابز والحلويات",
     "",
-    "أتواصل معكم عبر الموقع:",
-    `🔗 ${siteLink || "دليل موردي المخابز والحلويات"}`,
-    "",
-    "━━━━━━━━━━━━━━━━━━━━",
-    "📋 معلومات العميل:",
-    "━━━━━━━━━━━━━━━━━━━━",
-    "",
     `👤 الاسم: ${buyer.fullName}`,
-    `${activityIcons[buyer.businessType] || "🏢"} النشاط: ${activity}`,
+    `🏢 النشاط: ${activityIcons[buyer.businessType] || "🏢"} ${activity}`,
     `📛 اسم النشاط: ${buyer.businessName || "غير محدد"}`,
     `📍 الموقع: ${buyer.city}`,
     `📞 الجوال: ${buyer.phone}`,
@@ -324,7 +307,7 @@ router.post("/buyer/contact", (req, res): void => {
     "━━━━━━━━━━━━━━━━━━━━",
     `🔖 رقم المرجع: ${messageId}`,
     "",
-    "نتشرف بتواصلكم معنا 🌾",
+    "نتشرف بتواصلكم 🌾",
   ].join("\n");
   directoryDb.prepare("UPDATE contact_logs SET message = ?, message_id = ? WHERE id = ?").run(message, messageId, logId);
   res.status(201).json({

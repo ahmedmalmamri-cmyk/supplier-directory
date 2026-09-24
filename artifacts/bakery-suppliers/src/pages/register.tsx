@@ -29,20 +29,128 @@ const buyerBusinessTypes = [
   { value: "فندق", icon: Hotel },
   { value: "آخر", icon: Building2 },
 ];
-const categories = [
-  { value: "دقيق وخبز", label: "دقيق", icon: "🥖" },
-  { value: "سكر ومحليات", label: "سكر", icon: "🍰" },
-  { value: "زبدة ودهون", label: "زبدة ودهون", icon: "🧈" },
-  { value: "حليب ومشتقاته", label: "حليب ومشتقاته", icon: "🥛" },
-  { value: "أجبان", label: "أجبان", icon: "🧀" },
-  { value: "شوكولاتة وكاكاو", label: "شوكولاتة", icon: "🍫" },
-  { value: "مكسرات", label: "مكسرات", icon: "🥜" },
-  { value: "خمائر ومحسنات", label: "خمائر", icon: "🧪" },
-  { value: "عبوات وتغليف", label: "عبوات وتغليف", icon: "📦" },
-  { value: "نكهات وألوان", label: "نكهات وألوان", icon: "🎨" },
-  { value: "معدات وأدوات", label: "معدات وأدوات", icon: "🛠️" },
-  { value: "أخرى", label: "أخرى", icon: "🛍️" },
+const categoryGroups = [
+  {
+    label: "المواد الأساسية",
+    items: [
+      { value: "دقيق", label: "دقيق", icon: "🥖" },
+      { value: "سميد وبرغل", label: "سميد وبرغل", icon: "🌾" },
+      { value: "سكر", label: "سكر", icon: "🍰" },
+      { value: "زبدة ودهون", label: "زبدة ودهون", icon: "🧈" },
+      { value: "مارجرين", label: "مارجرين", icon: "🧴" },
+      { value: "سمن", label: "سمن", icon: "🧈" },
+    ],
+  },
+  {
+    label: "منتجات الألبان",
+    items: [
+      { value: "حليب ومشتقاته", label: "حليب ومشتقاته", icon: "🥛" },
+      { value: "أجبان", label: "أجبان", icon: "🧀" },
+      { value: "زبادي وقشطة", label: "زبادي وقشطة", icon: "🍶" },
+      { value: "كريمة", label: "كريمة", icon: "🍦" },
+    ],
+  },
+  {
+    label: "الشوكولاتة والحلويات",
+    items: [
+      { value: "شوكولاتة", label: "شوكولاتة", icon: "🍫" },
+      { value: "كاكاو", label: "كاكاو", icon: "🍫" },
+      { value: "حلوى وسكاكر", label: "حلوى وسكاكر", icon: "🍬" },
+      { value: "جيلاتين وكاسترد", label: "جيلاتين وكاسترد", icon: "🍮" },
+      { value: "خلطات جاهزة", label: "خلطات جاهزة", icon: "🍰", description: "خلطات الكيك والحلويات الجاهزة" },
+    ],
+  },
+  {
+    label: "المكسرات والفواكه",
+    items: [
+      { value: "مكسرات", label: "مكسرات", icon: "🥜" },
+      { value: "فواكه مجففة", label: "فواكه مجففة", icon: "🍇" },
+      { value: "عسل ومحليات", label: "عسل ومحليات", icon: "🍯" },
+      { value: "دبس", label: "دبس", icon: "🍯" },
+    ],
+  },
+  {
+    label: "المواد الفنية",
+    items: [
+      { value: "خمائر ومحسنات", label: "خمائر ومحسنات", icon: "🧪" },
+      { value: "نكهات وألوان", label: "نكهات وألوان", icon: "🌿" },
+      { value: "فانيليا ومستخلصات", label: "فانيليا ومستخلصات", icon: "🎨" },
+    ],
+  },
+  {
+    label: "العجائن والجاهز",
+    items: [
+      { value: "عجين سمبوسة", label: "عجين سمبوسة", icon: "🥟" },
+      { value: "عجين بيتزا", label: "عجين بيتزا", icon: "🥙" },
+      { value: "خبز رقاق", label: "خبز رقاق", icon: "🫓" },
+      { value: "خبز جاهز", label: "خبز جاهز", icon: "🥖" },
+      { value: "معجنات مجمدة", label: "معجنات مجمدة", icon: "🥐" },
+    ],
+  },
+  {
+    label: "التغليف والطباعة",
+    items: [
+      { value: "علب وتغليف", label: "علب وتغليف", icon: "📦" },
+      { value: "أكياس مطبوعة", label: "أكياس مطبوعة", icon: "🛍️" },
+      { value: "كراتين مطبوعة", label: "كراتين مطبوعة", icon: "📦" },
+      { value: "أدوات تزيين", label: "أدوات تزيين", icon: "🎀" },
+    ],
+  },
+  {
+    label: "المعدات",
+    items: [
+      { value: "معدات وأفران", label: "معدات وأفران", icon: "⚙️" },
+      { value: "أدوات صغيرة", label: "أدوات صغيرة", icon: "🔧" },
+    ],
+  },
 ];
+const categories = categoryGroups.flatMap((group) => group.items);
+const readyMixOptions = [
+  {
+    value: "خليط الكيك",
+    label: "خليط الكيك",
+    icon: "🍰",
+    flavors: [
+      { label: "فانيليا", value: "خليط الكيك - فانيليا" },
+      { label: "شوكولاتة", value: "خليط الكيك - شوكولاتة" },
+      { label: "ريد فيلفت", value: "خليط ريد فيلفت" },
+      { label: "ليمون", value: "خليط الكيك - ليمون" },
+      { label: "برتقال", value: "خليط الكيك - برتقال" },
+    ],
+  },
+  {
+    value: "خليط الكب كيك",
+    label: "خليط الكب كيك",
+    icon: "🧁",
+    flavors: [
+      { label: "شوكولاتة", value: "خليط الكب كيك - شوكولاتة" },
+      { label: "فانيليا", value: "خليط الكب كيك - فانيليا" },
+    ],
+  },
+  { value: "خليط البراوني", label: "خليط البراوني", icon: "🍫", flavors: [] },
+  {
+    value: "خليط المافن",
+    label: "خليط المافن",
+    icon: "🧁",
+    flavors: [
+      { label: "شوكولاتة", value: "خليط المافن - شوكولاتة" },
+      { label: "فانيليا", value: "خليط المافن - فانيليا" },
+    ],
+  },
+  { value: "خليط البان كيك", label: "خليط البان كيك", icon: "🥞", flavors: [] },
+  { value: "خليط الوافل", label: "خليط الوافل", icon: "🧇", flavors: [] },
+  { value: "خليط البسكويت", label: "خليط البسكويت", icon: "🍪", flavors: [] },
+  { value: "خليط الكرواسون", label: "خليط الكرواسون", icon: "🥐", flavors: [] },
+];
+const legacyCategoryAliases: Record<string, string> = {
+  "دقيق وخبز": "دقيق",
+  "سكر ومحليات": "سكر",
+  زبدة: "زبدة ودهون",
+  "دهون وزبدة": "زبدة ودهون",
+  "شوكولاتة وكاكاو": "شوكولاتة",
+  "عبوات وتغليف": "علب وتغليف",
+  "معدات وأدوات": "معدات وأفران",
+};
 
 const emptySupplier: SupplierForm = {
   businessName: "", contactPerson: "", businessType: "", phone: "", whatsapp: "", sameWhatsapp: true,
@@ -69,7 +177,16 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const requestedType = new URLSearchParams(window.location.search).get("type");
   const initialType = defaultType ?? (requestedType === "supplier" || requestedType === "buyer" ? requestedType : null);
   const [type, setType] = useState<RegistrationType | null>(initialType);
-  const [supplier, setSupplier] = useState<SupplierForm>(() => loadDraft("supplier", emptySupplier));
+  const [supplier, setSupplier] = useState<SupplierForm>(() => {
+    const draft = loadDraft("supplier", emptySupplier);
+    const categories = Array.isArray(draft.categories) ? draft.categories : [];
+    return {
+      ...draft,
+      categories: [...new Set(categories.map((category) =>
+        category === "زبدة" || category === "دهون وزبدة" ? "زبدة ودهون" : category
+      ))],
+    };
+  });
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
