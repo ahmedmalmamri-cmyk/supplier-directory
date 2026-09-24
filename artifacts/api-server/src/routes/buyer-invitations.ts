@@ -136,6 +136,19 @@ function getRequestOrigin(req: Request) {
   return new URL(`${protocol}://${host}`).origin;
 }
 
+function getApplicationBasePath(req: Request) {
+  const referer = req.get("referer");
+  if (!referer) return "";
+  try {
+    const pathname = new URL(referer).pathname.replace(/\/+$/, "");
+    const adminPathIndex = pathname.lastIndexOf("/admin");
+    if (adminPathIndex >= 0) return pathname.slice(0, adminPathIndex);
+  } catch {
+    // The root path is the safe default for a missing or malformed referrer.
+  }
+  return "";
+}
+
 router.get("/admin/buyer-invitations", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const query = ListBuyerInvitationsQueryParams.safeParse(req.query);
@@ -315,7 +328,8 @@ router.post("/admin/buyer-invitations/:id/link", (req, res): void => {
       .run(tokenHash, params.data.id);
   }
   const baseUrl = getRequestOrigin(req);
-  const url = new URL(`/invite/buyer/${token}`, `${baseUrl}/`).toString();
+  const basePath = getApplicationBasePath(req);
+  const url = new URL(`${basePath}/invite/buyer/${token}`, `${baseUrl}/`).toString();
   const whatsappRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'admin_whatsapp'",
   ).get() as { value: string } | undefined;
