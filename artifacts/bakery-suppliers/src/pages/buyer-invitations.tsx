@@ -16,11 +16,15 @@ import {
   useUpdateBuyerInvitation,
   useUpdateInvitedBuyerAccountStatus,
 } from "@workspace/api-client-react";
-import { Clipboard, Download, FilePenLine, Link2, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Clipboard, ContactRound, Download, FilePenLine, Link2, LoaderCircle, MessageCircle, Plus, Search, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
 
 type Status = "invited" | "activated" | "active" | "suspended";
 type BusinessType = typeof BuyerInvitationInputBusinessType[keyof typeof BuyerInvitationInputBusinessType];
 type FormState = { fullName: string; phone: string; businessName: string; businessType: BusinessType; city: string; internalNotes: string };
+type DeviceContact = { name?: string[]; tel?: string[] };
+type DeviceContactPicker = {
+  select: (properties: Array<"name" | "tel">, options?: { multiple?: boolean }) => Promise<DeviceContact[]>;
+};
 const statuses: { id: Status; label: string; tone: string }[] = [
   { id: "invited", label: "مدعوون", tone: "bg-amber-100 text-amber-800" },
   { id: "activated", label: "مفعّلون", tone: "bg-sky-100 text-sky-800" },
@@ -30,6 +34,11 @@ const statuses: { id: Status; label: string; tone: string }[] = [
 const businessTypes = Object.values(BuyerInvitationInputBusinessType);
 const emptyForm: FormState = { fullName: "", phone: "", businessName: "", businessType: "مخبز", city: "", internalNotes: "" };
 
+function getDeviceContactPicker() {
+  if (typeof navigator === "undefined" || !window.isSecureContext) return undefined;
+  return (navigator as Navigator & { contacts?: DeviceContactPicker }).contacts;
+}
+
 export function BuyerInvitationsPanel() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>("invited");
@@ -37,6 +46,9 @@ export function BuyerInvitationsPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<BuyerInvitation | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [contactPickerLoading, setContactPickerLoading] = useState(false);
+  const [contactPickerMessage, setContactPickerMessage] = useState("");
+  const [openWhatsAppAfterSave, setOpenWhatsAppAfterSave] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [details, setDetails] = useState<number | null>(null);
@@ -62,14 +74,70 @@ export function BuyerInvitationsPanel() {
     const needle = search.trim().toLowerCase();
     return !needle || [item.fullName, item.phone, item.businessName, item.city].some((value) => value.toLowerCase().includes(needle));
   }), [list.data, search]);
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); setError(""); };
-  const openEdit = (item: BuyerInvitation) => { setEditing(item); setForm({ fullName: item.fullName, phone: item.phone, businessName: item.businessName, businessType: item.businessType as BusinessType, city: item.city, internalNotes: item.internalNotes || "" }); setShowForm(true); setError(""); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); setShowForm(true); setError(""); };
+  const openEdit = (item: BuyerInvitation) => { setEditing(item); setForm({ fullName: item.fullName, phone: item.phone, businessName: item.businessName, businessType: item.businessType as BusinessType, city: item.city, internalNotes: item.internalNotes || "" }); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); setShowForm(true); setError(""); };
+  const chooseDeviceContact = async () => {
+    setOpenWhatsAppAfterSave(false);
+    const picker = getDeviceContactPicker();
+    if (!picker?.select) {
+      setContactPickerMessage("هذا المتصفح لا يدعم اختيار جهة اتصال تلقائياً. انسخ الرقم من واتساب والصقه في الحقل.");
+      return;
+    }
+    setContactPickerLoading(true);
+    setContactPickerMessage("");
+    setError("");
+    try {
+      const [contact] = await picker.select(["name", "tel"], { multiple: false });
+      if (!contact) return;
+      const phone = contact.tel?.find((value) => value.trim());
+      if (!phone) {
+        setContactPickerMessage("جهة الاتصال المحددة لا تحتوي على رقم هاتف.");
+        return;
+      }
+      const fullName = contact.name?.find((value) => value.trim())?.trim();
+      setForm((current) => ({ ...current, ...(fullName ? { fullName } : {}), phone: phone.trim() }));
+      setOpenWhatsAppAfterSave(true);
+      setContactPickerMessage("تمت تعبئة بيانات الجهة. بعد الحفظ سيفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.");
+    } catch (pickerError) {
+      if (pickerError instanceof DOMException && pickerError.name === "AbortError") return;
+      setContactPickerMessage("تعذر اختيار جهة الاتصال. يمكنك نسخ الرقم من واتساب ولصقه يدوياً.");
+    } finally {
+      setContactPickerLoading(false);
+    }
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setError("");
     const payload = { ...form, fullName: form.fullName.trim(), phone: form.phone.trim(), businessName: form.businessName.trim(), city: form.city.trim(), internalNotes: form.internalNotes.trim() };
-    const onSuccess = () => { setShowForm(false); setForm(emptyForm); setNotice(editing ? "تم تحديث بيانات الدعوة." : "تم إنشاء مسودة دعوة جديدة."); refresh(); };
-    const onError = (err: unknown) => setError(err instanceof Error ? err.message : "تعذر حفظ الدعوة.");
+    const shouldOpenWhatsApp = !editing && openWhatsAppAfterSave;
+    const whatsappWindow = shouldOpenWhatsApp ? window.open("about:blank", "_blank") : null;
+    if (whatsappWindow) whatsappWindow.opener = null;
+    const onSuccess = (savedInvitation: BuyerInvitation) => {
+      setShowForm(false);
+      setForm(emptyForm);
+      setOpenWhatsAppAfterSave(false);
+      setContactPickerMessage("");
+      if (shouldOpenWhatsApp && whatsappWindow) {
+        linkMutation.mutate({ id: savedInvitation.id }, {
+          onSuccess: (link) => {
+            whatsappWindow.location.href = link.whatsappUrl;
+            markSent.mutate({ id: savedInvitation.id }, { onSuccess: refresh });
+            setNotice("تم فتح واتساب. راجع الرسالة واضغط إرسال؛ لا يؤكد النظام تسليمها.");
+          },
+          onError: (err) => {
+            whatsappWindow.close();
+            setError(err instanceof Error ? err.message : "تم حفظ الدعوة، لكن تعذر تجهيز رسالة واتساب.");
+          },
+        });
+      } else {
+        setNotice(shouldOpenWhatsApp ? "تم حفظ الدعوة، لكن منع المتصفح فتح واتساب. اسمح بالنوافذ المنبثقة ثم استخدم زر واتساب في الدعوة." : editing ? "تم تحديث بيانات الدعوة." : "تم إنشاء مسودة دعوة جديدة.");
+      }
+      refresh();
+    };
+    const onError = (err: unknown) => {
+      whatsappWindow?.close();
+      setError(err instanceof Error ? err.message : "تعذر حفظ الدعوة.");
+    };
     if (editing) update.mutate({ id: editing.id, data: payload }, { onSuccess, onError });
     else create.mutate({ data: payload }, { onSuccess, onError });
   };
@@ -128,14 +196,22 @@ export function BuyerInvitationsPanel() {
         <div className="mb-4 flex items-start justify-between gap-3"><div><h3 data-testid="text-buyer-form-title" className="font-extrabold">{editing ? "تعديل الدعوة" : "مسودة دعوة جديدة"}</h3><p className="text-xs text-muted-foreground">{editing ? "يمكن تعديل الدعوة قبل تفعيل الحساب فقط." : "ستبقى الدعوة في حالة مدعو حتى تفعيلها."}</p></div><button data-testid="button-close-buyer-form" type="button" onClick={() => setShowForm(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button></div>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field id="input-buyer-invitation-full-name" label="الاسم الكامل" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} required />
-          <Field id="input-buyer-invitation-phone" label="رقم الجوال" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} required ltr />
+          <div className="block">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <label htmlFor="input-buyer-invitation-phone" className="text-sm font-bold">رقم الجوال</label>
+              {!editing && <button data-testid="button-select-buyer-contact" type="button" onClick={() => void chooseDeviceContact()} disabled={contactPickerLoading} className="inline-flex shrink-0 items-center gap-1 rounded-lg border bg-card px-2.5 py-1.5 text-xs font-bold hover:bg-muted disabled:opacity-60"><ContactRound className="h-3.5 w-3.5" />{contactPickerLoading ? "جاري الاختيار..." : "اختيار جهة اتصال"}</button>}
+            </div>
+            <input id="input-buyer-invitation-phone" data-testid="input-buyer-invitation-phone" required value={form.phone} onChange={(event) => { setForm((current) => ({ ...current, phone: event.target.value })); setOpenWhatsAppAfterSave(false); setContactPickerMessage(""); }} dir="ltr" inputMode="tel" autoComplete="tel" className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
+            {!editing && <p data-testid="text-buyer-contact-picker-help" className="mt-1.5 text-xs text-muted-foreground">اختر من دفتر الهاتف؛ لا يمكن للموقع قراءة قائمة واتساب مباشرةً أو إرسال الرسالة دون تأكيدك.</p>}
+            {contactPickerMessage && <p data-testid="status-buyer-contact-picker" role="status" className="mt-1.5 text-xs text-muted-foreground">{contactPickerMessage}</p>}
+          </div>
           <Field id="input-buyer-invitation-business-name" label="اسم المنشأة" value={form.businessName} onChange={(value) => setForm({ ...form, businessName: value })} required />
           <label className="block"><span className="mb-1.5 block text-sm font-bold">نوع النشاط</span><select data-testid="select-buyer-invitation-business-type" value={form.businessType} onChange={(event) => setForm({ ...form, businessType: event.target.value as BusinessType })} className="h-11 w-full rounded-xl border bg-background px-3">{businessTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
           <Field id="input-buyer-invitation-city" label="المدينة" value={form.city} onChange={(value) => setForm({ ...form, city: value })} required />
           <label className="block md:col-span-2 lg:col-span-3"><span className="mb-1.5 block text-sm font-bold">ملاحظات داخلية <span className="font-normal text-muted-foreground">(اختياري)</span></span><textarea data-testid="textarea-buyer-invitation-notes" value={form.internalNotes} onChange={(event) => setForm({ ...form, internalNotes: event.target.value })} maxLength={1000} rows={3} className="w-full resize-y rounded-xl border bg-background p-3" /></label>
         </div>
         {error && <p data-testid="status-buyer-invitation-form-error" className="mt-3 text-sm text-destructive">{error}</p>}
-        <div className="mt-4 flex flex-wrap gap-2"><button data-testid="button-save-buyer-invitation" type="submit" disabled={create.isPending || update.isPending} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{create.isPending || update.isPending ? "جاري الحفظ..." : "حفظ الدعوة"}</button><button data-testid="button-cancel-buyer-invitation" type="button" onClick={() => setShowForm(false)} className="rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-muted">إلغاء</button></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button data-testid="button-save-buyer-invitation" type="submit" disabled={create.isPending || update.isPending} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">{create.isPending || update.isPending ? "جاري الحفظ..." : openWhatsAppAfterSave ? "حفظ الدعوة وفتح واتساب" : "حفظ الدعوة"}</button><button data-testid="button-cancel-buyer-invitation" type="button" onClick={() => setShowForm(false)} className="rounded-xl border px-4 py-2.5 text-sm font-bold hover:bg-muted">إلغاء</button></div>
       </form>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {statuses.map((item) => <div data-testid={`stat-buyer-invitations-${item.id}`} key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.tone}`}>{item.label}</span><Users className="h-4 w-4 text-muted-foreground" /></div><strong className="text-2xl">{stats.data?.[item.id] ?? "—"}</strong><span className="mr-2 text-xs text-muted-foreground">حساب</span></div>)}
