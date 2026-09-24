@@ -296,6 +296,46 @@ paths:
         "400": { description: Invalid contact input }
         "401": { description: Buyer authentication required }
         "404": { description: Supplier not found }
+  /buyer-invites/{token}:
+    get:
+      operationId: getBuyerInvitation
+      tags: [buyer]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Public buyer invitation details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationPublic" }
+        "404": { description: Invitation is invalid or unavailable }
+        "409": { description: Invitation already activated }
+  /buyer-invites/{token}/activate:
+    post:
+      operationId: activateBuyerInvitation
+      tags: [buyer]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationActivationInput" }
+      responses:
+        "201":
+          description: Buyer account activated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationActivationResponse" }
+        "400": { description: Invalid activation details }
+        "404": { description: Invitation is invalid or unavailable }
+        "409": { description: "Phone or email already used, or invitation already activated" }
   /admin/login:
     post:
       operationId: adminLogin
@@ -373,6 +413,166 @@ paths:
                 $ref: "#/components/schemas/AdminResponse"
         "401": { description: Admin authentication required }
         "404": { description: Registration not found }
+  /admin/buyer-invitations:
+    get:
+      operationId: listBuyerInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [invited, activated, active, suspended] }
+      responses:
+        "200":
+          description: Buyer invitations and activated accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BuyerInvitation" }
+        "401": { description: Admin authentication required }
+    post:
+      operationId: createBuyerInvitation
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationInput" }
+      responses:
+        "201":
+          description: Buyer invitation draft created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitation" }
+        "400": { description: Invalid invitation details }
+        "401": { description: Admin authentication required }
+        "409": { description: Phone already has an account or invitation }
+  /admin/buyer-invitations/{id}:
+    patch:
+      operationId: updateBuyerInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationUpdate" }
+      responses:
+        "200":
+          description: Buyer invitation updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitation" }
+        "400": { description: Invalid invitation details }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Activated invitations cannot be edited }
+    delete:
+      operationId: deleteBuyerInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unactivated buyer invitation deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Activated invitations cannot be deleted }
+  /admin/buyer-invitations/{id}/link:
+    post:
+      operationId: getBuyerInvitationLink
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Stable invitation link and WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already activated }
+  /admin/buyer-invitations/{id}/sent:
+    post:
+      operationId: markBuyerInvitationSent
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: WhatsApp opening recorded (delivery is not confirmed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already activated }
+  /admin/buyer-invitations/stats:
+    get:
+      operationId: getBuyerInvitationStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Buyer invitation, search, and contact activity statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationStats" }
+        "401": { description: Admin authentication required }
+  /admin/buyer-invitations/export:
+    get:
+      operationId: exportBuyerInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [invited, activated, active, suspended] }
+      responses:
+        "200":
+          description: Excel-compatible CSV export
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "401": { description: Admin authentication required }
+  /admin/buyer-invitations/{id}/account-status:
+    patch:
+      operationId: updateInvitedBuyerAccountStatus
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationAccountStatusInput" }
+      responses:
+        "200":
+          description: Buyer account status updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Invalid account status or suspension duration }
+        "401": { description: Admin authentication required }
+        "404": { description: Activated buyer invitation not found }
   /admin/invitations:
     get:
       operationId: listSupplierInvitations
@@ -765,6 +965,111 @@ components:
         password: { type: string, minLength: 6, maxLength: 128, pattern: "^[A-Za-z0-9]+$" }
         newsletterWeekly: { type: boolean }
         buyersGroup: { type: boolean }
+    BuyerInvitationInput:
+      type: object
+      required: [fullName, phone, businessName, businessType, city]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 10, maxLength: 24 }
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        internalNotes: { type: string, maxLength: 1000 }
+        invitedAt: { type: string, format: date-time }
+    BuyerInvitationUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 10, maxLength: 24 }
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        internalNotes: { type: string, maxLength: 1000 }
+        invitedAt: { type: string, format: date-time }
+    BuyerInvitation:
+      type: object
+      required: [id, fullName, phone, businessName, businessType, city, internalNotes, invitedAt, createdBy, inviteSentAt, activatedAt, buyerId, accountStatus, lastLogin, suspendedUntil, createdAt]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        businessName: { type: string }
+        businessType: { type: string }
+        city: { type: string }
+        internalNotes: { type: string }
+        invitedAt: { type: string }
+        createdBy: { type: string }
+        inviteSentAt: { type: [string, "null"] }
+        activatedAt: { type: [string, "null"] }
+        buyerId: { type: [integer, "null"] }
+        accountStatus: { type: string, enum: [invited, activated, active, suspended] }
+        lastLogin: { type: [string, "null"] }
+        suspendedUntil: { type: [string, "null"] }
+        createdAt: { type: string }
+    BuyerInvitationLink:
+      type: object
+      required: [token, fullName, phone, url, whatsappUrl]
+      properties:
+        token: { type: string }
+        fullName: { type: string }
+        phone: { type: string }
+        url: { type: string, format: uri }
+        whatsappUrl: { type: string, format: uri }
+    BuyerInvitationPublic:
+      type: object
+      required: [fullName, businessName, businessType, city, alreadyActivated]
+      properties:
+        fullName: { type: string }
+        businessName: { type: string }
+        businessType: { type: string }
+        city: { type: string }
+        alreadyActivated: { type: boolean }
+    BuyerInvitationActivationInput:
+      type: object
+      required: [password, email, newsletterWeekly, buyersGroup, termsAccepted]
+      properties:
+        password: { type: string, minLength: 6, maxLength: 128, pattern: "^[A-Za-z0-9]+$" }
+        email: { type: string, maxLength: 160 }
+        newsletterWeekly: { type: boolean }
+        buyersGroup: { type: boolean }
+        termsAccepted: { type: boolean, const: true }
+    BuyerInvitationActivationResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    BuyerInvitationStats:
+      type: object
+      required: [invited, activated, active, suspended, topSearches, dailyContactAttempts]
+      properties:
+        invited: { type: integer }
+        activated: { type: integer }
+        active: { type: integer }
+        suspended: { type: integer }
+        topSearches:
+          type: array
+          items:
+            type: object
+            required: [term, count]
+            properties:
+              term: { type: string }
+              count: { type: integer }
+        dailyContactAttempts:
+          type: array
+          items:
+            type: object
+            required: [date, count]
+            properties:
+              date: { type: string, format: date }
+              count: { type: integer }
+    BuyerInvitationAccountStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended] }
+        durationDays: { type: integer, minimum: 1, maximum: 90 }
+        reason: { type: string, maxLength: 1000 }
     BuyerLoginInput:
       type: object
       required: [identifier, password]
