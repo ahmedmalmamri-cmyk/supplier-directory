@@ -23,11 +23,17 @@ const field = "h-11 w-full rounded-xl border border-border bg-background px-3 te
 const subtleButton = "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-bold transition hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50";
 const mainButton = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50";
 const fmt = (number: number) => number.toLocaleString("ar-SA");
+function isTemporaryApi404(error: unknown) {
+  if (!error || typeof error !== "object" || !("status" in error) || error.status !== 404 || !("data" in error)) return false;
+  return typeof error.data === "string" && /<\s*(?:!doctype|html)\b/i.test(error.data);
+}
 function errorMessage(error: unknown) {
+  if (isTemporaryApi404(error)) return "خدمة الإدارة غير متاحة مؤقتاً. لم يُحذف التصنيف؛ انتظر قليلاً ثم أعد المحاولة.";
   if (error && typeof error === "object" && "data" in error) {
     const data = error.data;
     if (data && typeof data === "object" && "error" in data && typeof data.error === "string") return data.error;
   }
+  if (error instanceof TypeError) return "تعذّر الاتصال بالخادم. تأكد من الاتصال ثم أعد المحاولة.";
   return error instanceof Error ? error.message : "تعذّر حفظ التغيير. حاول مرة أخرى.";
 }
 
@@ -69,7 +75,12 @@ export default function AdminItemCategoriesTab() {
   const createCategory = useCreateAdminItemCategory({ mutation: { onSuccess: () => success("أُضيف التصنيف إلى المجموعة."), onError: failure } });
   const updateCategory = useUpdateAdminItemCategory({ mutation: { onSuccess: () => success("حُفظت تغييرات التصنيف."), onError: failure } });
   const transferCategory = useTransferAdminItemCategory({ mutation: { onSuccess: () => success("نُقل التصنيف إلى مجموعته الرئيسية الجديدة."), onError: failure } });
-  const deleteCategory = useDeleteAdminItemCategory({ mutation: { onSuccess: () => success("حُذف التصنيف من جميع المجموعات."), onError: failure } });
+  const deleteCategory = useDeleteAdminItemCategory({ mutation: {
+    retry: (failureCount, error) => failureCount < 5 && isTemporaryApi404(error),
+    retryDelay: (attempt) => Math.min(1500 * (attempt + 1), 6000),
+    onSuccess: () => success("حُذف التصنيف من جميع المجموعات."),
+    onError: failure,
+  } });
   const setTags = useSetAdminItemCategoryTags({ mutation: { onSuccess: () => success("حُفظت جميع مجموعات الوسوم."), onError: failure } });
   const pending = createGroup.isPending || updateGroup.isPending || deleteGroup.isPending || createCategory.isPending || updateCategory.isPending || transferCategory.isPending || deleteCategory.isPending || setTags.isPending;
 
@@ -201,9 +212,9 @@ export default function AdminItemCategoriesTab() {
       <div className="max-h-72 space-y-2 overflow-auto">{groups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-bold hover:bg-muted/40"><input type="checkbox" data-testid={`checkbox-category-tag-${g.id}`} checked={tagIds.includes(g.id)} onChange={(e) => setTagIds((ids) => e.target.checked ? [...ids, g.id] : ids.filter((id) => id !== g.id))} className="accent-primary" /> <span className="text-lg">{g.icon}</span>{g.name}</label>)}</div>
       <div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-save-category-tags" className={mainButton} disabled={pending} onClick={() => setTags.mutate({ id: dialog.category.id, data: { groupIds: tagIds } })}>{pending ? "جارٍ الحفظ..." : "حفظ جميع الوسوم"}</button></div></Modal>}
     {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك إدارة المجموعات الثانوية من نافذة الوسوم.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => setDestinationId(e.target.value)}><option value="">اختر مجموعة</option>{groups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
-    {dialog?.kind === "delete-category" && <Modal title="حذف التصنيف" onClose={() => setDialog(null)}><p className="text-sm leading-7">هل تريد حذف <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</p><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-category" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => deleteCategory.mutate({ id: dialog.category.id })}>حذف التصنيف</button></div></Modal>}
+    {dialog?.kind === "delete-category" && <Modal title="حذف التصنيف" onClose={() => { if (!pending) setDialog(null); }}><p className="text-sm leading-7">هل تريد حذف <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</p>{notice?.error && <p role="alert" data-testid="error-delete-category" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.message}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" disabled={pending} className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-category" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => deleteCategory.mutate({ id: dialog.category.id })}>{deleteCategory.isPending ? "جارٍ الحذف..." : "حذف التصنيف"}</button></div></Modal>}
     {dialog?.kind === "delete-group" && <Modal title="حذف المجموعة" onClose={() => setDialog(null)}><p className="text-sm leading-7">هل تريد حذف مجموعة <strong>{dialog.group.name}</strong>؟ يجب نقل التصنيفات التي تتخذها مجموعة رئيسية قبل حذفها. ستُزال أيضاً وسوم هذه المجموعة من التصنيفات الأخرى.</p><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-group" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => deleteGroup.mutate({ id: dialog.group.id })}>حذف المجموعة</button></div></Modal>}
-    {dialog && notice?.error && <div role="alert" className="fixed bottom-5 left-5 right-5 z-[60] mx-auto max-w-lg rounded-xl border border-destructive/40 bg-card p-4 text-sm font-bold text-destructive shadow-warm-lg">{notice.message}</div>}
+    {dialog && dialog.kind !== "delete-category" && notice?.error && <div role="alert" className="fixed bottom-5 left-5 right-5 z-[60] mx-auto max-w-lg rounded-xl border border-destructive/40 bg-card p-4 text-sm font-bold text-destructive shadow-warm-lg">{notice.message}</div>}
     {pending && <span role="status" className="sr-only">جارٍ حفظ التغيير</span>}
   </section>;
 }
