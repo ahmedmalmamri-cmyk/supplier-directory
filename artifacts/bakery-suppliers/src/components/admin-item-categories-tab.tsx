@@ -37,6 +37,12 @@ import {
   type ActivityLogEntry,
   type AdminItemCategory,
 } from "@workspace/api-client-react";
+import { ROOT_GROUPS } from "@/components/categories/taxonomy";
+
+function isCanonicalRoot(category: AdminItemCategory) {
+  return category.parentId === null && ROOT_GROUPS.some((root) =>
+    root.slug === (category as AdminItemCategory & { slug?: string }).slug || root.name === category.name);
+}
 
 type CategoryFormState = {
   name: string;
@@ -126,7 +132,6 @@ export default function AdminItemCategoriesTab() {
   const [notice, setNotice] = useState<Notice>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [transferDestination, setTransferDestination] = useState("");
-  const [moveSubcategories, setMoveSubcategories] = useState(false);
 
   const refresh = async () => {
     setNotice(null);
@@ -245,8 +250,12 @@ export default function AdminItemCategoriesTab() {
     reorderCategories.isPending;
 
   const openCreate = (parentId: number | null) => {
+    if (parentId === null || !byId.has(parentId) || !isCanonicalRoot(byId.get(parentId)!)) {
+      setNotice({ tone: "error", text: "يمكن إضافة تصنيف فرعي تحت إحدى المجموعات الرئيسية الثلاث عشرة فقط." });
+      return;
+    }
     setNotice(null);
-    setForm({ ...emptyForm, parentId: parentId === null ? "" : String(parentId), displayOnHome: parentId === null });
+    setForm({ ...emptyForm, parentId: String(parentId) });
     setModal({ type: "create", parentId });
   };
 
@@ -257,7 +266,7 @@ export default function AdminItemCategoriesTab() {
       icon: category.icon,
       parentId: category.parentId === null ? "" : String(category.parentId),
       description: category.description ?? "",
-      displayOnHome: category.parentId === null && category.displayOnHome,
+      displayOnHome: isCanonicalRoot(category) ? true : category.parentId === null && category.displayOnHome,
       isActive: category.isActive,
     });
     setModal({ type: "edit", category });
@@ -274,13 +283,26 @@ export default function AdminItemCategoriesTab() {
     const parentId = form.parentId ? Number(form.parentId) : null;
     const description = form.description.trim() || null;
     if (modal?.type === "create") {
+      if (parentId === null || !byId.has(parentId) || !isCanonicalRoot(byId.get(parentId)!) || !byId.get(parentId)?.isActive) {
+        setNotice({ tone: "error", text: "اختر مجموعة رئيسية نشطة من المجموعات الثلاث عشرة." });
+        return;
+      }
       createCategory.mutate({
         data: { name, icon, parentId, description },
       });
     } else if (modal?.type === "edit") {
+      const root = isCanonicalRoot(modal.category);
+      if (root && (name !== modal.category.name || !form.isActive)) {
+        setNotice({ tone: "error", text: "اسم المجموعة الرئيسية وحالتها ثابتان. يمكنك تعديل الأيقونة والوصف والظهور فقط." });
+        return;
+      }
       updateCategory.mutate({
         id: modal.category.id,
-        data: {
+        data: root ? {
+          icon,
+          description,
+          displayOnHome: true,
+        } : {
           name,
           icon,
           description,
@@ -292,6 +314,7 @@ export default function AdminItemCategoriesTab() {
   };
 
   const reorder = (category: AdminItemCategory, direction: -1 | 1) => {
+    if (category.parentId === null) return;
     const siblings = childrenByParent.get(category.parentId) ?? [];
     const index = siblings.findIndex((item) => item.id === category.id);
     const destination = index + direction;
@@ -301,16 +324,7 @@ export default function AdminItemCategoriesTab() {
     reorderCategories.mutate({ data: { parentId: category.parentId, categoryIds: ordered } });
   };
 
-  const selectableParents = categories.filter((candidate) => {
-    if (!modal || modal.type !== "transfer") return candidate.isActive;
-    if (candidate.id === modal.category.id) return false;
-    let current: AdminItemCategory | undefined = candidate;
-    while (current?.parentId !== null && current?.parentId !== undefined) {
-      if (current.parentId === modal.category.id) return false;
-      current = byId.get(current.parentId);
-    }
-    return candidate.isActive;
-  });
+  const selectableParents = categories.filter((candidate) => candidate.isActive && isCanonicalRoot(candidate));
 
   return (
     <section dir="rtl" className="space-y-6" aria-label="إدارة تصنيفات المنتجات">
@@ -325,7 +339,7 @@ export default function AdminItemCategoriesTab() {
               شجرة تصنيف موردي المخابز والحلويات
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
-              حافظ على taxonomy واضحة للموردين، وتابع ارتباط كل تصنيف بالموردين قبل نشره في الدليل.
+              المجموعات الرئيسية الثلاث عشرة ثابتة. أضف الأصناف الفرعية تحتها، وعدّل تفاصيلها دون إنشاء مستوى ثالث.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -339,15 +353,6 @@ export default function AdminItemCategoriesTab() {
               <RefreshCw className={`h-4 w-4 ${categoriesQuery.isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
               تحديث
             </button>
-            <button
-              data-testid="button-add-root-category"
-              type="button"
-              onClick={() => openCreate(null)}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:opacity-90"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              تصنيف رئيسي
-            </button>
           </div>
         </div>
 
@@ -355,7 +360,7 @@ export default function AdminItemCategoriesTab() {
           <Metric label="إجمالي التصنيفات" value={categories.length} icon={<Layers3 className="h-4 w-4" />} />
           <Metric label="التصنيفات النشطة" value={activeCount} icon={<ToggleRight className="h-4 w-4" />} />
           <Metric label="تصنيفات طرفية" value={leafCategoryCount} icon={<Users className="h-4 w-4" />} />
-          <Metric label="تصنيفات رئيسية" value={childrenByParent.get(null)?.length ?? 0} icon={<FolderTree className="h-4 w-4" />} />
+           <Metric label="المجموعات الرئيسية" value={categories.filter(isCanonicalRoot).length} icon={<FolderTree className="h-4 w-4" />} />
         </div>
       </div>
 
@@ -419,7 +424,7 @@ export default function AdminItemCategoriesTab() {
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span data-testid="text-category-result-count">عرض {filteredIds.size} من {categories.length} تصنيف</span>
-              <span>الترتيب داخل كل مستوى مستقل</span>
+               <span>المجموعات الرئيسية ثابتة؛ يمكن ترتيب الأصناف الفرعية داخل كل مجموعة</span>
             </div>
           </div>
 
@@ -440,13 +445,8 @@ export default function AdminItemCategoriesTab() {
             <StateCard
               icon={<FolderTree className="h-6 w-6" />}
               title="لا توجد تصنيفات بعد"
-              description="ابدأ بتصنيف رئيسي، ثم أضف تحته التصنيفات الفرعية التي يحتاجها الموردون."
-              action={
-                <button data-testid="button-empty-add-category" type="button" onClick={() => openCreate(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
-                  <Plus className="h-4 w-4" />
-                  إضافة أول تصنيف
-                </button>
-              }
+               description="المجموعات الرئيسية الثابتة غير متاحة حالياً. حدّث القائمة أو تواصل مع مسؤول النظام لاستعادة المجموعات الثلاث عشرة."
+               action={<button data-testid="button-empty-refresh-category" type="button" onClick={() => void categoriesQuery.refetch()} className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">تحديث القائمة</button>}
             />
           ) : visibleRoots.length === 0 ? (
             <StateCard icon={<Search className="h-6 w-6" />} title="لا توجد نتائج مطابقة" description="جرّب تغيير عبارة البحث أو فلتر الحالة." />
@@ -469,16 +469,16 @@ export default function AdminItemCategoriesTab() {
                   })}
                   onCreate={openCreate}
                   onEdit={openEdit}
-                  onTransfer={(item) => {
+                   onTransfer={(item) => {
+                     if (item.parentId === null || (childrenByParent.get(item.id)?.length ?? 0) > 0) return;
                     setTransferDestination(item.parentId === null ? "" : String(item.parentId));
-                    setMoveSubcategories(false);
                     setModal({ type: "transfer", category: item });
                   }}
-                  onDelete={(item) => setModal({ type: "delete", category: item })}
-                  onToggleActive={(item) => updateCategory.mutate({
+                   onDelete={(item) => { if (item.parentId !== null) setModal({ type: "delete", category: item }); }}
+                   onToggleActive={(item) => { if (item.parentId !== null) updateCategory.mutate({
                     id: item.id,
                     data: { isActive: !item.isActive },
-                  })}
+                   }); }}
                   onReorder={reorder}
                   reorderPending={reorderCategories.isPending}
                   togglePending={updateCategory.isPending}
@@ -508,7 +508,7 @@ export default function AdminItemCategoriesTab() {
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-950">
             <div className="flex items-start gap-3">
               <Activity className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
-              <p className="leading-7"><strong>ملاحظة تشغيلية:</strong> تعطيل تصنيف يوقفه مع جميع فروعه، ولا يحذف اختيارات الموردين السابقة من السجل.</p>
+               <p className="leading-7"><strong>ملاحظة تشغيلية:</strong> لا يمكن إنشاء مجموعة رئيسية جديدة أو تغيير أسماء المجموعات الثلاث عشرة أو تعطيلها أو نقلها. تعطيل صنف فرعي لا يحذف اختيارات الموردين السابقة.</p>
             </div>
           </div>
         </aside>
@@ -531,12 +531,17 @@ export default function AdminItemCategoriesTab() {
           category={modal.category}
           destination={transferDestination}
           destinations={selectableParents}
-          moveSubcategories={moveSubcategories}
           pending={transferCategory.isPending}
           onDestinationChange={setTransferDestination}
-          onMoveSubcategoriesChange={setMoveSubcategories}
           onClose={() => setModal(null)}
-          onSubmit={() => transferCategory.mutate({ id: modal.category.id, data: { destinationId: transferDestination ? Number(transferDestination) : null, moveSubcategories } })}
+           onSubmit={() => {
+             const destination = selectableParents.find((item) => String(item.id) === transferDestination);
+             if (modal.category.parentId === null || !destination || (childrenByParent.get(modal.category.id)?.length ?? 0) > 0) {
+               setNotice({ tone: "error", text: "يمكن نقل صنف فرعي دون فروع إلى مجموعة رئيسية نشطة فقط." });
+               return;
+             }
+             transferCategory.mutate({ id: modal.category.id, data: { destinationId: destination.id, moveSubcategories: false } });
+           }}
         />
       ) : null}
       {modal?.type === "delete" ? (
@@ -544,7 +549,7 @@ export default function AdminItemCategoriesTab() {
           category={modal.category}
           pending={deleteCategory.isPending}
           onClose={() => setModal(null)}
-          onConfirm={() => deleteCategory.mutate({ id: modal.category.id })}
+           onConfirm={() => { if (modal.category.parentId !== null) deleteCategory.mutate({ id: modal.category.id }); }}
         />
       ) : null}
       {pendingMutation && <div className="sr-only" role="status">جاري حفظ التغيير</div>}
@@ -599,6 +604,7 @@ function CategoryBranch({
   const isExpanded = expanded.has(category.id) || Boolean(category.parentId === null && filteredIds.size < byId.size);
   const siblings = childrenByParent.get(category.parentId) ?? [];
   const position = siblings.findIndex((item) => item.id === category.id);
+  const root = category.parentId === null;
 
   return (
     <div data-testid={`category-branch-${category.id}`} className="relative">
@@ -620,7 +626,7 @@ function CategoryBranch({
               <div className="flex flex-wrap items-center gap-2">
                 <h3 data-testid={`text-category-name-${category.id}`} className="font-extrabold">{category.name}</h3>
                 <StatusPill active={category.isActive} />
-                {category.parentId === null && category.displayOnHome && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">ظاهر في الرئيسية</span>}
+                 {isCanonicalRoot(category) && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">ظاهر في الرئيسية دائماً</span>}
               </div>
               <p className="mt-1 truncate text-xs text-muted-foreground">{category.groupName} · {category.parentId === null ? "تصنيف رئيسي" : `تابع لـ ${byId.get(category.parentId)?.name ?? "تصنيف غير معروف"}`}</p>
               {category.description && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{category.description}</p>}
@@ -629,12 +635,12 @@ function CategoryBranch({
           <div className="flex flex-wrap items-center gap-2 pr-10 md:pr-0">
             <span data-testid={`text-category-supplier-count-${category.id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 text-xs font-bold text-muted-foreground"><Users className="h-3.5 w-3.5" />{category.supplierCount.toLocaleString("ar-SA")} مورد</span>
             <span className="text-[11px] text-muted-foreground">ترتيب {category.displayOrder}</span>
-            <div className="flex items-center rounded-lg border bg-background">
+             {!root && <div className="flex items-center rounded-lg border bg-background">
               <button data-testid={`button-move-category-up-${category.id}`} type="button" onClick={() => onReorder(category, -1)} disabled={position <= 0 || reorderPending} className="rounded-r-lg p-2 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="نقل لأعلى"><ArrowUp className="h-4 w-4" /></button>
               <button data-testid={`button-move-category-down-${category.id}`} type="button" onClick={() => onReorder(category, 1)} disabled={position < 0 || position >= siblings.length - 1 || reorderPending} className="rounded-l-lg p-2 text-muted-foreground hover:bg-muted disabled:opacity-30" aria-label="نقل لأسفل"><ArrowDown className="h-4 w-4" /></button>
-            </div>
-            {category.parentId === null && <button data-testid={`button-add-child-category-${category.id}`} type="button" onClick={() => onCreate(category.id)} className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold hover:bg-muted"><Plus className="h-3.5 w-3.5" />فرعي</button>}
-            <button
+             </div>}
+             {root && isCanonicalRoot(category) && <button data-testid={`button-add-child-category-${category.id}`} type="button" onClick={() => onCreate(category.id)} disabled={!category.isActive} className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold hover:bg-muted disabled:opacity-40"><Plus className="h-3.5 w-3.5" />إضافة صنف فرعي</button>}
+             {!root && <button
               data-testid={`button-toggle-active-category-${category.id}`}
               type="button"
               onClick={() => onToggleActive(category)}
@@ -649,10 +655,10 @@ function CategoryBranch({
               }`}
             >
               {category.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-            </button>
-            <button data-testid={`button-edit-category-${category.id}`} type="button" onClick={() => onEdit(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`تعديل ${category.name}`}><Edit3 className="h-4 w-4" /></button>
-            <button data-testid={`button-transfer-category-${category.id}`} type="button" onClick={() => onTransfer(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`نقل ${category.name}`}><Move className="h-4 w-4" /></button>
-            <button data-testid={`button-delete-category-${category.id}`} type="button" onClick={() => onDelete(category)} disabled={!category.isActive} className="rounded-lg border border-rose-200 p-2 text-rose-700 hover:bg-rose-50 disabled:opacity-30" aria-label={`تعطيل ${category.name}`}><Trash2 className="h-4 w-4" /></button>
+             </button>}
+             {(!root || isCanonicalRoot(category)) && <button data-testid={`button-edit-category-${category.id}`} type="button" onClick={() => onEdit(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`تعديل ${category.name}`}><Edit3 className="h-4 w-4" /></button>}
+             {!root && !(childrenByParent.get(category.id)?.length) && <button data-testid={`button-transfer-category-${category.id}`} type="button" onClick={() => onTransfer(category)} className="rounded-lg border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`نقل ${category.name}`}><Move className="h-4 w-4" /></button>}
+             {!root && <button data-testid={`button-delete-category-${category.id}`} type="button" onClick={() => onDelete(category)} disabled={!category.isActive} className="rounded-lg border border-rose-200 p-2 text-rose-700 hover:bg-rose-50 disabled:opacity-30" aria-label={`تعطيل ${category.name}`}><Trash2 className="h-4 w-4" /></button>}
           </div>
         </div>
       </article>
@@ -718,21 +724,19 @@ function CategoryFormModal({
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
-  const parentOptions = categories.filter((category) => category.isActive && category.parentId === null && category.id !== editingCategory?.id);
+  const parentOptions = categories.filter((category) => category.isActive && isCanonicalRoot(category) && category.id !== editingCategory?.id);
+  const editingRoot = editingCategory !== null && isCanonicalRoot(editingCategory);
   return (
     <Modal title={mode === "create" ? "إضافة تصنيف جديد" : `تعديل: ${editingCategory?.name ?? ""}`} onClose={onClose}>
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-          <label className="block"><span className="mb-1.5 block text-sm font-bold">اسم التصنيف <span className="text-destructive">*</span></span><input data-testid="input-category-name" required maxLength={100} value={form.name} onChange={(event) => onChange({ ...form, name: event.target.value })} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
+           <label className="block"><span className="mb-1.5 block text-sm font-bold">اسم التصنيف <span className="text-destructive">*</span></span><input data-testid="input-category-name" required maxLength={100} disabled={editingRoot} value={form.name} onChange={(event) => onChange({ ...form, name: event.target.value })} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-muted/50" />{editingRoot && <span className="mt-1 block text-xs text-muted-foreground">اسم المجموعة الرئيسية ثابت ولا يمكن تغييره.</span>}</label>
           <label className="block"><span className="mb-1.5 block text-sm font-bold">الأيقونة <span className="text-destructive">*</span></span><input data-testid="input-category-icon" required maxLength={24} value={form.icon} onChange={(event) => onChange({ ...form, icon: event.target.value })} placeholder="رمز التصنيف" className="h-11 w-full rounded-xl border bg-background px-3 text-center text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
         </div>
-        <label className="block"><span className="mb-1.5 block text-sm font-bold">{mode === "edit" ? "التصنيف الأب (استخدم النقل لتغييره)" : "التصنيف الأب"}</span><select data-testid="select-category-parent" value={form.parentId} disabled={mode === "edit"} onChange={(event) => onChange({ ...form, parentId: event.target.value, displayOnHome: event.target.value === "" ? form.displayOnHome : false })} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-muted/50"><option value="">بدون أب — تصنيف رئيسي</option>{parentOptions.map((category) => <option key={category.id} value={category.id}>{category.name} · {category.groupName}</option>)}</select><span className="mt-1.5 block text-xs text-muted-foreground">{mode === "edit" ? "لتغيير الأب دون فقدان ارتباطات الموردين، استخدم زر نقل التصنيف." : "التصنيفات الفرعية لا تظهر في الصفحة الرئيسية."}</span></label>
+         <label className="block"><span className="mb-1.5 block text-sm font-bold">{mode === "edit" ? "المجموعة الأب" : "المجموعة الرئيسية"}</span><select data-testid="select-category-parent" required={mode === "create"} value={form.parentId} disabled={mode === "edit"} onChange={(event) => onChange({ ...form, parentId: event.target.value, displayOnHome: false })} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-muted/50">{mode === "create" && <option value="" disabled>اختر مجموعة رئيسية</option>}{editingRoot && <option value="">مجموعة رئيسية ثابتة</option>}{parentOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><span className="mt-1.5 block text-xs text-muted-foreground">{mode === "edit" ? editingRoot ? "لا يمكن نقل المجموعة الرئيسية." : "لتغيير المجموعة الأب، استخدم زر نقل الصنف." : "يمكن إضافة صنف فرعي تحت مجموعة رئيسية نشطة فقط؛ لا توجد مجموعات جديدة أو مستويات ثالثة."}</span></label>
         <label className="block"><span className="mb-1.5 block text-sm font-bold">وصف مختصر</span><textarea data-testid="input-category-description" maxLength={500} rows={3} value={form.description} onChange={(event) => onChange({ ...form, description: event.target.value })} className="w-full resize-none rounded-xl border bg-background px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></label>
-        <label className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${form.parentId ? "cursor-not-allowed bg-muted/50 text-muted-foreground" : "cursor-pointer hover:bg-muted/40"}`}>
-          <input data-testid="checkbox-category-home" type="checkbox" checked={form.parentId === "" && form.displayOnHome} disabled={Boolean(form.parentId)} onChange={(event) => onChange({ ...form, displayOnHome: event.target.checked })} className="mt-1 h-4 w-4 accent-primary" />
-          <span><strong className="block">عرض في الصفحة الرئيسية</strong><span className="text-xs text-muted-foreground">متاح للتصنيفات الرئيسية فقط.</span></span>
-        </label>
-        {mode === "edit" && (
+         {editingRoot && <p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-6 text-muted-foreground">تظهر المجموعات الرئيسية الثلاث عشرة في الصفحة الرئيسية دائماً. يمكنك تعديل الأيقونة والوصف فقط.</p>}
+         {mode === "edit" && !editingRoot && (
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm hover:bg-muted/40">
             <input data-testid="checkbox-category-active" type="checkbox" checked={form.isActive} onChange={(event) => onChange({ ...form, isActive: event.target.checked })} className="mt-1 h-4 w-4 accent-primary" />
             <span><strong className="block">التصنيف مفعّل</strong><span className="text-xs text-muted-foreground">عند إيقاف التصنيف لن يظهر في النماذج الجديدة، وتبقى بيانات الموردين السابقة محفوظة.</span></span>
@@ -751,30 +755,25 @@ function TransferModal({
   category,
   destination,
   destinations,
-  moveSubcategories,
   pending,
   onDestinationChange,
-  onMoveSubcategoriesChange,
   onClose,
   onSubmit,
 }: {
   category: AdminItemCategory;
   destination: string;
   destinations: AdminItemCategory[];
-  moveSubcategories: boolean;
   pending: boolean;
   onDestinationChange: (value: string) => void;
-  onMoveSubcategoriesChange: (value: boolean) => void;
   onClose: () => void;
   onSubmit: () => void;
 }) {
   return (
     <Modal title={`نقل التصنيف: ${category.name}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-950">سيتم تغيير التصنيف الأب فقط. اختر أدناه إن كانت الفروع التابعة ستنتقل معه أم تبقى تحت الأب الحالي.</div>
-        <label className="block"><span className="mb-1.5 block text-sm font-bold">نقل إلى</span><select data-testid="select-transfer-destination" value={destination} onChange={(event) => onDestinationChange(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary"><option value="">الجذر — تصنيف رئيسي</option>{destinations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.groupName}</option>)}</select></label>
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm hover:bg-muted/40"><input data-testid="checkbox-transfer-subcategories" type="checkbox" checked={moveSubcategories} onChange={(event) => onMoveSubcategoriesChange(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" /><span><strong className="block">نقل الفروع التابعة معه</strong><span className="text-xs leading-6 text-muted-foreground">{moveSubcategories ? "ستنتقل كل الفروع إلى المسار الجديد." : category.parentId === null ? "ستتحول الفروع إلى تصنيفات رئيسية منفصلة، بينما ينتقل هذا التصنيف فقط." : "ستبقى الفروع تحت الأب الحالي، بينما ينتقل هذا التصنيف فقط."}</span></span></label>
-        <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-start"><button data-testid="button-cancel-transfer" type="button" onClick={onClose} className="h-11 rounded-xl border px-4 text-sm font-bold hover:bg-muted">إلغاء</button><button data-testid="button-confirm-transfer" type="button" onClick={onSubmit} disabled={pending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">{pending && <Loader2 className="h-4 w-4 animate-spin" />}تأكيد النقل</button></div>
+         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-950">يمكن نقل الصنف الفرعي «{category.name}» إلى مجموعة رئيسية أخرى فقط. لا يمكن نقله إلى الجذر أو تحت صنف فرعي.</div>
+         <label className="block"><span className="mb-1.5 block text-sm font-bold">نقل إلى مجموعة رئيسية</span><select data-testid="select-transfer-destination" value={destination} onChange={(event) => onDestinationChange(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 outline-none focus:border-primary"><option value="" disabled>اختر مجموعة رئيسية</option>{destinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+         <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-start"><button data-testid="button-cancel-transfer" type="button" onClick={onClose} className="h-11 rounded-xl border px-4 text-sm font-bold hover:bg-muted">إلغاء</button><button data-testid="button-confirm-transfer" type="button" onClick={onSubmit} disabled={pending || !destination || destination === String(category.parentId)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">{pending && <Loader2 className="h-4 w-4 animate-spin" />}تأكيد النقل</button></div>
       </div>
     </Modal>
   );

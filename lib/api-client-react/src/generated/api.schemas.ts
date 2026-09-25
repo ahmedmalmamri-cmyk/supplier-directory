@@ -21,6 +21,7 @@ export interface ItemCategory {
   id: number;
   name: string;
   icon: string;
+  slug: string;
   groupName: string;
   /** @nullable */
   parentId: number | null;
@@ -49,8 +50,7 @@ export interface ItemCategoryInput {
      * @maxLength 24
      */
   icon: string;
-  /** @nullable */
-  parentId?: number | null;
+  parentId: number;
   /**
      * @maxLength 500
      * @nullable

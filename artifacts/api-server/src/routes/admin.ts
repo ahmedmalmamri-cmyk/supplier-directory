@@ -12,6 +12,14 @@ import {
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
+import {
+  syncAllSupplierCategoryAssignments,
+  syncSupplierCategoryAssignments,
+} from "../lib/supplier-category-db";
+import {
+  canonicalItemCategoryRootSlugs,
+  uniqueItemCategorySlug,
+} from "../lib/item-category-slugs";
 import { requireAdmin } from "../lib/admin-auth";
 import { hashPassword as hashSupplierPassword } from "./supplier";
 
@@ -109,6 +117,7 @@ type ItemCategoryRow = {
   id: number;
   name: string;
   icon: string;
+  slug: string;
   groupName: string;
   parentId: number | null;
   description: string | null;
@@ -121,7 +130,7 @@ type ItemCategoryRow = {
 
 function getItemCategoryRows() {
   return directoryDb.prepare(`
-    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+    SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
@@ -132,11 +141,20 @@ function getItemCategoryRows() {
 
 function getItemCategory(id: number) {
   return directoryDb.prepare(`
-    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+    SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories WHERE id = ?
   `).get(id) as ItemCategoryRow | undefined;
+}
+
+function isCanonicalItemCategoryRoot(category: ItemCategoryRow) {
+  return category.parentId === null &&
+    (canonicalItemCategoryRootSlugs as readonly string[]).includes(category.slug);
+}
+
+function isActiveCanonicalItemCategoryRoot(category: ItemCategoryRow | undefined) {
+  return Boolean(category && category.isActive && isCanonicalItemCategoryRoot(category));
 }
 
 function itemCategorySnapshot(row: ItemCategoryRow) {
@@ -144,6 +162,7 @@ function itemCategorySnapshot(row: ItemCategoryRow) {
     id: row.id,
     name: row.name,
     icon: row.icon,
+    slug: row.slug,
     groupName: row.groupName,
     parentId: row.parentId,
     description: row.description,
@@ -398,6 +417,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       LIMIT 1
     `).get(invitedSupplierId, id, businessName, invitedSupplierId, id) as { id: number } | undefined;
     const verified = request.commercial_license_url ? 1 : 0;
+    let approvedSupplierId: number;
     if (existing) {
       directoryDb.prepare(`
         UPDATE suppliers SET name = ?, city = ?, region = 'المنطقة الشرقية', description = ?,
@@ -406,6 +426,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       directoryDb.prepare("UPDATE supplier_users SET phone = ? WHERE supplier_id = ?").run(phone, existing.id);
       const subscription = directoryDb.prepare("SELECT id FROM subscriptions WHERE supplier_id = ? LIMIT 1").get(existing.id);
       if (!subscription) createBasicSubscription(existing.id, reviewedAt);
+      approvedSupplierId = existing.id;
     } else {
       const nextId = (directoryDb.prepare("SELECT COALESCE(MAX(id), 0) + 1 AS id FROM suppliers").get() as { id: number }).id;
       directoryDb.prepare(`
@@ -415,8 +436,10 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
         VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, 1, 3, 0, 'self_registered', ?)
       `).run(nextId, businessName, city, String(request.description), phone, whatsapp, verified, id, reviewedAt);
       createBasicSubscription(nextId, reviewedAt);
+      approvedSupplierId = nextId;
     }
     directoryDb.prepare("UPDATE supplier_requests SET status = 'approved', rejection_reason = NULL, reviewed_at = ? WHERE id = ?").run(reviewedAt, id);
+    syncSupplierCategoryAssignments(approvedSupplierId);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");
@@ -1144,11 +1167,11 @@ router.post("/admin/item-categories", (req, res): void => {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const icon = typeof body.icon === "string" ? body.icon.trim() : "";
   const rawParentId = body.parentId;
-  const parentId = rawParentId === undefined || rawParentId === null
-    ? null
-    : typeof rawParentId === "number"
-      ? rawParentId
-      : Number.NaN;
+  if (rawParentId === undefined || rawParentId === null) {
+    res.status(400).json({ error: "يجب إضافة التصنيف الفرعي تحت مجموعة رئيسية نشطة." });
+    return;
+  }
+  const parentId = typeof rawParentId === "number" ? rawParentId : Number.NaN;
   const description = body.description === undefined || body.description === null
     ? null
     : typeof body.description === "string"
@@ -1156,7 +1179,7 @@ router.post("/admin/item-categories", (req, res): void => {
       : undefined;
   if (!name || name.length > 100 || !icon || icon.length > 24 || description === undefined ||
       description && description.length > 500 ||
-      (parentId !== null && !Number.isInteger(parentId)) ||
+      !Number.isInteger(parentId) ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
     res.status(400).json({ error: "تحقق من اسم التصنيف وأيقونته ووصفه." });
     return;
@@ -1165,14 +1188,12 @@ router.post("/admin/item-categories", (req, res): void => {
     res.status(409).json({ error: "يوجد تصنيف بهذا الاسم بالفعل." });
     return;
   }
-  const parent = parentId === null ? undefined : getItemCategory(parentId);
-  if (parentId !== null && (!parent || !parent.isActive)) {
-    res.status(400).json({ error: "التصنيف الأب غير موجود أو غير مفعّل." });
+  const parent = getItemCategory(parentId);
+  if (!isActiveCanonicalItemCategoryRoot(parent)) {
+    res.status(400).json({ error: "يجب اختيار مجموعة رئيسية نشطة كأب للتصنيف." });
     return;
   }
-  const displayOnHome = parentId === null && typeof body.displayOnHome === "boolean"
-    ? body.displayOnHome
-    : parentId === null;
+  const displayOnHome = false;
   const displayOrder = (
     directoryDb.prepare(`
       SELECT COALESCE(MAX(display_order), 0) + 1 AS nextOrder
@@ -1182,14 +1203,21 @@ router.post("/admin/item-categories", (req, res): void => {
   const now = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
+    const slug = uniqueItemCategorySlug(
+      name,
+      (candidate) => Boolean(directoryDb.prepare(
+        "SELECT id FROM item_categories WHERE slug = ?",
+      ).get(candidate)),
+    );
     const result = directoryDb.prepare(`
       INSERT INTO item_categories
-        (name, icon, group_name, parent_id, description, display_on_home,
+        (name, icon, slug, group_name, parent_id, description, display_on_home,
          display_order, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run(
       name,
       icon,
+      slug,
       parent ? parent.groupName : name,
       parentId as number | null,
       description,
@@ -1199,6 +1227,7 @@ router.post("/admin/item-categories", (req, res): void => {
       now,
     );
     const id = Number(result.lastInsertRowid);
+    syncAllSupplierCategoryAssignments();
     const created = getItemCategory(id)!;
     recordItemCategoryActivity("add", id, null, itemCategorySnapshot(created));
     directoryDb.exec("COMMIT");
@@ -1265,6 +1294,10 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     return;
   }
   const body = req.body as Record<string, unknown>;
+  if (Object.hasOwn(body, "parentId")) {
+    res.status(400).json({ error: "لا يمكن تغيير الأب عبر التحديث؛ استخدم نقل التصنيف إلى مجموعة رئيسية." });
+    return;
+  }
   const name = body.name === undefined ? existing.name : typeof body.name === "string" ? body.name.trim() : "";
   const icon = body.icon === undefined ? existing.icon : typeof body.icon === "string" ? body.icon.trim() : "";
   const description = body.description === undefined
@@ -1281,6 +1314,11 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     res.status(400).json({ error: "تحقق من بيانات التصنيف." });
     return;
   }
+  if (isCanonicalItemCategoryRoot(existing) &&
+      (name !== existing.name || body.isActive === false || body.displayOnHome === false)) {
+    res.status(400).json({ error: "لا يمكن تغيير هوية المجموعة الرئيسية أو تعطيلها أو إخفاؤها من الرئيسية." });
+    return;
+  }
   const duplicate = directoryDb.prepare(`
     SELECT id FROM item_categories WHERE lower(trim(name)) = lower(?) AND id != ?
   `).get(name, id);
@@ -1289,11 +1327,13 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     return;
   }
   const isActive = body.isActive === undefined ? Boolean(existing.isActive) : body.isActive as boolean;
-  const displayOnHome = existing.parentId !== null
-    ? false
-    : body.displayOnHome === undefined
-      ? Boolean(existing.displayOnHome)
-      : body.displayOnHome as boolean;
+  const displayOnHome = isCanonicalItemCategoryRoot(existing)
+    ? true
+    : existing.parentId !== null
+      ? false
+      : body.displayOnHome === undefined
+        ? Boolean(existing.displayOnHome)
+        : body.displayOnHome as boolean;
   const groupName = existing.parentId === null && existing.groupName === existing.name
     ? name
     : existing.groupName;
@@ -1309,19 +1349,9 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     `).run(name, icon, groupName, description, isActive ? 1 : 0, displayOnHome ? 1 : 0, now, id);
     if (name !== existing.name) {
       directoryDb.prepare(`
-        UPDATE supplier_requests
-        SET categories = (
-          SELECT json_group_array(
-            CASE WHEN selected.value = ? THEN ? ELSE selected.value END
-          )
-          FROM json_each(supplier_requests.categories) selected
-        )
-        WHERE json_valid(categories)
-          AND EXISTS (
-            SELECT 1 FROM json_each(supplier_requests.categories) selected
-            WHERE selected.value = ?
-          )
-      `).run(existing.name, name, existing.name);
+        INSERT OR IGNORE INTO item_category_aliases (alias, item_category_id)
+        VALUES (?, ?)
+      `).run(existing.name, id);
     }
     if (existing.groupName !== groupName) {
       for (const descendantId of descendants) {
@@ -1331,6 +1361,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
         `).run(groupName, now, descendantId, existing.groupName);
       }
     }
+    syncAllSupplierCategoryAssignments();
     const updated = getItemCategory(id)!;
     recordItemCategoryActivity("edit", id, itemCategorySnapshot(existing), itemCategorySnapshot(updated));
     directoryDb.exec("COMMIT");
@@ -1362,15 +1393,33 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
     res.status(404).json({ error: "التصنيف غير موجود." });
     return;
   }
+  if (isCanonicalItemCategoryRoot(existing)) {
+    res.status(400).json({ error: "لا يمكن نقل مجموعة رئيسية ثابتة." });
+    return;
+  }
   const categories = getItemCategoryRows();
   const descendants = categoryDescendantIds(categories, id);
   if (destinationId === id || destinationId !== null && descendants.includes(destinationId)) {
     res.status(400).json({ error: "لا يمكن نقل التصنيف إلى نفسه أو إلى أحد تصنيفاته الفرعية." });
     return;
   }
-  const destination = destinationId === null ? undefined : getItemCategory(destinationId);
-  if (destinationId !== null && (!destination || !destination.isActive)) {
-    res.status(400).json({ error: "التصنيف المستهدف غير موجود أو غير مفعّل." });
+  const previousParent = existing.parentId === null ? undefined : getItemCategory(existing.parentId);
+  if (!isActiveCanonicalItemCategoryRoot(previousParent)) {
+    res.status(400).json({ error: "يمكن نقل التصنيف الفرعي الموجود تحت مجموعة رئيسية فقط." });
+    return;
+  }
+  const directChildren = categories.filter((category) => category.parentId === id);
+  if (directChildren.length) {
+    res.status(400).json({ error: "لا يمكن نقل تصنيف يحتوي على فروع؛ حافظ على تصنيف فرعي واحد تحت المجموعة." });
+    return;
+  }
+  if (destinationId === null) {
+    res.status(400).json({ error: "يجب اختيار مجموعة رئيسية كوجهة للنقل." });
+    return;
+  }
+  const destination = getItemCategory(destinationId);
+  if (!destination || !isActiveCanonicalItemCategoryRoot(destination)) {
+    res.status(400).json({ error: "وجهة النقل يجب أن تكون مجموعة رئيسية نشطة." });
     return;
   }
   const nameConflict = directoryDb.prepare(`
@@ -1381,9 +1430,7 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
     res.status(409).json({ error: "يوجد تصنيف بالاسم نفسه في الوجهة المحددة." });
     return;
   }
-  const directChildren = categories.filter((category) => category.parentId === id);
-  const previousParent = existing.parentId === null ? undefined : getItemCategory(existing.parentId);
-  const nextGroupName = destination ? destination.groupName : existing.name;
+  const nextGroupName = destination.groupName;
   const nextOrder = (
     directoryDb.prepare(`
       SELECT COALESCE(MAX(display_order), 0) + 1 AS nextOrder
@@ -1423,11 +1470,12 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
     `).run(
       destinationId,
       nextGroupName,
-      destinationId === null ? 1 : 0,
+      0,
       nextOrder,
       now,
       id,
     );
+    syncAllSupplierCategoryAssignments();
     const updated = getItemCategory(id)!;
     recordItemCategoryActivity(
       "transfer",
@@ -1468,6 +1516,10 @@ router.delete("/admin/item-categories/:id", (req, res): void => {
     res.status(404).json({ error: "التصنيف غير موجود." });
     return;
   }
+  if (isCanonicalItemCategoryRoot(existing)) {
+    res.status(400).json({ error: "لا يمكن حذف مجموعة رئيسية ثابتة من شجرة التصنيفات." });
+    return;
+  }
   const ids = [id, ...categoryDescendantIds(categories, id)];
   const now = new Date().toISOString();
   directoryDb.exec("BEGIN");
@@ -1485,6 +1537,7 @@ router.delete("/admin/item-categories/:id", (req, res): void => {
         });
       }
     }
+    syncAllSupplierCategoryAssignments();
     directoryDb.exec("COMMIT");
     res.json({ success: true, deactivatedCount: ids.length });
   } catch (error) {

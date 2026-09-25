@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { CompleteSupplierInviteBody } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 
 const router: IRouter = Router();
 const uploadsDir = path.resolve(process.cwd(), "uploads");
@@ -205,7 +206,7 @@ router.get("/invites/:token", (req, res): void => {
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
-  const categories = directoryDb.prepare(`
+  const rawCategoryRows = directoryDb.prepare(`
     WITH RECURSIVE active_category_tree(id) AS (
       SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
       UNION ALL
@@ -213,17 +214,36 @@ router.get("/invites/:token", (req, res): void => {
       JOIN active_category_tree parent ON child.parent_id = parent.id
       WHERE child.is_active = 1
     )
-    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+    SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
     WHERE id IN (SELECT id FROM active_category_tree)
     ORDER BY COALESCE(parent_id, id),
       CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, display_order, id
-  `).all().map((row) => ({
-    ...row as object,
-    displayOnHome: Boolean((row as { displayOnHome: number }).displayOnHome),
-    isActive: Boolean((row as { isActive: number }).isActive),
+  `).all() as Array<{
+    id: number;
+    name: string;
+    icon: string;
+    slug: string;
+    groupName: string;
+    parentId: number | null;
+    description: string | null;
+    displayOnHome: number;
+    displayOrder: number;
+    isActive: number;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  const categoryRows = rawCategoryRows.map((row) => ({
+    ...row,
+    displayOnHome: Boolean(row.displayOnHome),
+    isActive: Boolean(row.isActive),
+  }));
+  const supplierCounts = itemCategorySupplierCounts(categoryRows);
+  const categories = categoryRows.map((row) => ({
+    ...row,
+    supplierCount: supplierCounts.get(row.id) ?? 0,
   }));
   let cities: string[] = [];
   try {

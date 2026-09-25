@@ -62,6 +62,7 @@ export function SupplierFilterControls({
         className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
       >
         <option value="">كل التقييمات</option>
+        <option value="5">٥ نجوم فأعلى</option>
         <option value="4">٤ نجوم فأعلى</option>
         <option value="3">٣ نجوم فأعلى</option>
         <option value="2">نجمتان فأعلى</option>

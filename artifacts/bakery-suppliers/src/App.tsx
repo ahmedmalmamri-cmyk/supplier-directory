@@ -14,6 +14,7 @@ import {
 import Home from '@/pages/home';
 import CategoriesPage from '@/pages/categories';
 import CategoryPage from '@/pages/category';
+import ItemCategoryPage from '@/pages/item-category';
 import SuppliersPage from '@/pages/suppliers';
 import SupplierProfilePage from '@/pages/supplier-profile';
 import ProductDetailPage from '@/pages/product-detail';
@@ -48,7 +49,10 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/categories/all" component={CategoriesPage} />
-        <Route path="/category/:id" component={CategoryPage} />
+        <Route path="/category/:slug/:subslug" component={ItemCategoryPage} />
+        <Route path="/category/:value">
+          {(params) => /^\d+$/.test(params.value) ? <CategoryPage /> : <ItemCategoryPage />}
+        </Route>
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/login" component={LoginChoicePage} />
          <Route path="/supplier/login" component={SupplierLoginPage} />

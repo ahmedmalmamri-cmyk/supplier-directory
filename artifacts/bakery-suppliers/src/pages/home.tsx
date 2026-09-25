@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   Building2,
-  ChevronLeft,
   Layers3,
   MapPin,
   Package,
@@ -15,125 +14,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import {
-  getListItemCategoriesQueryKey,
-  useGetHome,
-  useListItemCategories,
-  useListSuppliers,
-  type ItemCategory,
-} from "@workspace/api-client-react";
+import { useGetHome, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
-import { getItemCategoryIcon } from "@/lib/item-category-icons";
-
-const CATEGORY_STALE_TIME = 5 * 60 * 1000;
-type CategorySort = "all" | "most-used" | "alphabetical";
-
-function sortCategories(categories: ItemCategory[], sort: CategorySort, query: string) {
-  const normalizedQuery = query.trim().toLocaleLowerCase("ar");
-  return [...categories]
-    .filter((category) => category.isActive)
-    .filter((category) => !normalizedQuery || `${category.name} ${category.description ?? ""}`.toLocaleLowerCase("ar").includes(normalizedQuery))
-    .sort((left, right) => {
-      if (sort === "most-used") {
-        return right.supplierCount - left.supplierCount
-          || left.displayOrder - right.displayOrder
-          || left.name.localeCompare(right.name, "ar");
-      }
-      if (sort === "alphabetical") return left.name.localeCompare(right.name, "ar") || left.displayOrder - right.displayOrder;
-      return left.displayOrder - right.displayOrder || left.name.localeCompare(right.name, "ar");
-    });
-}
-
-function groupCategories(categories: ItemCategory[]) {
-  return categories.reduce<Array<{ name: string; categories: ItemCategory[] }>>((groups, category) => {
-    const group = groups.find((item) => item.name === category.groupName);
-    if (group) group.categories.push(category);
-    else groups.push({ name: category.groupName, categories: [category] });
-    return groups;
-  }, []);
-}
-
-function CategoryCard({ category }: { category: ItemCategory }) {
-  const CategoryIcon = getItemCategoryIcon(category.icon);
-  return (
-    <Link
-      href={`/suppliers?category=${encodeURIComponent(category.name)}`}
-      data-testid={`card-home-category-${category.id}`}
-      aria-label={`عرض موردي ${category.name}`}
-      className="group flex min-h-[9.5rem] flex-col rounded-2xl border border-border/80 bg-card p-4 text-right shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/45 hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
-    >
-      <span className="flex items-start justify-end gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-            <CategoryIcon className="h-7 w-7" aria-hidden="true" />
-        </span>
-      </span>
-      <span className="mt-4 flex min-w-0 flex-1 items-end justify-between gap-3">
-        <span className="min-w-0">
-          <span className="block truncate text-[15px] font-extrabold text-foreground">{category.name}</span>
-          <span className="mt-1 block text-xs font-semibold text-muted-foreground">
-            {category.supplierCount.toLocaleString("ar-SA")} مورد نشط
-          </span>
-        </span>
-        <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1 group-hover:text-primary" aria-hidden="true" />
-      </span>
-    </Link>
-  );
-}
-
-function CategoryFilters({
-  search,
-  onSearch,
-  sort,
-  onSort,
-  resultCount,
-  label = "ابحث داخل التصنيفات",
-}: {
-  search: string;
-  onSearch: (value: string) => void;
-  sort: CategorySort;
-  onSort: (value: CategorySort) => void;
-  resultCount: number;
-  label?: string;
-}) {
-  const filters: Array<{ value: CategorySort; label: string }> = [
-    { value: "all", label: "الكل" },
-    { value: "most-used", label: "الأكثر استخداماً" },
-    { value: "alphabetical", label: "أبجدياً" },
-  ];
-  return (
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <label className="relative block w-full sm:max-w-sm">
-        <span className="sr-only">{label}</span>
-        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <input
-          data-testid="input-category-search"
-          type="search"
-          value={search}
-          onChange={(event) => onSearch(event.target.value)}
-          placeholder={label}
-          className="h-11 w-full rounded-xl border border-border bg-card px-10 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-        />
-      </label>
-      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1" role="group" aria-label="ترتيب التصنيفات">
-        {filters.map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            data-testid={`button-category-sort-${filter.value}`}
-            aria-pressed={sort === filter.value}
-            onClick={() => onSort(filter.value)}
-            className={`min-h-9 rounded-lg px-3 text-xs font-bold transition-colors sm:px-4 ${sort === filter.value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-          >
-            {filter.label}
-          </button>
-        ))}
-      </div>
-      <span className="text-xs font-semibold text-muted-foreground sm:hidden">{resultCount.toLocaleString("ar-SA")} تصنيف</span>
-    </div>
-  );
-}
+import { CategorySearch, RootCard, useTaxonomy } from "@/components/categories/taxonomy";
 
 function Rating({ value }: { value: number }) {
   return <span className="inline-flex items-center gap-1 text-sm font-bold text-accent"><Star className="h-4 w-4 fill-current" aria-hidden="true" />{value.toFixed(1)}</span>;
@@ -141,13 +26,10 @@ function Rating({ value }: { value: number }) {
 
 export default function Home() {
   const { data: homeData, isLoading, error, refetch: refetchHome } = useGetHome();
-  const { data: itemCategories, isLoading: isLoadingItemCategories, error: itemCategoriesError, refetch: refetchItemCategories } = useListItemCategories({
-    query: { staleTime: CATEGORY_STALE_TIME, queryKey: getListItemCategoriesQueryKey() },
-  });
+  const { categories, roots, isLoading: isLoadingItemCategories, error: itemCategoriesError, refetch: refetchItemCategories } = useTaxonomy();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
-  const [categorySort, setCategorySort] = useState<CategorySort>("all");
   const [city, setCity] = useState("");
   const [supplierType, setSupplierType] = useState("");
   const [rating, setRating] = useState("");
@@ -165,11 +47,6 @@ export default function Home() {
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
-  const homeCategories = useMemo(
-    () => sortCategories((itemCategories ?? []).filter((category) => category.displayOnHome && category.parentId === null), categorySort, categorySearch),
-    [itemCategories, categorySearch, categorySort],
-  );
-  const homeCategoryGroups = useMemo(() => groupCategories(homeCategories), [homeCategories]);
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -212,10 +89,10 @@ export default function Home() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="mb-1 text-xs font-bold text-primary">ابدأ من احتياجك</p>
-              <h2 id="home-category-heading" className="text-2xl font-extrabold md:text-3xl">تصفح حسب نوع المورد</h2>
-              <p className="mt-1 text-sm text-muted-foreground">تصنيفات عملية للوصول إلى الموردين النشطين بسرعة.</p>
+               <h2 id="home-category-heading" className="text-2xl font-extrabold md:text-3xl">تصفح حسب المجموعة</h2>
+               <p className="mt-1 text-sm text-muted-foreground">ابدأ بإحدى المجموعات الرئيسية، ثم اختر الصنف الفرعي للوصول إلى مورديه.</p>
             </div>
-            <span className="hidden text-sm font-bold text-muted-foreground sm:block">{homeCategories.length.toLocaleString("ar-SA")} تصنيف مختار</span>
+             <span className="hidden text-sm font-bold text-muted-foreground sm:block">{roots.length.toLocaleString("ar-SA")} مجموعة رئيسية</span>
           </div>
           {isLoadingItemCategories ? (
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" role="status" aria-label="جارٍ تحميل التصنيفات">
@@ -225,16 +102,9 @@ export default function Home() {
             <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-card px-4 py-5 text-center text-sm text-destructive" role="alert"><p>تعذر تحميل التصنيفات.</p><button type="button" data-testid="button-retry-home-categories" onClick={() => void refetchItemCategories()} className="min-h-10 rounded-xl border border-destructive/25 px-4 py-2 font-bold transition-colors hover:bg-destructive/5">إعادة المحاولة</button></div>
           ) : (
             <>
-              <CategoryFilters search={categorySearch} onSearch={setCategorySearch} sort={categorySort} onSort={setCategorySort} resultCount={homeCategories.length} />
-              {homeCategories.length ? (
-                <div className="mt-5 space-y-7">
-                  {homeCategoryGroups.map((group) => (
-                    <div key={group.name}>
-                      <h3 className="mb-3 flex items-center gap-3 text-sm font-extrabold text-foreground before:h-px before:flex-1 before:bg-border after:h-px after:w-8 after:bg-primary/50">{group.name}</h3>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{group.categories.map((category) => <CategoryCard key={category.id} category={category} />)}</div>
-                    </div>
-                  ))}
-                </div>
+               <div className="mt-6 max-w-xl"><CategorySearch value={categorySearch} onChange={setCategorySearch} categories={categories} /></div>
+               {roots.length ? (
+                 <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{roots.map((category) => <RootCard key={category.id} category={category} categories={categories} />)}</div>
               ) : (
                 <div className="mt-5 rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center"><Search className="mx-auto mb-3 h-8 w-8 text-primary/50" aria-hidden="true" /><p className="font-bold">لا توجد تصنيفات مطابقة</p><p className="mt-1 text-sm text-muted-foreground">جرّب كلمة بحث أخرى.</p></div>
               )}
@@ -242,7 +112,7 @@ export default function Home() {
           )}
           <Link href="/categories/all" data-testid="link-all-categories" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-3 text-sm font-extrabold text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Layers3 className="h-4 w-4" aria-hidden="true" />
-            عرض جميع التصنيفات (161)
+             عرض جميع المجموعات
           </Link>
           <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div><p className="font-extrabold">هل أنت مورد؟</p><p className="text-xs text-muted-foreground">أضف نشاطك ليصل إليه أصحاب المخابز والحلويات.</p></div>

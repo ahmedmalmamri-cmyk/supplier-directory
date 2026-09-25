@@ -1,4 +1,5 @@
 import { directoryDb } from "./directory-db";
+import { resolveItemCategoryIdsForDirectIds } from "./item-category-aliases";
 
 type ItemCategoryReference = {
   id: number;
@@ -7,39 +8,26 @@ type ItemCategoryReference = {
 };
 
 export function itemCategorySupplierCounts(categories: ItemCategoryReference[]) {
-  const categoryIdByName = new Map(categories.map((category) => [category.name, category.id]));
-  const parentById = new Map(categories.map((category) => [category.id, category.parentId]));
   const suppliers = directoryDb.prepare(`
-    SELECT s.id, sr.categories
-    FROM suppliers s
-    JOIN supplier_requests sr ON sr.id = s.request_id
-    WHERE s.is_active = 1
-  `).all() as Array<{ id: number; categories: string }>;
+    SELECT sc.supplier_id AS supplierId, sc.item_category_id AS itemCategoryId
+    FROM supplier_categories sc
+    JOIN suppliers s ON s.id = sc.supplier_id AND s.is_active = 1
+    JOIN item_categories assigned ON assigned.id = sc.item_category_id AND assigned.is_active = 1
+  `).all() as Array<{ supplierId: number; itemCategoryId: number }>;
+  const directCategoryIdsBySupplier = new Map<number, Set<number>>();
+  for (const assignment of suppliers) {
+    const directIds = directCategoryIdsBySupplier.get(assignment.supplierId) ?? new Set<number>();
+    directIds.add(assignment.itemCategoryId);
+    directCategoryIdsBySupplier.set(assignment.supplierId, directIds);
+  }
   const suppliersByCategory = new Map<number, Set<number>>();
 
-  for (const supplier of suppliers) {
-    let selected: string[] = [];
-    try {
-      const parsed: unknown = JSON.parse(supplier.categories);
-      if (Array.isArray(parsed)) {
-        selected = parsed.filter((name): name is string => typeof name === "string");
-      }
-    } catch {
-      selected = [];
-    }
-
-    const included = new Set<number>();
-    for (const name of selected) {
-      let categoryId = categoryIdByName.get(name);
-      while (categoryId !== undefined && !included.has(categoryId)) {
-        included.add(categoryId);
-        categoryId = parentById.get(categoryId) ?? undefined;
-      }
-    }
+  for (const [supplierId, directIds] of directCategoryIdsBySupplier) {
+    const included = resolveItemCategoryIdsForDirectIds(directIds, categories);
 
     for (const categoryId of included) {
       const supplierIds = suppliersByCategory.get(categoryId) ?? new Set<number>();
-      supplierIds.add(supplier.id);
+      supplierIds.add(supplierId);
       suppliersByCategory.set(categoryId, supplierIds);
     }
   }

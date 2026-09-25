@@ -1,6 +1,11 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  legacyItemCategoryAliasTargets,
+  resolveDirectItemCategoryIdsForSelections,
+} from "./item-category-aliases";
+import { itemCategorySlugBase } from "./item-category-slugs";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -23,6 +28,7 @@ directoryDb.exec(`
     icon TEXT NOT NULL,
     group_name TEXT NOT NULL,
     parent_id INTEGER REFERENCES item_categories(id),
+    slug TEXT,
     description TEXT,
     display_on_home INTEGER NOT NULL DEFAULT 0 CHECK (display_on_home IN (0, 1)),
     display_order INTEGER NOT NULL DEFAULT 0,
@@ -162,6 +168,20 @@ directoryDb.exec(`
     invited_supplier_id INTEGER REFERENCES suppliers(id),
     product_images TEXT NOT NULL DEFAULT '[]'
   );
+  CREATE TABLE IF NOT EXISTS supplier_categories (
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    item_category_id INTEGER NOT NULL REFERENCES item_categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (supplier_id, item_category_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_categories_item_category
+    ON supplier_categories (item_category_id, supplier_id);
+  CREATE TABLE IF NOT EXISTS item_category_aliases (
+    alias TEXT NOT NULL,
+    item_category_id INTEGER NOT NULL REFERENCES item_categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (alias, item_category_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_category_aliases_item_category
+    ON item_category_aliases (item_category_id, alias);
   CREATE TABLE IF NOT EXISTS buyer_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     request_code TEXT NOT NULL UNIQUE,
@@ -280,6 +300,9 @@ const itemCategoryColumns = directoryDb
   .all() as Array<{ name: string }>;
 if (!itemCategoryColumns.some((column) => column.name === "parent_id")) {
   directoryDb.exec("ALTER TABLE item_categories ADD COLUMN parent_id INTEGER REFERENCES item_categories(id)");
+}
+if (!itemCategoryColumns.some((column) => column.name === "slug")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN slug TEXT");
 }
 if (!itemCategoryColumns.some((column) => column.name === "description")) {
   directoryDb.exec("ALTER TABLE item_categories ADD COLUMN description TEXT");
@@ -943,6 +966,340 @@ if (!groupedItemCategoryFinalMigration) {
       INSERT INTO directory_migrations (name, applied_at)
       VALUES ('grouped-item-category-catalog-v3', ?)
     `).run(now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const canonicalItemCategoryRoots = [
+  ["المواد الأساسية", "basic-materials", "🌾"],
+  ["منتجات الألبان", "dairy", "🥛"],
+  ["الأجبان", "cheese", "🧀"],
+  ["الشوكولاتة والكاكاو", "chocolate", "🍫"],
+  ["المكسرات والبذور", "nuts", "🥜"],
+  ["خلطات جاهزة", "cake-mixes", "🍰"],
+  ["الخمائر والمحسنات", "yeast", "🧪"],
+  ["النكهات والألوان", "flavors", "🌿"],
+  ["العجائن والجاهز", "dough", "🥟"],
+  ["التغليف والعلب", "packaging", "📦"],
+  ["المعدات والأدوات", "equipment", "⚙️"],
+  ["حشوات الكيك", "cake-fillings", "🍰"],
+  ["مواد أخرى", "others", "🧴"],
+] as const;
+const taxonomyMigrationName = "three-level-item-category-taxonomy-v1";
+const taxonomyMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(taxonomyMigrationName) as { name: string } | undefined;
+
+if (!taxonomyMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const rootIdBySlug = new Map<string, number>();
+    const rootIdByName = new Map<string, number>();
+    for (const [name, slug, icon] of canonicalItemCategoryRoots) {
+      const existing = directoryDb.prepare(
+        "SELECT id FROM item_categories WHERE name = ?",
+      ).get(name) as { id: number } | undefined;
+      let id: number;
+      if (existing) {
+        id = existing.id;
+        directoryDb.prepare(`
+          UPDATE item_categories
+          SET icon = ?, group_name = ?, parent_id = NULL, display_on_home = 1,
+              display_order = ?, is_active = 1, updated_at = ?
+          WHERE id = ?
+        `).run(icon, name, canonicalItemCategoryRoots.findIndex((root) => root[0] === name) + 1, now, id);
+      } else {
+        const result = directoryDb.prepare(`
+          INSERT INTO item_categories
+            (name, icon, group_name, parent_id, slug, display_on_home, display_order,
+             is_active, created_at, updated_at)
+          VALUES (?, ?, ?, NULL, ?, 1, ?, 1, ?, ?)
+        `).run(
+          name,
+          icon,
+          name,
+          slug,
+          canonicalItemCategoryRoots.findIndex((root) => root[0] === name) + 1,
+          now,
+          now,
+        );
+        id = Number(result.lastInsertRowid);
+      }
+      rootIdBySlug.set(slug, id);
+      rootIdByName.set(name, id);
+    }
+
+    const categoriesBeforeReparent = directoryDb.prepare(`
+      SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+        slug, is_active AS isActive, display_order AS displayOrder
+      FROM item_categories ORDER BY id
+    `).all() as Array<{
+      id: number;
+      name: string;
+      icon: string;
+      groupName: string;
+      parentId: number | null;
+      slug: string | null;
+      isActive: number;
+      displayOrder: number;
+    }>;
+    const canonicalRootIds = new Set(rootIdByName.values());
+    const canonicalCakeFillingsId = rootIdBySlug.get("cake-fillings")!;
+    const basicChildNames = new Set([
+      "دقيق", "سكر", "سميد", "برغل", "نخالة", "سكر بودرة", "سكر بني",
+    ]);
+    const rootSlugForCategory = (category: (typeof categoriesBeforeReparent)[number]) => {
+      if (canonicalRootIds.has(category.id)) return null;
+      if (category.parentId === canonicalCakeFillingsId) return "cake-fillings";
+      if (basicChildNames.has(category.name) || category.name === "سميد وبرغل") return "basic-materials";
+
+      const name = category.name;
+      const group = category.groupName;
+      if (/حشوة|حشوات|كريمة لوتس|كريمة فستق|كريمة نوتيلا|توفي|مربى/.test(name) ||
+          group.includes("الحشوات والكريمات")) return "cake-fillings";
+      if (/شوكولاتة|كاكاو|غاناش|صوص شوكولاتة/.test(name)) return "chocolate";
+      if (/جبن|أجبان/.test(name)) return "cheese";
+      if (/لوز|كاجو|فستق|بندق|بيكان|فول سوداني|سمسم|حبة البركة|جوز|مكسرات|بذور/.test(name)) return "nuts";
+      if (/حليب|قشطة|كريمة|لبنة|زبادي|لبن|زبدة|سمن حيواني|^سمن$/.test(name)) return "dairy";
+      if (/مارجرين|دهون|زيت|شورتنج|سمن نباتي/.test(name)) return "others";
+      if (/خميرة|محسن|بيكنج صودا|بيكنج بودر|مانع عفن/.test(name) ||
+          group.includes("المحسنات") || group.includes("الخمائر")) return "yeast";
+      if (/نكهة|نكهات|لون|ألوان|فانيليا|مستخلص|عطور|زعفران|هيل|قرفة|كمون|ينسون|سماق|زعتر|كركم|ملح ليمون/.test(name) ||
+          group.includes("النكهات والألوان")) return "flavors";
+      if (/عجين|خبز|معجنات/.test(name) || group.includes("العجائن والجاهز")) return "dough";
+      if (/تغليف|علب|أكياس|كراتين|ورق|سلوفان|رول|ألمنيوم|طابعة|حبر/.test(name) ||
+          group.includes("التغليف والطباعة")) return "packaging";
+      if (/معدات|أفران|أدوات صغيرة|رؤوس تزيين|أدوات تزيين/.test(name) ||
+          group.includes("المعدات") || group.includes("أدوات التزيين")) return "equipment";
+      if (/خلطات/.test(name) || group.includes("مكونات الكيك")) return "cake-mixes";
+      if (group.includes("المكسرات والبذور")) return "nuts";
+      if (group.includes("مواد أخرى")) return "others";
+      return "others";
+    };
+
+    const basicSpecificNames = ["دقيق", "سكر", "سميد", "برغل", "نخالة", "سكر بودرة", "سكر بني"];
+    for (const name of basicSpecificNames) {
+      const found = directoryDb.prepare(
+        "SELECT id FROM item_categories WHERE name = ?",
+      ).get(name) as { id: number } | undefined;
+      if (!found) {
+        const basicRootId = rootIdBySlug.get("basic-materials")!;
+        const result = directoryDb.prepare(`
+          INSERT INTO item_categories
+            (name, icon, group_name, parent_id, display_on_home, display_order,
+             is_active, created_at, updated_at)
+          VALUES (?, '🌾', 'المواد الأساسية', ?, 0, 0, 1, ?, ?)
+        `).run(name, basicRootId, now, now);
+        categoriesBeforeReparent.push({
+          id: Number(result.lastInsertRowid),
+          name,
+          icon: "🌾",
+          groupName: "المواد الأساسية",
+          parentId: basicRootId,
+          slug: null,
+          isActive: 1,
+          displayOrder: 0,
+        });
+      }
+    }
+
+    const categoryOrderByRoot = new Map<string, number>();
+    for (const category of categoriesBeforeReparent) {
+      if (canonicalRootIds.has(category.id) || !category.isActive) continue;
+      const rootSlug = rootSlugForCategory(category);
+      if (!rootSlug) continue;
+      const parentId = rootIdBySlug.get(rootSlug)!;
+      if (category.name === "سميد وبرغل") {
+        directoryDb.prepare(`
+          UPDATE item_categories
+          SET parent_id = ?, group_name = 'المواد الأساسية', is_active = 0,
+              display_on_home = 0, updated_at = ?
+          WHERE id = ?
+        `).run(parentId, now, category.id);
+        continue;
+      }
+      const nextOrder = (categoryOrderByRoot.get(rootSlug) ?? 0) + 1;
+      categoryOrderByRoot.set(rootSlug, nextOrder);
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET parent_id = ?, group_name = ?, display_on_home = 0,
+            display_order = ?, updated_at = ?
+        WHERE id = ?
+      `).run(parentId, canonicalItemCategoryRoots.find((root) => root[1] === rootSlug)![0], nextOrder, now, category.id);
+    }
+
+    const basicRootId = rootIdBySlug.get("basic-materials")!;
+    basicSpecificNames.forEach((name, index) => {
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET parent_id = ?, group_name = 'المواد الأساسية', is_active = 1,
+            display_on_home = 0, display_order = ?, updated_at = ?
+        WHERE name = ?
+      `).run(basicRootId, index + 1, now, name);
+    });
+
+    const compositeCategory = directoryDb.prepare(
+      "SELECT id FROM item_categories WHERE name = ?",
+    ).get("سميد وبرغل") as { id: number } | undefined;
+    if (compositeCategory) {
+      const categoryRequests = directoryDb.prepare(
+        "SELECT id, categories FROM supplier_requests",
+      ).all() as Array<{ id: number; categories: string }>;
+      const updateRequestCategories = directoryDb.prepare(
+        "UPDATE supplier_requests SET categories = ? WHERE id = ?",
+      );
+      for (const request of categoryRequests) {
+        let selected: unknown;
+        try {
+          selected = JSON.parse(request.categories);
+        } catch {
+          continue;
+        }
+        if (!Array.isArray(selected) || !selected.includes("سميد وبرغل")) continue;
+        const migrated = new Set<string>();
+        for (const value of selected) {
+          if (value === "سميد وبرغل") {
+            migrated.add("سميد");
+            migrated.add("برغل");
+          } else if (typeof value === "string") {
+            migrated.add(value);
+          }
+        }
+        updateRequestCategories.run(JSON.stringify([...migrated]), request.id);
+      }
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET parent_id = ?, group_name = 'المواد الأساسية', is_active = 0,
+            display_on_home = 0, updated_at = ?
+        WHERE id = ?
+      `).run(rootIdBySlug.get("basic-materials")!, now, compositeCategory.id);
+    }
+
+    const categoriesForSlugs = directoryDb.prepare(`
+      SELECT id, name, slug FROM item_categories ORDER BY id
+    `).all() as Array<{ id: number; name: string; slug: string | null }>;
+    const rootSlugById = new Map([...rootIdBySlug].map(([slug, id]) => [id, slug]));
+    const usedSlugs = new Set<string>(canonicalItemCategoryRoots.map((root) => root[1]));
+    for (const category of categoriesForSlugs) {
+      const canonicalRootSlug = rootSlugById.get(category.id);
+      if (canonicalRootSlug) {
+        directoryDb.prepare("UPDATE item_categories SET slug = ? WHERE id = ?")
+          .run(canonicalRootSlug, category.id);
+        continue;
+      }
+      let slug = category.slug?.trim() || itemCategorySlugBase(category.name);
+      if (usedSlugs.has(slug)) slug = `${slug}-${category.id}`;
+      let collisionSuffix = 2;
+      const fallbackBase = `${itemCategorySlugBase(category.name)}-${category.id}`;
+      while (usedSlugs.has(slug)) {
+        slug = `${fallbackBase}-${collisionSuffix}`;
+        collisionSuffix += 1;
+      }
+      usedSlugs.add(slug);
+      directoryDb.prepare("UPDATE item_categories SET slug = ? WHERE id = ?").run(slug, category.id);
+    }
+
+    directoryDb.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_item_categories_slug
+      ON item_categories (slug);
+    `);
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(taxonomyMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+directoryDb.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_item_categories_slug
+  ON item_categories (slug);
+`);
+
+const itemCategoryAliasMigrationName = "stable-item-category-alias-ids-v1";
+const itemCategoryAliasMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(itemCategoryAliasMigrationName) as { name: string } | undefined;
+if (!itemCategoryAliasMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const categories = directoryDb.prepare(`
+      SELECT id, name FROM item_categories
+    `).all() as Array<{ id: number; name: string }>;
+    const categoryIdByName = new Map(categories.map((category) => [category.name, category.id]));
+    const insertAlias = directoryDb.prepare(`
+      INSERT OR IGNORE INTO item_category_aliases (alias, item_category_id)
+      VALUES (?, ?)
+    `);
+    for (const [alias, targetNames] of Object.entries(legacyItemCategoryAliasTargets)) {
+      for (const targetName of targetNames) {
+        const itemCategoryId = categoryIdByName.get(targetName);
+        if (itemCategoryId === undefined) {
+          throw new Error(`Cannot seed item-category alias ${alias}: target ${targetName} is missing.`);
+        }
+        insertAlias.run(alias, itemCategoryId);
+      }
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(itemCategoryAliasMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const supplierCategoryMappingMigrationName = "normalized-supplier-item-categories-v1";
+const supplierCategoryMappingMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(supplierCategoryMappingMigrationName) as { name: string } | undefined;
+if (!supplierCategoryMappingMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const categories = directoryDb.prepare(`
+      SELECT id, name FROM item_categories
+    `).all() as Array<{ id: number; name: string }>;
+    const stableAliases = directoryDb.prepare(`
+      SELECT alias, item_category_id AS itemCategoryId FROM item_category_aliases
+    `).all() as Array<{ alias: string; itemCategoryId: number }>;
+    const linkedRequests = directoryDb.prepare(`
+      SELECT s.id AS supplierId, sr.categories
+      FROM suppliers s
+      JOIN supplier_requests sr ON sr.id = s.request_id
+      WHERE sr.status = 'approved'
+    `).all() as Array<{ supplierId: number; categories: string }>;
+    const insert = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_categories (supplier_id, item_category_id)
+      VALUES (?, ?)
+    `);
+    directoryDb.exec("DELETE FROM supplier_categories");
+    for (const linkedRequest of linkedRequests) {
+      let selected: unknown;
+      try {
+        selected = JSON.parse(linkedRequest.categories);
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(selected)) continue;
+      const categoryIds = resolveDirectItemCategoryIdsForSelections(
+        selected.filter((name): name is string => typeof name === "string"),
+        categories,
+        stableAliases,
+      );
+      for (const categoryId of categoryIds) insert.run(linkedRequest.supplierId, categoryId);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(supplierCategoryMappingMigrationName, now);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");

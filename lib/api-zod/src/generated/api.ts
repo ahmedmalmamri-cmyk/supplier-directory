@@ -69,6 +69,7 @@ export const ListItemCategoriesResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),
@@ -86,6 +87,7 @@ export const ListAdminItemCategoriesResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),
@@ -112,7 +114,7 @@ export const createAdminItemCategoryBodyDescriptionMax = 500;
 export const CreateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(createAdminItemCategoryBodyNameMax),
   "icon": zod.string().min(1).max(createAdminItemCategoryBodyIconMax),
-  "parentId": zod.number().int().nullish(),
+  "parentId": zod.number().int(),
   "description": zod.string().max(createAdminItemCategoryBodyDescriptionMax).nullish()
 })
 
@@ -120,6 +122,7 @@ export const CreateAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),
@@ -171,6 +174,7 @@ export const UpdateAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),
@@ -208,6 +212,7 @@ export const TransferAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),
@@ -1105,6 +1110,7 @@ export const GetSupplierInviteResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "icon": zod.string(),
+  "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
   "description": zod.string().nullable(),

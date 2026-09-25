@@ -22,6 +22,7 @@ import {
   SendContactResponse,
 } from "@workspace/api-zod";
 import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
+import { itemCategorySubtreeIds } from "../lib/item-category-aliases";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 
 const router: IRouter = Router();
@@ -116,7 +117,7 @@ router.get("/item-categories", (_req, res): void => {
       JOIN active_category_tree parent ON child.parent_id = parent.id
       WHERE child.is_active = 1
     )
-    SELECT id, name, icon, group_name AS groupName, parent_id AS parentId,
+    SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
@@ -127,6 +128,7 @@ router.get("/item-categories", (_req, res): void => {
     id: number;
     name: string;
     icon: string;
+    slug: string;
     groupName: string;
     parentId: number | null;
     description: string | null;
@@ -261,47 +263,44 @@ router.get("/suppliers", (req, res): void => {
       SELECT id, name, parent_id AS parentId FROM item_categories WHERE is_active = 1
     `).all() as Array<{ id: number; name: string; parentId: number | null }>;
     const selectedItemCategory = itemCategories.find((item) => item.name === category);
-    const itemCategoryNames = new Set<string>();
     if (selectedItemCategory) {
-      const pendingIds = [selectedItemCategory.id];
-      while (pendingIds.length) {
-        const parentId = pendingIds.pop()!;
-        const item = itemCategories.find((candidate) => candidate.id === parentId);
-        if (item) itemCategoryNames.add(item.name);
-        itemCategories
-          .filter((candidate) => candidate.parentId === parentId)
-          .forEach((child) => pendingIds.push(child.id));
-      }
+      const itemCategoryIds = itemCategorySubtreeIds(selectedItemCategory.id, itemCategories);
+      const ids = [...itemCategoryIds];
+      const categoryPlaceholders = ids.map(() => "?").join(", ");
+      clauses.push(`EXISTS (
+        SELECT 1 FROM supplier_categories sc
+        JOIN item_categories assigned ON assigned.id = sc.item_category_id
+        WHERE sc.supplier_id = s.id
+          AND assigned.is_active = 1
+          AND sc.item_category_id IN (${categoryPlaceholders})
+      )`);
+      values.push(...ids);
+    } else {
+      const categoryTerms = ({
+        "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
+        "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
+        "علب وتغليف": ["علب وتغليف", "عبوات وتغليف"],
+        "تغليف وعلب": ["علب وتغليف", "عبوات وتغليف", "أكياس مطبوعة", "كراتين مطبوعة"],
+        "معدات وأفران": ["معدات وأفران", "معدات وأدوات"],
+        "أدوات صغيرة": ["أدوات صغيرة", "معدات وأدوات"],
+        "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
+      } as Record<string, string[]>)[category] ?? [category];
+      const patterns = categoryTerms.map((term) => `%${term}%`);
+      const requestCategoryFilters = patterns.map(() => "sr.categories LIKE ?").join(" OR ");
+      const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
+      clauses.push(`(
+        EXISTS (
+          SELECT 1 FROM supplier_requests sr
+          WHERE sr.id = s.request_id AND (${requestCategoryFilters})
+        )
+        OR EXISTS (
+          SELECT 1 FROM products tp
+          JOIN categories tc ON tc.id = tp.category_id
+          WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
+        )
+      )`);
+      values.push(...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
     }
-    const categoryTerms = ({
-      "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
-      "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
-      "علب وتغليف": ["علب وتغليف", "عبوات وتغليف"],
-      "تغليف وعلب": ["علب وتغليف", "عبوات وتغليف", "أكياس مطبوعة", "كراتين مطبوعة"],
-      "معدات وأفران": ["معدات وأفران", "معدات وأدوات"],
-      "أدوات صغيرة": ["أدوات صغيرة", "معدات وأدوات"],
-      "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
-    } as Record<string, string[]>)[category] ?? [category];
-    const patterns = categoryTerms.map((term) => `%${term}%`);
-    const exactRequestCategoryFilters = [...itemCategoryNames]
-      .map(() => "EXISTS (SELECT 1 FROM json_each(sr.categories) selected WHERE selected.value = ?)");
-    const requestCategoryFilters = [
-      ...exactRequestCategoryFilters,
-      ...patterns.map(() => "sr.categories LIKE ?"),
-    ].join(" OR ");
-    const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
-    clauses.push(`(
-      EXISTS (
-        SELECT 1 FROM supplier_requests sr
-        WHERE sr.id = s.request_id AND (${requestCategoryFilters})
-      )
-      OR EXISTS (
-        SELECT 1 FROM products tp
-        JOIN categories tc ON tc.id = tp.category_id
-        WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
-      )
-    )`);
-    values.push(...itemCategoryNames, ...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
   }
   if (type) {
     const pattern = `%${type}%`;

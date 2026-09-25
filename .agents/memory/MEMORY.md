@@ -4,4 +4,5 @@
 - [Supplier invitation review](supplier-invitation-review.md) — keep submitted invite data separate until admin approval publishes supplier profile changes.
 - [Supplier WhatsApp share link](supplier-share-link.md) — share a public registration URL without claiming to know the chosen contact or message delivery.
 - [Supplier source attribution](supplier-source-attribution.md) — classify only known creation sources; old records with ambiguous origins remain unattributed.
-- [Item-category group headings](item-category-group-headings.md) — headings label categories through `group_name`; they are not categories or parent relationships.
+- [Item-category group headings](item-category-group-headings.md) — imported headings alone do not define roots; preserve the explicitly requested 13-group hierarchy.
+- [Supplier category associations](supplier-category-associations.md) — preserve registration choices in JSON; update normalized supplier links transactionally and retain stable alias IDs.

@@ -336,3 +336,45 @@ mtime_ms = 1790294468401
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/6afc749b-8632-4ed3-a729-4ef7bbaab46d/b55c529e-724e-4543-b4d5-1842fb4e6b50"
 storage_version_token = "1790294680215260"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "UPC927GI93k2eq70cBlsm"
+uri = "file://artifacts/bakery-suppliers/screenshots/hierarchy-home-desktop.jpg"
+type = "image"
+title = "الرئيسية — 13 مجموعة"
+description = "عرض المجموعات الرئيسية والبحث في جميع الأصناف."
+logical_id = "e18b6089-15bd-49be-8555-67c3ae0a3c1c"
+content_hash = "sha256:6aca789a6f2cd35e7d57f3f19bbba613a0e17bf5d97aba63fa8c1efec5b53fa3"
+size = 173366
+mtime_ms = 1790323443796
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/e18b6089-15bd-49be-8555-67c3ae0a3c1c/48767c63-cfc3-42fb-ae33-df82a958b480"
+storage_version_token = "1790324622930392"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "6C6L2hQIan4ZrVpw1AJtf"
+uri = "file://artifacts/bakery-suppliers/screenshots/hierarchy-basic-materials-desktop.jpg"
+type = "image"
+title = "المواد الأساسية — الأصناف الفرعية"
+description = "الصفحة تضم الأصناف السبعة والبحث داخل المجموعة."
+logical_id = "cae252cc-43b6-441a-991a-7adebb9e2cf7"
+content_hash = "sha256:59b366071abc748948352a4aae3b2b61d39b11ffbfbe44fd886cb2d7114d8cbe"
+size = 72500
+mtime_ms = 1790323445834
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/cae252cc-43b6-441a-991a-7adebb9e2cf7/ddcf94cc-9b05-4813-8435-877c10354d00"
+storage_version_token = "1790324624254786"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "Wz1fN-AE2L_n_ty0DJ_nF"
+uri = "file://artifacts/bakery-suppliers/screenshots/hierarchy-flour-desktop.jpg"
+type = "image"
+title = "دقيق — الموردون والفلاتر"
+description = "مورد الدقيق الحقيقي مع فلاتر المدينة والتقييم."
+logical_id = "92bb2b9f-7f47-4c80-b267-15a1ee30cf7b"
+content_hash = "sha256:07913d1cae29122b939af25bba77208ed33b3a40f359dabbba2c0841d1e9f7fb"
+size = 66383
+mtime_ms = 1790323447887
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/92bb2b9f-7f47-4c80-b267-15a1ee30cf7b/01523234-4dcc-4e27-b304-93da2f1fd7ae"
+storage_version_token = "1790324625555136"
+content_type = "image/jpeg"

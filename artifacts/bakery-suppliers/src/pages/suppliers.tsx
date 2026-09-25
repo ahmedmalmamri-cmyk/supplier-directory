@@ -1,11 +1,13 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useListItemCategories, useListSuppliers } from "@workspace/api-client-react";
+import { useListSuppliers } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { Search, MapPin, Star, BadgeCheck, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // We'll create this
 import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/SupplierFilterControls";
+import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
+import { getItemCategoryIcon } from "@/lib/item-category-icons";
 
 export default function SuppliersPage() {
   const [initialParams] = useState(() => new URLSearchParams(window.location.search));
@@ -21,7 +23,7 @@ export default function SuppliersPage() {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [, setLocation] = useLocation();
 
-  const { data: itemCategories, isLoading: isLoadingCategories, error: categoriesError } = useListItemCategories();
+  const { categories: itemCategories, roots: categoryRoots, isLoading: isLoadingCategories, error: categoriesError } = useTaxonomy();
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
   const { data: suppliers, isLoading, error } = useListSuppliers({
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
@@ -36,30 +38,7 @@ export default function SuppliersPage() {
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
-  const categoryGroups = useMemo(() => {
-    const groups = new Map<string, { groupName: string; categories: NonNullable<typeof itemCategories> }>();
-    for (const item of itemCategories ?? []) {
-      if (item.parentId !== null) continue;
-      const group = groups.get(item.groupName) ?? { groupName: item.groupName, categories: [] };
-      group.categories.push(item);
-      groups.set(item.groupName, group);
-    }
-    return [...groups.values()];
-  }, [itemCategories]);
-  const selectedTaxonomyCategory = (itemCategories ?? []).find((item) => item.name === category);
-  const selectedSubcategories = selectedTaxonomyCategory
-    ? (itemCategories ?? []).filter((item) => item.parentId === selectedTaxonomyCategory.id)
-    : [];
-  const selectCategory = (nextCategory: string) => {
-    setCategory(nextCategory);
-    setType("");
-    const params = new URLSearchParams(window.location.search);
-    params.delete("type");
-    if (nextCategory) params.set("category", nextCategory);
-    else params.delete("category");
-    const query = params.toString();
-    setLocation(query ? `/suppliers?${query}` : "/suppliers");
-  };
+  const selectedTaxonomyCategory = itemCategories.find((item) => item.name === category);
   const resetFilters = () => {
     setCategory("");
     setType("");
@@ -114,75 +93,20 @@ export default function SuppliersPage() {
             <div>
               <h2 id="supplier-category-heading" className="text-xl font-extrabold">تصفح حسب التصنيف</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                اختر من {categoryGroups.reduce((count, group) => count + group.categories.length, 0) || 33} تصنيفاً رئيسياً للعثور على الموردين المناسبين.
+                 اختر مجموعة ثم صنفاً فرعياً للوصول إلى الموردين المتخصصين. ويمكنك متابعة تصفح جميع الموردين هنا.
               </p>
             </div>
-            {category && <button type="button" onClick={() => selectCategory("")} className="text-sm font-bold text-primary hover:underline">مسح التصنيف</button>}
+             {category && <button type="button" onClick={resetFilters} className="text-sm font-bold text-primary hover:underline">مسح التصنيف</button>}
           </div>
           {isLoadingCategories ? (
             <p className="rounded-xl bg-muted/30 px-4 py-3 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
           ) : categoriesError ? (
             <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
           ) : (
-            <div className="space-y-5">
-              <button
-                type="button"
-                data-testid="button-category-all"
-                aria-pressed={!category}
-                onClick={() => selectCategory("")}
-                className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50"}`}
-              >
-                كل الموردين
-              </button>
-              {categoryGroups.map((group) => (
-                <div key={group.groupName}>
-                  <h3 className="mb-2 text-sm font-extrabold text-muted-foreground">{group.groupName}</h3>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                    {group.categories.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        data-testid={`button-category-${item.id}`}
-                        aria-pressed={category === item.name}
-                        onClick={() => selectCategory(item.name)}
-                        className={`inline-flex min-h-11 items-center justify-start gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${category === item.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50 hover:text-primary"}`}
-                      >
-                        <span aria-hidden="true">{item.icon}</span>
-                        <span>{item.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {selectedTaxonomyCategory && selectedSubcategories.length > 0 && (
-                <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-4">
-                  <h3 className="mb-1 font-extrabold">الأصناف الفرعية في {selectedTaxonomyCategory.name}</h3>
-                  <p className="mb-3 text-sm text-muted-foreground">اختر صنفاً لعرض الموردين المرتبطين به، أو اترك التصنيف الرئيسي محدداً لعرض جميع الأصناف الفرعية.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={category === selectedTaxonomyCategory.name}
-                      onClick={() => selectCategory(selectedTaxonomyCategory.name)}
-                      className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${category === selectedTaxonomyCategory.name ? "border-primary bg-primary text-primary-foreground" : "border-primary/25 bg-card text-primary hover:bg-primary/5"}`}
-                    >
-                      كل {selectedTaxonomyCategory.name}
-                    </button>
-                    {selectedSubcategories.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        data-testid={`button-category-child-${item.id}`}
-                        aria-pressed={category === item.name}
-                        onClick={() => selectCategory(item.name)}
-                        className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${category === item.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50 hover:text-primary"}`}
-                      >
-                        <span aria-hidden="true" className="ml-1">{item.icon}</span>{item.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+             <div>
+               {selectedTaxonomyCategory && <p className="mb-4 rounded-xl bg-primary/5 px-4 py-3 text-sm">تتصفح موردي <Link href={categoryPath(selectedTaxonomyCategory, itemCategories)} className="font-bold text-primary underline">{selectedTaxonomyCategory.name}</Link></p>}
+               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{categoryRoots.map((item) => { const Icon = getItemCategoryIcon(item.icon); return <Link key={item.id} href={categoryPath(item, itemCategories)} data-testid={`link-supplier-category-${item.id}`} className="flex min-h-14 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold transition-colors hover:border-primary/50 hover:text-primary"><Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{item.name}</Link>; })}</div>
+             </div>
           )}
         </section>
 

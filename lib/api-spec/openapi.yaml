@@ -888,11 +888,12 @@ components:
         productCount: { type: integer }
     ItemCategory:
       type: object
-      required: [id, name, icon, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
+      required: [id, name, icon, slug, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
       properties:
         id: { type: integer }
         name: { type: string }
         icon: { type: string }
+        slug: { type: string }
         groupName: { type: string }
         parentId: { type: ["integer", "null"] }
         description: { type: ["string", "null"] }
@@ -911,11 +912,11 @@ components:
             supplierCount: { type: integer }
     ItemCategoryInput:
       type: object
-      required: [name, icon]
+      required: [name, icon, parentId]
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         icon: { type: string, minLength: 1, maxLength: 24 }
-        parentId: { type: ["integer", "null"] }
+        parentId: { type: integer }
         description: { type: ["string", "null"], maxLength: 500 }
     ItemCategoryUpdate:
       type: object

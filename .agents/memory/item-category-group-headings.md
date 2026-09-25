@@ -1,10 +1,10 @@
 ---
 name: Item-category group headings
-description: Project rule for importing grouped bakery item-category lists.
+description: How to distinguish imported list headings from the explicitly requested bakery category hierarchy.
 ---
 
-Treat headings in an imported category list as `group_name` values only. Do not create a category for a heading or infer parent-child links from grouping.
+Imported list headings alone are not permission to create new root categories or infer parent-child links. Preserve the explicitly requested 13-group hierarchy already in the catalog; add new categories beneath a canonical root only when the intended parent is specified or deliberately mapped.
 
-**Why:** The catalog is flat unless a parent relationship is explicitly requested; turning headings into records changes the category count and supplier-facing choices.
+**Why:** Earlier imports used headings only to label flat rows. The user later explicitly requested a three-level browsing journey with 13 named roots. Applying either rule universally would misclassify categories or break navigation.
 
-**How to apply:** During category imports, assign each listed item its heading as `group_name`, preserve existing `parent_id` and homepage visibility for matching records, and leave new records at the root unless otherwise specified.
+**How to apply:** During imports, preserve existing `parent_id` and stable slugs for matching records. Do not invent a 14th root from a heading; resolve a new item's intended canonical parent or ask when the mapping is unclear.
