@@ -58,6 +58,7 @@ import type {
   ItemCategoryInput,
   ItemCategoryOrderInput,
   ItemCategoryOrderResponse,
+  ItemCategoryPermanentDeleteResponse,
   ItemCategoryTagsInput,
   ItemCategoryTransferInput,
   ItemCategoryUpdate,
@@ -1155,6 +1156,74 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteAdminItemCategoryMutationOptions(options));
+    }
+
+export const getPermanentlyDeleteAdminItemCategoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/item-categories/${id}/permanent`
+}
+
+export const permanentlyDeleteAdminItemCategory = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ItemCategoryPermanentDeleteResponse> => {
+
+  return customFetch<ItemCategoryPermanentDeleteResponse>(getPermanentlyDeleteAdminItemCategoryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getPermanentlyDeleteAdminItemCategoryMutationKey = () => ['permanentlyDeleteAdminItemCategory'] as const;
+
+export const getPermanentlyDeleteAdminItemCategoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>, TError,PermanentlyDeleteAdminItemCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>, TError,PermanentlyDeleteAdminItemCategoryMutationVariables, TContext> => {
+
+const mutationKey = getPermanentlyDeleteAdminItemCategoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>, PermanentlyDeleteAdminItemCategoryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  permanentlyDeleteAdminItemCategory(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PermanentlyDeleteAdminItemCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>>
+
+    export type PermanentlyDeleteAdminItemCategoryMutationError = ErrorType<void>
+    export type PermanentlyDeleteAdminItemCategoryMutationVariables = {id: number}
+
+    export const usePermanentlyDeleteAdminItemCategory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>, TError,PermanentlyDeleteAdminItemCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof permanentlyDeleteAdminItemCategory>>,
+        TError,
+        PermanentlyDeleteAdminItemCategoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPermanentlyDeleteAdminItemCategoryMutationOptions(options));
     }
 
 export const getTransferAdminItemCategoryUrl = (id: number,) => {

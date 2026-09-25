@@ -9,10 +9,13 @@ import {
   GetSupplierInvitationOptionsResponse,
   GetSupplierSourceStatsResponse,
   ListRegistrationInterestsResponse,
+  PermanentlyDeleteAdminItemCategoryParams,
+  PermanentlyDeleteAdminItemCategoryResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 import { categoryTagGroupIdsMap, getGroupRecord } from "../lib/item-category-groups";
+import { legacyItemCategoryAliasesForNames } from "../lib/item-category-aliases";
 import {
   syncSupplierCategoryAssignments,
 } from "../lib/supplier-category-db";
@@ -1236,6 +1239,15 @@ router.post("/admin/item-categories", (req, res): void => {
   const now = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
+    const id = (directoryDb.prepare(`
+      SELECT MAX(id) + 1 AS id FROM (
+        SELECT COALESCE(MAX(id), 0) AS id FROM groups
+        UNION ALL
+        SELECT COALESCE(MAX(id), 0) AS id FROM item_categories
+        UNION ALL
+        SELECT COALESCE(MAX(id), 0) AS id FROM permanently_deleted_item_categories
+      )
+    `).get() as { id: number }).id;
     const slug = uniqueItemCategorySlug(
       name,
       (candidate) => Boolean(directoryDb.prepare(`
@@ -1247,10 +1259,11 @@ router.post("/admin/item-categories", (req, res): void => {
     );
     const result = directoryDb.prepare(`
       INSERT INTO item_categories
-        (name, icon, slug, group_name, parent_id, description, display_on_home,
+        (id, name, icon, slug, group_name, parent_id, description, display_on_home,
          display_order, is_active, created_at, updated_at, primary_group_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
     `).run(
+      id,
       name,
       icon,
       slug,
@@ -1263,8 +1276,7 @@ router.post("/admin/item-categories", (req, res): void => {
       now,
       parentId,
     );
-    const id = Number(result.lastInsertRowid);
-    const created = getItemCategory(id)!;
+    const created = getItemCategory(Number(result.lastInsertRowid))!;
     recordItemCategoryActivity("add", id, null, itemCategorySnapshot(created));
     directoryDb.exec("COMMIT");
     res.status(201).json({ ...itemCategorySnapshot(created), supplierCount: 0 });
@@ -1583,6 +1595,83 @@ router.delete("/admin/item-categories/:id", (req, res): void => {
     directoryDb.exec("ROLLBACK");
     req.log.error({ err: error }, "Could not delete item category");
     res.status(500).json({ error: "تعذر حذف التصنيف." });
+  }
+});
+
+router.delete("/admin/item-categories/:id/permanent", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const params = PermanentlyDeleteAdminItemCategoryParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "معرف التصنيف غير صحيح." });
+    return;
+  }
+  const id = params.data.id;
+  directoryDb.exec("BEGIN");
+  try {
+    const existing = getItemCategory(id);
+    if (!existing) {
+      directoryDb.exec("ROLLBACK");
+      res.status(404).json({ error: "التصنيف غير موجود." });
+      return;
+    }
+    if (existing.parentId === null || isCanonicalItemCategoryRoot(existing)) {
+      directoryDb.exec("ROLLBACK");
+      res.status(400).json({ error: "لا يمكن حذف مجموعة رئيسية نهائياً من هذا المسار." });
+      return;
+    }
+    if (existing.isActive) {
+      directoryDb.exec("ROLLBACK");
+      res.status(409).json({ error: "عطّل التصنيف أولاً، ثم اختر الحذف النهائي بعد تأكيد مستقل." });
+      return;
+    }
+    const children = directoryDb.prepare("SELECT COUNT(*) AS count FROM item_categories WHERE parent_id = ?").get(id) as { count: number };
+    const suppliers = directoryDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(id) as { count: number };
+    const aliases = directoryDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(id) as { count: number };
+    const selectedNames = new Set([existing.name, ...legacyItemCategoryAliasesForNames([existing.name])]);
+    const requests = directoryDb.prepare(`
+      SELECT categories FROM supplier_requests
+      WHERE status IN ('pending', 'pending_review', 'approved')
+    `).all() as Array<{ categories: string }>;
+    let referencingRequests = 0;
+    for (const request of requests) {
+      let selected: unknown;
+      try {
+        selected = JSON.parse(request.categories);
+      } catch {
+        directoryDb.exec("ROLLBACK");
+        res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
+        return;
+      }
+      if (!Array.isArray(selected)) {
+        directoryDb.exec("ROLLBACK");
+        res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
+        return;
+      }
+      if (selected.some((name) => typeof name === "string" && selectedNames.has(name))) referencingRequests++;
+    }
+    if (children.count || suppliers.count || aliases.count || referencingRequests) {
+      directoryDb.exec("ROLLBACK");
+      const linked = [
+        children.count && `${children.count} تصنيف فرعي`,
+        suppliers.count && `${suppliers.count} ارتباط مورد`,
+        aliases.count && `${aliases.count} اسم بديل`,
+        referencingRequests && `${referencingRequests} طلب مورد`,
+      ].filter(Boolean).join("، ");
+      res.status(409).json({ error: `لا يمكن الحذف النهائي لوجود بيانات مرتبطة (${linked}). راجع طلبات الموردين وانقل التصنيفات الفرعية أو افصل الارتباطات أولاً.` });
+      return;
+    }
+    directoryDb.prepare(`
+      INSERT INTO permanently_deleted_item_categories (id, name, deleted_at)
+      VALUES (?, ?, ?)
+    `).run(id, existing.name, new Date().toISOString());
+    recordItemCategoryActivity("delete", id, itemCategorySnapshot(existing), { permanentlyDeleted: true });
+    directoryDb.prepare("DELETE FROM item_categories WHERE id = ?").run(id);
+    directoryDb.exec("COMMIT");
+    res.json(PermanentlyDeleteAdminItemCategoryResponse.parse({ success: true }));
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not permanently delete item category");
+    res.status(500).json({ error: "تعذر حذف التصنيف نهائياً." });
   }
 });
 

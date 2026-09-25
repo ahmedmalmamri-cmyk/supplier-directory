@@ -168,6 +168,10 @@ export interface ItemCategoryDeleteResponse {
   deactivatedCount: number;
 }
 
+export interface ItemCategoryPermanentDeleteResponse {
+  success: boolean;
+}
+
 export interface ItemCategoryOrderResponse {
   success: boolean;
 }

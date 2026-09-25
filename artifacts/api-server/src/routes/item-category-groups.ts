@@ -109,6 +109,8 @@ router.post("/admin/groups", (req, res): void => {
         SELECT COALESCE(MAX(id), 0) AS id FROM groups
         UNION ALL
         SELECT COALESCE(MAX(id), 0) AS id FROM item_categories
+        UNION ALL
+        SELECT COALESCE(MAX(id), 0) AS id FROM permanently_deleted_item_categories
       )
     `).get() as { id: number }).id;
     const slug = uniqueItemCategorySlug(name, (candidate) => Boolean(directoryDb.prepare(`

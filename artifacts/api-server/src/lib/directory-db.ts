@@ -36,6 +36,11 @@ directoryDb.exec(`
     created_at TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT ''
   );
+  CREATE TABLE IF NOT EXISTS permanently_deleted_item_categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    deleted_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -635,7 +640,12 @@ const upsertItemCategory = directoryDb.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, 1)
   ON CONFLICT(id) DO NOTHING
 `);
-itemCategorySeed.forEach((item) => upsertItemCategory.run(...item));
+const wasPermanentlyDeleted = directoryDb.prepare(
+  "SELECT 1 FROM permanently_deleted_item_categories WHERE id = ?",
+);
+itemCategorySeed.forEach((item) => {
+  if (!wasPermanentlyDeleted.get(item[0])) upsertItemCategory.run(...item);
+});
 
 const cakeFillingsMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",

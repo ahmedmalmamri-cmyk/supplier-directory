@@ -317,6 +317,15 @@ export const DeleteAdminItemCategoryResponse = zod.object({
 })
 
 
+export const PermanentlyDeleteAdminItemCategoryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const PermanentlyDeleteAdminItemCategoryResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
 export const TransferAdminItemCategoryParams = zod.object({
   "id": zod.coerce.number().int()
 })
