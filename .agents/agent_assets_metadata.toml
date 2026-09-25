@@ -243,14 +243,14 @@ content_type = "image/jpeg"
 id = "W7Xg3wi8p6zPS2cXXXkN4"
 uri = "file://screenshots/admin-categories.jpg"
 type = "image"
-title = "لقطة مسار إدارة التصنيفات"
-description = "لقطة من /admin/categories. المعاينة الحالية غير مسجلة الدخول، لذا تعرض شاشة دخول الإدارة ولا تعرض قائمة التصنيفات المحمية."
+title = "لوحة إدارة الأصناف والمجموعات — الصورة المحدّثة"
+description = "تظهر العدادات بعد استبعاد سجلات المجموعات من عدد الأصناف؛ بيانات الاختبار المؤقتة أزيلت بعد التصوير."
 logical_id = "d8957aed-2113-4d43-9dfa-88c2ab5dab4d"
-content_hash = "sha256:3940f2c66c2d3046fb8ea82ba14f6a31de6045a0e21e43171aa7a0d0b0972b7a"
-size = 59972
-mtime_ms = 1790292358197
-storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d8957aed-2113-4d43-9dfa-88c2ab5dab4d/6ed9a3c0-d908-49bf-abfd-e1cdd708f44f"
-storage_version_token = "1790292683655713"
+content_hash = "sha256:d198130903d6bce7339b43ba2d90a78ffef555bc0f89e455725a3b2d20b6f2a5"
+size = 117854
+mtime_ms = 1790332512754
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d8957aed-2113-4d43-9dfa-88c2ab5dab4d/5f580951-5ec7-4d5a-9b26-631b6ff364ec"
+storage_version_token = "1790332567005949"
 content_type = "image/jpeg"
 
 [[outputs]]
@@ -377,4 +377,32 @@ size = 66383
 mtime_ms = 1790323447887
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/92bb2b9f-7f47-4c80-b267-15a1ee30cf7b/01523234-4dcc-4e27-b304-93da2f1fd7ae"
 storage_version_token = "1790324625555136"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "LgAQvvwekVTpP59B4X5Xc"
+uri = "file://screenshots/category-tags-modal.jpg"
+type = "image"
+title = "نافذة وسم الصنف بمجموعتين — الصورة المحدّثة"
+description = "تحديد مجموعتين ثانويتين مع ظهور المجموعة الرئيسية."
+logical_id = "e75a5bc1-0e75-4394-8d31-d608a134fbc1"
+content_hash = "sha256:56271a2db1b59dd9c75b01edfdad837c6977b6fb103f7145256bd01afb4fa780"
+size = 112624
+mtime_ms = 1790332513010
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/e75a5bc1-0e75-4394-8d31-d608a134fbc1/b658325e-bc6d-46ce-a95f-5c481ebbaaa7"
+storage_version_token = "1790332568669796"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "he2fEhT-z4XyQBqxw9LVn"
+uri = "file://screenshots/tagged-category-page.jpg"
+type = "image"
+title = "صفحة الصنف بعد إضافة وسمين — الصورة المحدّثة"
+description = "تظهر المجموعة الرئيسية ومجموعتا الوسوم في صفحة الصنف."
+logical_id = "5ec85181-90bf-478b-8918-48d1586962e1"
+content_hash = "sha256:d9608e7dea87980be56fffb5a5633a2c6e53706e74114c44dae913fffa33abf1"
+size = 88574
+mtime_ms = 1790332513818
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/5ec85181-90bf-478b-8918-48d1586962e1/b285eb71-d735-4aba-aee6-adfaf3757014"
+storage_version_token = "1790332570126588"
 content_type = "image/jpeg"

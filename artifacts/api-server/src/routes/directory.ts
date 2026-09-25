@@ -24,6 +24,7 @@ import {
 import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
 import { itemCategorySubtreeIds } from "../lib/item-category-aliases";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
+import { categoryTagGroupIdsMap } from "../lib/item-category-groups";
 
 const router: IRouter = Router();
 
@@ -110,14 +111,19 @@ router.get("/home", (_req, res): void => {
 router.get("/item-categories", (_req, res): void => {
   const rows = directoryDb.prepare(`
     WITH RECURSIVE active_category_tree(id) AS (
-      SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
+      SELECT c.id
+      FROM item_categories c
+      JOIN groups g ON g.id = c.id AND g.is_active = 1
+      WHERE c.parent_id IS NULL AND c.is_active = 1
       UNION ALL
       SELECT child.id
       FROM item_categories child
       JOIN active_category_tree parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
+      JOIN groups g ON g.id = child.primary_group_id AND g.is_active = 1
+      WHERE child.is_active = 1 AND child.primary_group_id = parent.id
     )
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
+      primary_group_id AS primaryGroupId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
@@ -131,6 +137,7 @@ router.get("/item-categories", (_req, res): void => {
     slug: string;
     groupName: string;
     parentId: number | null;
+    primaryGroupId: number | null;
     description: string | null;
     displayOnHome: number;
     displayOrder: number;
@@ -138,9 +145,11 @@ router.get("/item-categories", (_req, res): void => {
     createdAt: string;
     updatedAt: string;
   }>;
-  const supplierCounts = itemCategorySupplierCounts(rows);
+  const supplierCounts = itemCategorySupplierCounts(rows, true);
+  const tagGroupIdsByCategory = categoryTagGroupIdsMap(true);
   const categories = rows.map((category) => ({
     ...category,
+    tagGroupIds: tagGroupIdsByCategory.get(category.id) ?? [],
     displayOnHome: Boolean(category.displayOnHome),
     isActive: Boolean(category.isActive),
     supplierCount: supplierCounts.get(category.id) ?? 0,
@@ -174,9 +183,42 @@ router.get("/search", (req, res): void => {
         WHERE sp.supplier_id = s.id
           AND (sp.name LIKE ? OR sp.country_of_origin LIKE ? OR sc.name LIKE ?)
       )
+      OR EXISTS (
+        SELECT 1
+        FROM supplier_categories item_sc
+        JOIN item_categories assigned ON assigned.id = item_sc.item_category_id
+          AND assigned.is_active = 1
+          AND (
+            (assigned.parent_id IS NULL AND EXISTS (
+              SELECT 1 FROM groups active_root
+              WHERE active_root.id = assigned.id AND active_root.is_active = 1
+            ))
+            OR (assigned.primary_group_id IS NOT NULL AND EXISTS (
+              SELECT 1 FROM groups active_primary
+              WHERE active_primary.id = assigned.primary_group_id
+                AND active_primary.is_active = 1
+            ))
+          )
+        LEFT JOIN groups primary_group
+          ON primary_group.id = assigned.primary_group_id AND primary_group.is_active = 1
+        LEFT JOIN groups assigned_group
+          ON assigned_group.id = assigned.id AND assigned_group.is_active = 1
+        WHERE item_sc.supplier_id = s.id
+          AND (
+            assigned.name LIKE ?
+            OR primary_group.name LIKE ?
+            OR assigned_group.name LIKE ?
+            OR EXISTS (
+              SELECT 1 FROM category_tags ct
+              JOIN groups tagged_group ON tagged_group.id = ct.group_id
+                AND tagged_group.is_active = 1
+              WHERE ct.category_id = assigned.id AND tagged_group.name LIKE ?
+            )
+          )
+      )
     )
     GROUP BY s.id ORDER BY s.average_rating DESC
-  `).all(term, term, term, term, term, term, term, term) as Record<string, unknown>[]);
+  `).all(term, term, term, term, term, term, term, term, term, term, term, term) as Record<string, unknown>[]);
   const products = directoryDb.prepare(`
     ${productSelect}
     WHERE p.name LIKE ? OR s.name LIKE ? OR p.country_of_origin LIKE ? OR c.name LIKE ?
@@ -260,11 +302,49 @@ router.get("/suppliers", (req, res): void => {
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (category) {
     const itemCategories = directoryDb.prepare(`
-      SELECT id, name, parent_id AS parentId FROM item_categories WHERE is_active = 1
-    `).all() as Array<{ id: number; name: string; parentId: number | null }>;
+      SELECT id, name, parent_id AS parentId,
+        primary_group_id AS primaryGroupId
+      FROM item_categories c
+      WHERE c.is_active = 1
+        AND (
+          (c.parent_id IS NULL AND EXISTS (
+            SELECT 1 FROM groups g WHERE g.id = c.id AND g.is_active = 1
+          ))
+          OR (c.primary_group_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM groups g
+            WHERE g.id = c.primary_group_id AND g.is_active = 1
+          ))
+        )
+    `).all() as Array<{
+      id: number;
+      name: string;
+      parentId: number | null;
+      primaryGroupId: number | null;
+    }>;
     const selectedItemCategory = itemCategories.find((item) => item.name === category);
+    const knownItemCategory = directoryDb.prepare(`
+      SELECT id FROM item_categories WHERE name = ?
+    `).get(category);
+    const knownGroup = directoryDb.prepare(`
+      SELECT id FROM groups WHERE name = ?
+    `).get(category);
     if (selectedItemCategory) {
-      const itemCategoryIds = itemCategorySubtreeIds(selectedItemCategory.id, itemCategories);
+      const itemCategoryIds = selectedItemCategory.parentId === null
+        ? new Set((directoryDb.prepare(`
+            SELECT id FROM item_categories
+            WHERE is_active = 1 AND (id = ? OR primary_group_id = ?)
+            UNION
+            SELECT c.id
+            FROM category_tags ct
+            JOIN item_categories c ON c.id = ct.category_id AND c.is_active = 1
+            JOIN groups g ON g.id = ct.group_id AND g.is_active = 1
+            WHERE ct.group_id = ?
+              AND EXISTS (
+                SELECT 1 FROM groups primary_group
+                WHERE primary_group.id = c.primary_group_id AND primary_group.is_active = 1
+              )
+          `).all(selectedItemCategory.id, selectedItemCategory.id, selectedItemCategory.id) as Array<{ id: number }>).map((row) => row.id))
+        : itemCategorySubtreeIds(selectedItemCategory.id, itemCategories);
       const ids = [...itemCategoryIds];
       const categoryPlaceholders = ids.map(() => "?").join(", ");
       clauses.push(`EXISTS (
@@ -275,6 +355,8 @@ router.get("/suppliers", (req, res): void => {
           AND sc.item_category_id IN (${categoryPlaceholders})
       )`);
       values.push(...ids);
+    } else if (knownItemCategory || knownGroup) {
+      clauses.push("0");
     } else {
       const categoryTerms = ({
         "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],

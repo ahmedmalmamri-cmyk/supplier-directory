@@ -1222,6 +1222,126 @@ directoryDb.exec(`
   ON item_categories (slug);
 `);
 
+const groupTagTaxonomyMigrationName = "group-tag-primary-category-taxonomy-v1";
+const groupTagTaxonomyMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(groupTagTaxonomyMigrationName) as { name: string } | undefined;
+if (!groupTagTaxonomyMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.exec(`
+      CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        slug TEXT NOT NULL UNIQUE,
+        icon TEXT NOT NULL,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+      );
+      CREATE TABLE IF NOT EXISTS category_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL REFERENCES item_categories(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        UNIQUE (category_id, group_id)
+      );
+    `);
+    const itemCategoryColumns = directoryDb.prepare(
+      "PRAGMA table_info(item_categories)",
+    ).all() as Array<{ name: string }>;
+    if (!itemCategoryColumns.some((column) => column.name === "primary_group_id")) {
+      directoryDb.exec(`
+        ALTER TABLE item_categories
+        ADD COLUMN primary_group_id INTEGER REFERENCES groups(id)
+      `);
+    }
+
+    const insertGroup = directoryDb.prepare(`
+      INSERT INTO groups (id, name, slug, icon, display_order, is_active)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        slug = excluded.slug,
+        icon = excluded.icon,
+        display_order = excluded.display_order,
+        is_active = excluded.is_active
+    `);
+    for (const [name, slug] of canonicalItemCategoryRoots) {
+      const root = directoryDb.prepare(`
+        SELECT id, name, slug, icon, display_order AS displayOrder, is_active AS isActive
+        FROM item_categories
+        WHERE slug = ? AND parent_id IS NULL AND is_active = 1
+      `).get(slug) as {
+        id: number;
+        name: string;
+        slug: string;
+        icon: string;
+        displayOrder: number;
+        isActive: number;
+      } | undefined;
+      if (!root || root.name !== name) {
+        throw new Error(`Cannot seed taxonomy group ${slug}: its canonical root is missing or changed.`);
+      }
+      insertGroup.run(root.id, root.name, root.slug, root.icon, root.displayOrder, root.isActive);
+    }
+
+    const groups = directoryDb.prepare(`
+      SELECT id, name, slug FROM groups
+    `).all() as Array<{ id: number; name: string; slug: string }>;
+    const groupById = new Map(groups.map((group) => [group.id, group]));
+    const canonicalRootIds = new Set(groupById.keys());
+    const fallbackGroup = groups.find((group) => group.slug === "others");
+    if (!fallbackGroup) throw new Error("Cannot flatten legacy item categories: canonical others group is missing.");
+    const legacyCategories = directoryDb.prepare(`
+      SELECT id, parent_id AS parentId FROM item_categories
+    `).all() as Array<{ id: number; parentId: number | null }>;
+    const parentIdByCategory = new Map(legacyCategories.map((category) => [category.id, category.parentId]));
+    const updateCategoryGroup = directoryDb.prepare(`
+      UPDATE item_categories
+      SET parent_id = ?, primary_group_id = ?, group_name = ?
+      WHERE id = ?
+    `);
+    for (const category of legacyCategories) {
+      if (canonicalRootIds.has(category.id)) {
+        const group = groupById.get(category.id)!;
+        updateCategoryGroup.run(null, null, group.name, category.id);
+        continue;
+      }
+
+      let ancestorId = category.parentId;
+      let canonicalGroup: typeof fallbackGroup | undefined;
+      const visited = new Set<number>([category.id]);
+      while (ancestorId !== null && !visited.has(ancestorId)) {
+        if (canonicalRootIds.has(ancestorId)) {
+          canonicalGroup = groupById.get(ancestorId);
+          break;
+        }
+        visited.add(ancestorId);
+        ancestorId = parentIdByCategory.get(ancestorId) ?? null;
+      }
+      const group = canonicalGroup ?? fallbackGroup;
+      updateCategoryGroup.run(group.id, group.id, group.name, category.id);
+    }
+
+    directoryDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_item_categories_primary_group_id
+      ON item_categories (primary_group_id);
+      CREATE INDEX IF NOT EXISTS idx_category_tags_group_id
+      ON category_tags (group_id);
+      CREATE INDEX IF NOT EXISTS idx_category_tags_category_id
+      ON category_tags (category_id);
+    `);
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(groupTagTaxonomyMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 const itemCategoryAliasMigrationName = "stable-item-category-alias-ids-v1";
 const itemCategoryAliasMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",

@@ -17,6 +17,66 @@ export interface Category {
   productCount?: number;
 }
 
+export interface Group {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  displayOrder: number;
+  isActive: boolean;
+  categoryCount: number;
+  supplierCount: number;
+}
+
+export interface GroupInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 24
+     */
+  icon: string;
+  /** @minimum 0 */
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface GroupUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @minLength 1
+     * @maxLength 24
+     */
+  icon?: string;
+  /** @minimum 0 */
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface GroupDeleteResponse {
+  success: boolean;
+}
+
+export interface MostTaggedCategory {
+  id: number;
+  name: string;
+  groupCount: number;
+}
+
+export interface AdminCategoryStats {
+  groupCount: number;
+  categoryCount: number;
+  tagCount: number;
+  mostTaggedCategory: null | MostTaggedCategory;
+}
+
 export interface ItemCategory {
   id: number;
   name: string;
@@ -25,6 +85,9 @@ export interface ItemCategory {
   groupName: string;
   /** @nullable */
   parentId: number | null;
+  /** @nullable */
+  primaryGroupId: number | null;
+  tagGroupIds: number[];
   /** @nullable */
   description: string | null;
   displayOnHome: boolean;
@@ -50,7 +113,9 @@ export interface ItemCategoryInput {
      * @maxLength 24
      */
   icon: string;
-  parentId: number;
+  primaryGroupId: number;
+  /** Optional legacy alias for primaryGroupId. */
+  parentId?: number;
   /**
      * @maxLength 500
      * @nullable
@@ -74,8 +139,15 @@ export interface ItemCategoryUpdate {
      * @nullable
      */
   description?: string | null;
+  primaryGroupId?: number;
+  /** @minimum 0 */
+  displayOrder?: number;
   isActive?: boolean;
   displayOnHome?: boolean;
+}
+
+export interface ItemCategoryTagsInput {
+  groupIds: number[];
 }
 
 export interface ItemCategoryTransferInput {

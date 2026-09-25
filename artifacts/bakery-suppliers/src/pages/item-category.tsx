@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, MapPin, Search, ShieldCheck, Star, Users } from "lucide-react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { getListSuppliersQueryKey, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTaxonomy, categoryPath, categorySlug } from "@/components/categories/taxonomy";
@@ -14,12 +14,34 @@ function Problem({ title, onRetry }: { title: string; onRetry?: () => void }) {
 export default function ItemCategoryPage() {
   const [, leafParams] = useRoute("/category/:slug/:subslug");
   const [, groupParams] = useRoute("/category/:slug");
+  const [, navigate] = useLocation();
   const slug = leafParams?.slug ?? groupParams?.slug;
   const subslug = leafParams?.subslug;
-  const { categories, roots, isLoading, error, refetch } = useTaxonomy();
-  const root = roots.find((item) => categorySlug(item) === slug);
-  const children = useMemo(() => categories.filter((item) => item.parentId === root?.id).sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "ar")), [categories, root?.id]);
+  const { categories, groups, isLoading, error, refetch } = useTaxonomy();
+  const root = groups.find((item) => item.slug === slug);
+  const globallyMatchedLeaf = subslug ? categories.find((item) => categorySlug(item) === subslug) : undefined;
+  const canonicalLeafPath = globallyMatchedLeaf ? categoryPath(globallyMatchedLeaf, categories, groups) : undefined;
+  const requestedLeafPath = subslug ? `/category/${slug}/${subslug}` : undefined;
+  const shouldRedirectLeaf = Boolean(globallyMatchedLeaf && canonicalLeafPath && canonicalLeafPath !== requestedLeafPath);
+  useEffect(() => {
+    if (shouldRedirectLeaf && canonicalLeafPath) {
+      void navigate(canonicalLeafPath, { replace: true });
+    }
+  }, [canonicalLeafPath, navigate, shouldRedirectLeaf]);
+  const children = useMemo(() => categories
+    .filter((item) => item.parentId !== null && (item.primaryGroupId === root?.id || item.tagGroupIds?.includes(root?.id ?? -1)))
+    .sort((a, b) => {
+      const aPrimary = a.primaryGroupId === root?.id;
+      const bPrimary = b.primaryGroupId === root?.id;
+      return Number(bPrimary) - Number(aPrimary) || a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "ar");
+    }), [categories, root?.id]);
   const child = subslug ? children.find((item) => categorySlug(item) === subslug) : undefined;
+  const categoryGroups = useMemo(() => {
+    if (!child) return [];
+    const primaryGroup = groups.find((group) => group.id === child.primaryGroupId);
+    const secondaryGroups = groups.filter((group) => group.id !== primaryGroup?.id && child.tagGroupIds?.includes(group.id));
+    return [...(primaryGroup ? [primaryGroup] : []), ...secondaryGroups.filter((group, index, all) => all.findIndex((candidate) => candidate.id === group.id) === index)];
+  }, [child, groups]);
   const [search, setSearch] = useState("");
   const [city, setCity] = useState("");
   const [rating, setRating] = useState("");
@@ -43,15 +65,16 @@ export default function ItemCategoryPage() {
   return <MainLayout>
     {isLoading ? <div className="container mx-auto px-4 py-12" role="status" aria-label="جارٍ تحميل التصنيف"><div className="mb-8 h-8 w-64 animate-pulse rounded-lg bg-muted" /><div className="grid grid-cols-2 gap-4 md:grid-cols-3"><div className="h-48 animate-pulse rounded-2xl bg-muted" /><div className="h-48 animate-pulse rounded-2xl bg-muted" /></div></div>
       : error ? <div className="container mx-auto px-4 py-16"><Problem title="تعذر تحميل التصنيف" onRetry={() => void refetch()} /></div>
+      : shouldRedirectLeaf ? <div className="container mx-auto px-4 py-16" role="status" aria-label="جارٍ فتح التصنيف في مجموعته الأساسية"><div className="mx-auto max-w-xl animate-pulse rounded-2xl bg-muted p-10 text-center text-sm text-muted-foreground">جارٍ فتح التصنيف في مجموعته الأساسية...</div></div>
       : !root || (subslug && !child) ? <div className="container mx-auto px-4 py-16"><Problem title="هذا التصنيف غير موجود" /></div>
       : <>
         <header className="border-b border-border bg-secondary/10"><div className="container mx-auto px-4 py-10 md:py-14">
-          <nav aria-label="مسار التنقل" className="mb-8 flex flex-wrap items-center gap-2 text-sm font-semibold text-muted-foreground"><Link href="/" className="hover:text-primary">الرئيسية</Link><ChevronLeft className="h-4 w-4" /><Link href="/categories/all" className="hover:text-primary">التصنيفات</Link><ChevronLeft className="h-4 w-4" />{child ? <><Link href={categoryPath(root, categories)} className="hover:text-primary">{root.name}</Link><ChevronLeft className="h-4 w-4" /><span className="text-foreground">{child.name}</span></> : <span className="text-foreground">{root.name}</span>}</nav>
-          <div className="flex items-center gap-5"><span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-card text-primary shadow-sm"><Icon className="h-12 w-12" strokeWidth={1.5} /></span><div><p className="mb-1 text-sm font-bold text-primary">{child ? "الصنف الفرعي" : "المجموعة الرئيسية"}</p><h1 className="text-3xl font-extrabold md:text-5xl">{title}</h1><p className="mt-2 text-sm text-muted-foreground">{child ? `${child.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف` : `${children.length.toLocaleString("ar-SA")} أصناف فرعية · ${root.supplierCount.toLocaleString("ar-SA")} مورد في المجموعة`}</p></div></div>
+          <nav aria-label="مسار التنقل" className="mb-8 flex flex-wrap items-center gap-2 text-sm font-semibold text-muted-foreground"><Link href="/" className="hover:text-primary">الرئيسية</Link><ChevronLeft className="h-4 w-4" /><Link href="/categories/all" className="hover:text-primary">التصنيفات</Link><ChevronLeft className="h-4 w-4" />{child ? <><Link href={`/category/${root.slug}`} className="hover:text-primary">{root.name}</Link><ChevronLeft className="h-4 w-4" /><span className="text-foreground">{child.name}</span></> : <span className="text-foreground">{root.name}</span>}</nav>
+          <div className="flex items-center gap-5"><span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-card text-primary shadow-sm"><Icon className="h-12 w-12" strokeWidth={1.5} /></span><div><p className="mb-1 text-sm font-bold text-primary">{child ? "الصنف الفرعي" : "المجموعة الرئيسية"}</p><h1 className="text-3xl font-extrabold md:text-5xl">{title}</h1><p className="mt-2 text-sm text-muted-foreground">{child ? `${child.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف` : `${children.length.toLocaleString("ar-SA")} أصناف فرعية · ${root.supplierCount.toLocaleString("ar-SA")} مورد في المجموعة`}</p>{child && categoryGroups.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" aria-label={`ينتمي التصنيف إلى ${categoryGroups.map((group) => group.name).join("، ")}`}><span className="font-semibold text-muted-foreground">ينتمي إلى:</span>{categoryGroups.map((group, index) => <span key={group.id} className="inline-flex items-center gap-2"><Link href={`/category/${group.slug}`} data-testid={`link-category-membership-group-${group.id}`} className="rounded-sm font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{group.name}</Link>{index < categoryGroups.length - 1 && <span className="text-muted-foreground" aria-hidden="true">،</span>}</span>)}</div>}</div></div>
         </div></header>
         <div className="container mx-auto min-h-[50vh] px-4 py-10 md:py-14">
           {!child ? <section><div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h2 className="text-2xl font-extrabold">اختر الصنف الذي تبحث عنه</h2><p className="mt-2 text-sm text-muted-foreground">اختر صنفاً لعرض الموردين المتخصصين فيه.</p></div><label className="relative block w-full sm:w-80"><span className="sr-only">ابحث في أصناف المجموعة</span><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input data-testid="input-child-category-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث في الأصناف الفرعية..." className="h-11 w-full rounded-xl border border-border bg-card pr-10 pl-3 text-sm outline-none focus:border-primary" /></label></div>
-            {visibleChildren.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleChildren.map((item) => { const ChildIcon = getItemCategoryIcon(item.icon); return <Link key={item.id} href={categoryPath(item, categories)} data-testid={`card-child-category-${item.id}`} className="group flex min-h-40 flex-col items-start justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><ChildIcon className="h-10 w-10 text-primary" strokeWidth={1.5} /><div><h3 className="text-lg font-bold group-hover:text-primary">{item.name}</h3><p className="mt-1 text-sm text-muted-foreground">{item.supplierCount.toLocaleString("ar-SA")} مورد</p></div></Link>; })}</div> : <Problem title={children.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف فرعية حالياً"} />}</section>
+             {visibleChildren.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleChildren.map((item) => { const ChildIcon = getItemCategoryIcon(item.icon); const primary = item.primaryGroupId === root.id; return <Link key={item.id} href={categoryPath(item, categories, groups)} data-testid={`card-child-category-${item.id}`} className="group flex min-h-40 flex-col items-start justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><ChildIcon className="h-10 w-10 text-primary" strokeWidth={1.5} /><div><h3 className="text-lg font-bold group-hover:text-primary">{item.name}</h3><p className="mt-1 text-sm text-muted-foreground">{item.supplierCount.toLocaleString("ar-SA")} مورد</p>{!primary && <span className="mt-2 inline-flex rounded-full bg-secondary/30 px-2.5 py-1 text-xs font-semibold text-muted-foreground">تصنيف مشترك · المجموعة الأساسية: {groups.find((group) => group.id === item.primaryGroupId)?.name ?? item.groupName}</span>}</div></Link>; })}</div> : <Problem title={children.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف فرعية حالياً"} />}</section>
             : <section><div className="mb-6"><h2 className="text-2xl font-extrabold">الموردون في {child.name}</h2><p className="mt-2 text-sm text-muted-foreground">{child.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف قبل تطبيق الفلاتر</p></div>
               <SupplierFilterControls city={city} onCityChange={setCity} type={type} onTypeChange={setType} rating={rating} onRatingChange={setRating} supplierPackage={supplierPackage} onPackageChange={setSupplierPackage} sort={sort} onSortChange={setSort} cities={cities} />
               {suppliersQuery.isLoading && !suppliersQuery.data ? <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="جارٍ تحميل الموردين">{[1, 2, 3].map((i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />)}</div>

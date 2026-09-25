@@ -23,7 +23,7 @@ export default function SuppliersPage() {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [, setLocation] = useLocation();
 
-  const { categories: itemCategories, roots: categoryRoots, isLoading: isLoadingCategories, error: categoriesError } = useTaxonomy();
+  const { categories: itemCategories, groups, roots: categoryRoots, isLoading: isLoadingCategories, error: categoriesError } = useTaxonomy();
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
   const { data: suppliers, isLoading, error } = useListSuppliers({
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
@@ -104,8 +104,8 @@ export default function SuppliersPage() {
             <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">تعذر تحميل التصنيفات.</p>
           ) : (
              <div>
-               {selectedTaxonomyCategory && <p className="mb-4 rounded-xl bg-primary/5 px-4 py-3 text-sm">تتصفح موردي <Link href={categoryPath(selectedTaxonomyCategory, itemCategories)} className="font-bold text-primary underline">{selectedTaxonomyCategory.name}</Link></p>}
-               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{categoryRoots.map((item) => { const Icon = getItemCategoryIcon(item.icon); return <Link key={item.id} href={categoryPath(item, itemCategories)} data-testid={`link-supplier-category-${item.id}`} className="flex min-h-14 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold transition-colors hover:border-primary/50 hover:text-primary"><Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{item.name}</Link>; })}</div>
+               {selectedTaxonomyCategory && <p className="mb-4 rounded-xl bg-primary/5 px-4 py-3 text-sm">تتصفح موردي <Link href={categoryPath(selectedTaxonomyCategory, itemCategories, groups)} className="font-bold text-primary underline">{selectedTaxonomyCategory.name}</Link></p>}
+               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{categoryRoots.map((item) => { const Icon = getItemCategoryIcon(item.icon); return <Link key={item.id} href={`/category/${item.slug}`} data-testid={`link-supplier-category-${item.id}`} className="flex min-h-14 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold transition-colors hover:border-primary/50 hover:text-primary"><Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{item.name}</Link>; })}</div>
              </div>
           )}
         </section>

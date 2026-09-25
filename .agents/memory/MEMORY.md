@@ -6,3 +6,4 @@
 - [Supplier source attribution](supplier-source-attribution.md) — classify only known creation sources; old records with ambiguous origins remain unattributed.
 - [Item-category group headings](item-category-group-headings.md) — imported headings alone do not define roots; preserve the explicitly requested 13-group hierarchy.
 - [Supplier category associations](supplier-category-associations.md) — preserve registration choices in JSON; update normalized supplier links transactionally and retain stable alias IDs.
+- [Admin browser test environment](admin-browser-test-environment.md) — browser testers may not inherit runtime secrets; use secure server-side tooling for authenticated checks.

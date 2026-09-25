@@ -5,7 +5,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { CategorySearch, RootCard, useTaxonomy } from "@/components/categories/taxonomy";
 
 export default function CategoriesPage() {
-  const { categories, roots, isLoading, error, refetch } = useTaxonomy();
+  const { categories, groups, roots, isLoading, error, refetch } = useTaxonomy();
   const [search, setSearch] = useState("");
   return <MainLayout>
     <section className="border-b border-border bg-secondary/10 py-9 md:py-14"><div className="container mx-auto px-4">
@@ -15,7 +15,7 @@ export default function CategoriesPage() {
     <section className="container mx-auto min-h-[50vh] px-4 py-10">
       {isLoading ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" role="status" aria-label="جارٍ تحميل التصنيفات">{Array.from({ length: 8 }, (_, index) => <div key={index} className="h-48 animate-pulse rounded-2xl bg-muted" />)}</div>
         : error ? <div role="alert" className="rounded-2xl border border-destructive/20 bg-card p-10 text-center"><p className="font-bold">تعذر تحميل التصنيفات</p><button type="button" onClick={() => void refetch()} className="mt-4 rounded-xl bg-primary px-5 py-2 text-primary-foreground">إعادة المحاولة</button></div>
-        : <><div className="mb-8 max-w-xl"><CategorySearch value={search} onChange={setSearch} categories={categories} testId="input-all-category-search" /></div>{roots.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{roots.map((category) => <RootCard key={category.id} category={category} categories={categories} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-12 text-center"><Search className="mx-auto mb-3 h-9 w-9 text-primary" /><p>لا توجد مجموعات متاحة حالياً.</p></div>}</>}
+        : <><div className="mb-8 max-w-xl"><CategorySearch value={search} onChange={setSearch} categories={categories} groups={groups} testId="input-all-category-search" /></div>{roots.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{roots.map((category) => <RootCard key={category.id} category={category} categories={categories} />)}</div> : <div className="rounded-2xl border border-dashed border-border p-12 text-center"><Search className="mx-auto mb-3 h-9 w-9 text-primary" /><p>لا توجد مجموعات متاحة حالياً.</p></div>}</>}
     </section>
   </MainLayout>;
 }

@@ -65,6 +65,19 @@ export const GetHomeResponse = zod.object({
 })
 
 
+export const ListGroupsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "categoryCount": zod.number().int(),
+  "supplierCount": zod.number().int()
+})
+export const ListGroupsResponse = zod.array(ListGroupsResponseItem)
+
+
 export const ListItemCategoriesResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -72,6 +85,8 @@ export const ListItemCategoriesResponseItem = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),
@@ -90,6 +105,8 @@ export const ListAdminItemCategoriesResponseItem = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),
@@ -114,7 +131,8 @@ export const createAdminItemCategoryBodyDescriptionMax = 500;
 export const CreateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(createAdminItemCategoryBodyNameMax),
   "icon": zod.string().min(1).max(createAdminItemCategoryBodyIconMax),
-  "parentId": zod.number().int(),
+  "primaryGroupId": zod.number().int(),
+  "parentId": zod.number().int().optional().describe('Optional legacy alias for primaryGroupId.'),
   "description": zod.string().max(createAdminItemCategoryBodyDescriptionMax).nullish()
 })
 
@@ -125,6 +143,8 @@ export const CreateAdminItemCategoryResponse = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),
@@ -135,6 +155,98 @@ export const CreateAdminItemCategoryResponse = zod.object({
 }).and(zod.object({
   "supplierCount": zod.number().int()
 }))
+
+
+export const ListAdminGroupsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "categoryCount": zod.number().int(),
+  "supplierCount": zod.number().int()
+})
+export const ListAdminGroupsResponse = zod.array(ListAdminGroupsResponseItem)
+
+
+export const createAdminGroupBodyNameMax = 100;
+
+export const createAdminGroupBodyIconMax = 24;
+
+export const createAdminGroupBodyDisplayOrderMin = 0;
+
+
+
+export const CreateAdminGroupBody = zod.object({
+  "name": zod.string().min(1).max(createAdminGroupBodyNameMax),
+  "icon": zod.string().min(1).max(createAdminGroupBodyIconMax),
+  "displayOrder": zod.number().int().min(createAdminGroupBodyDisplayOrderMin),
+  "isActive": zod.boolean()
+})
+
+export const CreateAdminGroupResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "categoryCount": zod.number().int(),
+  "supplierCount": zod.number().int()
+})
+
+
+export const UpdateAdminGroupParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminGroupBodyNameMax = 100;
+
+export const updateAdminGroupBodyIconMax = 24;
+
+export const updateAdminGroupBodyDisplayOrderMin = 0;
+
+
+
+export const UpdateAdminGroupBody = zod.object({
+  "name": zod.string().min(1).max(updateAdminGroupBodyNameMax).optional(),
+  "icon": zod.string().min(1).max(updateAdminGroupBodyIconMax).optional(),
+  "displayOrder": zod.number().int().min(updateAdminGroupBodyDisplayOrderMin).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminGroupResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "categoryCount": zod.number().int(),
+  "supplierCount": zod.number().int()
+})
+
+
+export const DeleteAdminGroupParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminGroupResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+export const GetAdminCategoryStatsResponse = zod.object({
+  "groupCount": zod.number().int(),
+  "categoryCount": zod.number().int(),
+  "tagCount": zod.number().int(),
+  "mostTaggedCategory": zod.union([zod.null(),zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "groupCount": zod.number().int()
+})])
+})
 
 
 
@@ -160,12 +272,16 @@ export const updateAdminItemCategoryBodyIconMax = 24;
 
 export const updateAdminItemCategoryBodyDescriptionMax = 500;
 
+export const updateAdminItemCategoryBodyDisplayOrderMin = 0;
+
 
 
 export const UpdateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(updateAdminItemCategoryBodyNameMax).optional(),
   "icon": zod.string().min(1).max(updateAdminItemCategoryBodyIconMax).optional(),
   "description": zod.string().max(updateAdminItemCategoryBodyDescriptionMax).nullish(),
+  "primaryGroupId": zod.number().int().optional(),
+  "displayOrder": zod.number().int().min(updateAdminItemCategoryBodyDisplayOrderMin).optional(),
   "isActive": zod.boolean().optional(),
   "displayOnHome": zod.boolean().optional()
 })
@@ -177,6 +293,8 @@ export const UpdateAdminItemCategoryResponse = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),
@@ -215,6 +333,37 @@ export const TransferAdminItemCategoryResponse = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
+  "description": zod.string().nullable(),
+  "displayOnHome": zod.boolean(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "supplierCount": zod.number().int()
+}).and(zod.object({
+  "supplierCount": zod.number().int()
+}))
+
+
+export const SetAdminItemCategoryTagsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const SetAdminItemCategoryTagsBody = zod.object({
+  "groupIds": zod.array(zod.number().int())
+})
+
+export const SetAdminItemCategoryTagsResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "slug": zod.string(),
+  "groupName": zod.string(),
+  "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),
@@ -1113,6 +1262,8 @@ export const GetSupplierInviteResponse = zod.object({
   "slug": zod.string(),
   "groupName": zod.string(),
   "parentId": zod.number().int().nullable(),
+  "primaryGroupId": zod.number().int().nullable(),
+  "tagGroupIds": zod.array(zod.number().int()),
   "description": zod.string().nullable(),
   "displayOnHome": zod.boolean(),
   "displayOrder": zod.number().int(),

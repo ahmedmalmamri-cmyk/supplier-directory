@@ -31,6 +31,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HomeData"
+  /groups:
+    get:
+      operationId: listGroups
+      tags: [directory]
+      responses:
+        "200":
+          description: Active groups and their visible category and supplier counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Group" }
   /item-categories:
     get:
       operationId: listItemCategories
@@ -71,6 +83,88 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminItemCategory" }
         "400": { description: Invalid category or duplicate name }
+        "401": { description: Admin login required }
+  /admin/groups:
+    get:
+      operationId: listAdminGroups
+      tags: [admin]
+      responses:
+        "200":
+          description: All groups, including inactive groups, for administration
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Group" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminGroup
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupInput" }
+      responses:
+        "201":
+          description: Created group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { description: Invalid group data }
+        "401": { description: Admin login required }
+        "409": { description: Group name or slug already exists }
+  /admin/groups/{id}:
+    patch:
+      operationId: updateAdminGroup
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupUpdate" }
+      responses:
+        "200":
+          description: Updated group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { description: Invalid group data }
+        "401": { description: Admin login required }
+        "404": { description: Group not found }
+        "409": { description: Group name or slug already exists }
+    delete:
+      operationId: deleteAdminGroup
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted group with no primary categories
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GroupDeleteResponse" }
+        "401": { description: Admin login required }
+        "404": { description: Group not found }
+        "409": { description: Move primary categories before deleting this group }
+  /admin/category-stats:
+    get:
+      operationId: getAdminCategoryStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Live summary of groups, categories, and category tags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCategoryStats" }
         "401": { description: Admin login required }
   /admin/item-categories/order:
     patch:
@@ -151,6 +245,30 @@ paths:
         "400": { description: "Invalid destination, name conflict, or category cycle" }
         "401": { description: Admin login required }
         "404": { description: Category not found }
+  /admin/item-categories/{id}/tags:
+    put:
+      operationId: setAdminItemCategoryTags
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryTagsInput" }
+      responses:
+        "200":
+          description: Replaced the category's secondary group tags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid group assignment or primary-group duplication }
+        "401": { description: Admin login required }
+        "404": { description: Category or group not found }
+        "409": { description: Category cannot be tagged in its own primary group }
   /admin/activity-log:
     get:
       operationId: listAdminActivityLog
@@ -886,9 +1004,59 @@ components:
         icon: { type: string }
         slug: { type: string }
         productCount: { type: integer }
+    Group:
+      type: object
+      required: [id, name, slug, icon, displayOrder, isActive, categoryCount, supplierCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        icon: { type: string }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
+        categoryCount: { type: integer }
+        supplierCount: { type: integer }
+    GroupInput:
+      type: object
+      required: [name, icon, displayOrder, isActive]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    GroupUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    GroupDeleteResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    AdminCategoryStats:
+      type: object
+      required: [groupCount, categoryCount, tagCount, mostTaggedCategory]
+      properties:
+        groupCount: { type: integer }
+        categoryCount: { type: integer }
+        tagCount: { type: integer }
+        mostTaggedCategory:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MostTaggedCategory"
+    MostTaggedCategory:
+      type: object
+      required: [id, name, groupCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        groupCount: { type: integer }
     ItemCategory:
       type: object
-      required: [id, name, icon, slug, groupName, parentId, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
+      required: [id, name, icon, slug, groupName, parentId, primaryGroupId, tagGroupIds, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -896,6 +1064,10 @@ components:
         slug: { type: string }
         groupName: { type: string }
         parentId: { type: ["integer", "null"] }
+        primaryGroupId: { type: ["integer", "null"] }
+        tagGroupIds:
+          type: array
+          items: { type: integer }
         description: { type: ["string", "null"] }
         displayOnHome: { type: boolean }
         displayOrder: { type: integer }
@@ -912,11 +1084,12 @@ components:
             supplierCount: { type: integer }
     ItemCategoryInput:
       type: object
-      required: [name, icon, parentId]
+      required: [name, icon, primaryGroupId]
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         icon: { type: string, minLength: 1, maxLength: 24 }
-        parentId: { type: integer }
+        primaryGroupId: { type: integer }
+        parentId: { type: integer, description: "Optional legacy alias for primaryGroupId." }
         description: { type: ["string", "null"], maxLength: 500 }
     ItemCategoryUpdate:
       type: object
@@ -924,8 +1097,18 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         icon: { type: string, minLength: 1, maxLength: 24 }
         description: { type: ["string", "null"], maxLength: 500 }
+        primaryGroupId: { type: integer }
+        displayOrder: { type: integer, minimum: 0 }
         isActive: { type: boolean }
         displayOnHome: { type: boolean }
+    ItemCategoryTagsInput:
+      type: object
+      required: [groupIds]
+      properties:
+        groupIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer }
     ItemCategoryTransferInput:
       type: object
       required: [destinationId, moveSubcategories]

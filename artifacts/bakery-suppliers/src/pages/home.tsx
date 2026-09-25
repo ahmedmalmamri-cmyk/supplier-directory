@@ -26,7 +26,7 @@ function Rating({ value }: { value: number }) {
 
 export default function Home() {
   const { data: homeData, isLoading, error, refetch: refetchHome } = useGetHome();
-  const { categories, roots, isLoading: isLoadingItemCategories, error: itemCategoriesError, refetch: refetchItemCategories } = useTaxonomy();
+  const { categories, groups, roots, isLoading: isLoadingItemCategories, error: itemCategoriesError, refetch: refetchItemCategories } = useTaxonomy();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
@@ -102,7 +102,7 @@ export default function Home() {
             <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-card px-4 py-5 text-center text-sm text-destructive" role="alert"><p>تعذر تحميل التصنيفات.</p><button type="button" data-testid="button-retry-home-categories" onClick={() => void refetchItemCategories()} className="min-h-10 rounded-xl border border-destructive/25 px-4 py-2 font-bold transition-colors hover:bg-destructive/5">إعادة المحاولة</button></div>
           ) : (
             <>
-               <div className="mt-6 max-w-xl"><CategorySearch value={categorySearch} onChange={setCategorySearch} categories={categories} /></div>
+                <div className="mt-6 max-w-xl"><CategorySearch value={categorySearch} onChange={setCategorySearch} categories={categories} groups={groups} /></div>
                {roots.length ? (
                  <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{roots.map((category) => <RootCard key={category.id} category={category} categories={categories} />)}</div>
               ) : (
