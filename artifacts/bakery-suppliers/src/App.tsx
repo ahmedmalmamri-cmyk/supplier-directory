@@ -49,6 +49,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/categories/all" component={CategoriesPage} />
+        <Route path="/category/:slug/:subslug/:itemslug" component={ItemCategoryPage} />
         <Route path="/category/:slug/:subslug" component={ItemCategoryPage} />
         <Route path="/category/:value">
           {(params) => /^\d+$/.test(params.value) ? <CategoryPage /> : <ItemCategoryPage />}

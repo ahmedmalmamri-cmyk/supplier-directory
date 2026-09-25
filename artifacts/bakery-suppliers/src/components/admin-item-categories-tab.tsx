@@ -10,6 +10,7 @@ import {
   useListAdminActivityLog,
   type Group, type AdminItemCategory,
 } from "@workspace/api-client-react";
+import { EmojiPickerField, EmojiSuggestions } from "./emoji-picker-field";
 
 type Dialog =
   | { kind: "group"; group?: Group }
@@ -48,11 +49,13 @@ export default function AdminItemCategoriesTab() {
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [activityOpen, setActivityOpen] = useState(false);
-  const [groupForm, setGroupForm] = useState({ name: "", icon: "", displayOrder: 0, isActive: true });
-  const [categoryForm, setCategoryForm] = useState({ name: "", icon: "", primaryGroupId: "", displayOrder: 0, description: "", isActive: true });
+  const [groupForm, setGroupForm] = useState({ name: "", icon: "", parentId: "", displayOrder: 0, isActive: true });
+  const [categoryForm, setCategoryForm] = useState({ name: "", icon: "", primaryGroupId: "", subGroupId: "", displayOrder: 0, description: "", isActive: true });
   const [destinationId, setDestinationId] = useState("");
+  const [destinationSubGroupId, setDestinationSubGroupId] = useState("");
   const [tagIds, setTagIds] = useState<number[]>([]);
   const groups = useMemo(() => [...(groupsQuery.data ?? [])].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id), [groupsQuery.data]);
+  const rootGroups = groups.filter((group) => group.parentId === null);
   const categories = (categoriesQuery.data ?? []).filter((category) => category.primaryGroupId !== null);
   const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
   const invalidate = async () => {
@@ -90,14 +93,14 @@ export default function AdminItemCategoriesTab() {
 
   const openGroup = (group?: Group) => {
     setNotice(null);
-    setGroupForm(group ? { name: group.name, icon: group.icon, displayOrder: group.displayOrder, isActive: group.isActive } : { name: "", icon: "", displayOrder: groups.length ? Math.max(...groups.map((g) => g.displayOrder)) + 1 : 0, isActive: true });
+    setGroupForm(group ? { name: group.name, icon: group.icon, parentId: String(group.parentId ?? ""), displayOrder: group.displayOrder, isActive: group.isActive } : { name: "", icon: "", parentId: "", displayOrder: rootGroups.length ? Math.max(...rootGroups.map((g) => g.displayOrder)) + 1 : 0, isActive: true });
     setDialog({ kind: "group", group });
   };
   const openCategory = (category?: AdminItemCategory, groupId?: number) => {
     setNotice(null);
     setCategoryForm(category
-      ? { name: category.name, icon: category.icon, primaryGroupId: String(category.primaryGroupId ?? ""), displayOrder: category.displayOrder, description: category.description ?? "", isActive: category.isActive }
-      : { name: "", icon: "", primaryGroupId: String(groupId ?? groups.find((group) => group.isActive)?.id ?? ""), displayOrder: 0, description: "", isActive: true });
+      ? { name: category.name, icon: category.icon, primaryGroupId: String(category.primaryGroupId ?? ""), subGroupId: String(category.subGroupId ?? ""), displayOrder: category.displayOrder, description: category.description ?? "", isActive: category.isActive }
+      : { name: "", icon: "", primaryGroupId: String(groupId && groups.find((group) => group.id === groupId)?.parentId ? groups.find((group) => group.id === groupId)?.parentId : groupId ?? rootGroups.find((group) => group.isActive)?.id ?? ""), subGroupId: groupId && groups.find((group) => group.id === groupId)?.parentId ? String(groupId) : "", displayOrder: 0, description: "", isActive: true });
     setDialog({ kind: "category", category, groupId });
   };
   const openTags = (category: AdminItemCategory) => {
@@ -107,7 +110,7 @@ export default function AdminItemCategoriesTab() {
   };
   const onGroupSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = { ...groupForm, name: groupForm.name.trim(), icon: groupForm.icon.trim(), displayOrder: Number(groupForm.displayOrder) };
+    const data = { ...groupForm, name: groupForm.name.trim(), icon: groupForm.icon.trim(), parentId: groupForm.parentId ? Number(groupForm.parentId) : null, displayOrder: Number(groupForm.displayOrder) };
     if (!data.name || !data.icon) return setNotice({ error: true, message: "اسم المجموعة وأيقونتها مطلوبان." });
     if (dialog?.kind === "group" && dialog.group) updateGroup.mutate({ id: dialog.group.id, data });
     else createGroup.mutate({ data });
@@ -116,21 +119,23 @@ export default function AdminItemCategoriesTab() {
     event.preventDefault();
     const primaryGroupId = Number(categoryForm.primaryGroupId);
     const name = categoryForm.name.trim(), icon = categoryForm.icon.trim();
-    if (!name || !icon || !groupById.get(primaryGroupId)?.isActive) return setNotice({ error: true, message: "أدخل الاسم والأيقونة واختر مجموعة رئيسية نشطة." });
+    const subGroupId = categoryForm.subGroupId ? Number(categoryForm.subGroupId) : null;
+    if (!name || !icon || !groupById.get(primaryGroupId)?.isActive || groupById.get(primaryGroupId)?.parentId !== null) return setNotice({ error: true, message: "أدخل الاسم والأيقونة واختر مجموعة رئيسية نشطة." });
+    if (groups.some((group) => group.parentId === primaryGroupId && group.isActive) && !subGroupId) return setNotice({ error: true, message: "اختر التقسيم الداخلي لهذا القسم." });
     if (dialog?.kind === "category" && dialog.category) {
-      updateCategory.mutate({ id: dialog.category.id, data: { name, icon, primaryGroupId, displayOrder: Number(categoryForm.displayOrder), description: categoryForm.description.trim() || null, isActive: categoryForm.isActive } });
-    } else createCategory.mutate({ data: { name, icon, primaryGroupId, description: categoryForm.description.trim() || null } });
+      updateCategory.mutate({ id: dialog.category.id, data: { name, icon, primaryGroupId, subGroupId, displayOrder: Number(categoryForm.displayOrder), description: categoryForm.description.trim() || null, isActive: categoryForm.isActive } });
+    } else createCategory.mutate({ data: { name, icon, primaryGroupId, subGroupId, description: categoryForm.description.trim() || null } });
   };
 
   const term = search.trim().toLocaleLowerCase("ar");
   const filteredGroups = groups.filter((group) => {
-    const members = categories.filter((item) => item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id));
+    const members = categories.filter((item) => group.parentId === null ? item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id) : item.subGroupId === group.id);
     const statusMatch = (item: AdminItemCategory) => status === "all" || item.isActive === (status === "active");
     return (!term || group.name.toLocaleLowerCase("ar").includes(term) || members.some((item) => item.name.toLocaleLowerCase("ar").includes(term))) &&
       (status === "all" || members.some(statusMatch) || (!term && group.isActive === (status === "active")));
   });
   const shownMembers = (group: Group) => categories.filter((item) =>
-    (item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id)) &&
+    (group.parentId === null ? item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id) : item.subGroupId === group.id) &&
     (status === "all" || item.isActive === (status === "active")) &&
     (!term || group.name.toLocaleLowerCase("ar").includes(term) || item.name.toLocaleLowerCase("ar").includes(term))
   ).sort((a, b) => (a.primaryGroupId === group.id ? 0 : 1) - (b.primaryGroupId === group.id ? 0 : 1) || a.displayOrder - b.displayOrder || a.id - b.id);
@@ -174,7 +179,7 @@ export default function AdminItemCategoriesTab() {
           <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-5">
             <button type="button" data-testid={`button-expand-group-${group.id}`} aria-expanded={open} onClick={() => setExpanded((previous) => { const next = new Set(previous); if (next.has(group.id)) next.delete(group.id); else next.add(group.id); return next; })} className="flex min-w-0 flex-1 items-center gap-3 text-right focus-visible:outline-2 focus-visible:outline-primary">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-2xl" aria-label={`أيقونة ${group.name}`}>{group.icon}</span>
-              <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong data-testid={`text-group-name-${group.id}`} className="text-base">{group.name}</strong><Pill active={group.isActive} /></span><span className="mt-1 block text-xs text-muted-foreground">{fmt(group.categoryCount)} تصنيف · {fmt(group.supplierCount)} مورد · الترتيب {fmt(group.displayOrder)}</span></span>
+              <span className="min-w-0"><span className="flex flex-wrap items-center gap-2"><strong data-testid={`text-group-name-${group.id}`} className="text-base">{group.name}</strong><Pill active={group.isActive} /></span><span className="mt-1 block text-xs text-muted-foreground">{group.parentId !== null && <>{groupById.get(group.parentId)?.name} · </>}{fmt(group.categoryCount)} تصنيف · {fmt(group.supplierCount)} مورد · الترتيب {fmt(group.displayOrder)}</span></span>
               {open ? <ChevronUp className="mr-auto h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="mr-auto h-4 w-4 shrink-0 text-muted-foreground" />}
             </button>
             <div className="flex flex-wrap gap-2">
@@ -185,12 +190,12 @@ export default function AdminItemCategoriesTab() {
           </div>
           {open && <div className="border-t bg-background/50 p-2 md:p-3">{members.length === 0 ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">لا توجد تصنيفات مطابقة في هذه المجموعة.</div> : <div className="space-y-2">{members.map((item) => <div key={item.id} data-testid={`category-row-${group.id}-${item.id}`} className="flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/40 text-lg" aria-label={`أيقونة ${item.name}`}>{item.icon}</span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong data-testid={`text-category-name-${item.id}`} className="text-sm">{item.name}</strong><Pill active={item.isActive} /><span className="text-xs text-muted-foreground">{fmt(item.supplierCount)} مورد</span></div>
-              <div className="mt-1.5 flex flex-wrap gap-1">{item.primaryGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">رئيسية: {groupById.get(item.primaryGroupId)?.name ?? item.groupName}</span>}{item.tagGroupIds.filter((id) => id !== item.primaryGroupId).map((id) => <span key={id} className="rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">وسم: {groupById.get(id)?.name ?? `مجموعة ${id}`}</span>)}</div>
+               <div className="mt-1.5 flex flex-wrap gap-1">{item.primaryGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">رئيسية: {groupById.get(item.primaryGroupId)?.name ?? item.groupName}</span>}{item.subGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">تقسيم: {groupById.get(item.subGroupId)?.name}</span>}{item.tagGroupIds.filter((id) => id !== item.primaryGroupId).map((id) => <span key={id} className="rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">وسم: {groupById.get(id)?.name ?? `مجموعة ${id}`}</span>)}</div>
             </div></div>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" data-testid={`button-edit-category-${item.id}`} className={subtleButton} onClick={() => openCategory(item)}><Pencil className="h-3.5 w-3.5" /> تعديل</button>
               <button type="button" data-testid={`button-tags-category-${item.id}`} className={subtleButton} onClick={() => openTags(item)}><Tags className="h-3.5 w-3.5" /> الوسوم</button>
-              <button type="button" data-testid={`button-move-category-${item.id}`} className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-3.5 w-3.5" /> نقل</button>
+               <button type="button" data-testid={`button-move-category-${item.id}`} className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDestinationSubGroupId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-3.5 w-3.5" /> نقل</button>
                <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> {item.isActive ? "حذف" : "حذف نهائي"}</button>
             </div>
           </div>)}</div>}</div>}
@@ -202,20 +207,28 @@ export default function AdminItemCategoriesTab() {
     </div>
 
     {dialog?.kind === "group" && <Modal title={dialog.group ? "تعديل المجموعة" : "مجموعة جديدة"} onClose={() => setDialog(null)}>
-      <form onSubmit={onGroupSubmit} className="space-y-4"><div className="grid gap-4 sm:grid-cols-[1fr_7rem]"><Label text="اسم المجموعة"><input required maxLength={100} data-testid="input-group-name" className={field} value={groupForm.name} onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })} /></Label><Label text="الأيقونة"><input required maxLength={24} data-testid="input-group-icon" className={field} value={groupForm.icon} onChange={(e) => setGroupForm({ ...groupForm, icon: e.target.value })} /></Label></div>
+      <form onSubmit={onGroupSubmit} className="space-y-4">
+        <Label text="اسم المجموعة"><input required maxLength={100} data-testid="input-group-name" className={field} value={groupForm.name} onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })} /></Label>
+        <EmojiSuggestions name={groupForm.name} onSelect={(icon) => setGroupForm((form) => ({ ...form, icon }))} />
+        <div><span className="mb-1.5 block text-xs font-extrabold">الأيقونة</span><EmojiPickerField idPrefix="group-icon" name={groupForm.name} value={groupForm.icon} onChange={(icon) => setGroupForm((form) => ({ ...form, icon }))} inputTestId="input-group-icon" /></div>
+        <Label text="القسم الأب"><select data-testid="select-group-parent" className={field} value={groupForm.parentId} onChange={(e) => setGroupForm({ ...groupForm, parentId: e.target.value })}><option value="">مجموعة رئيسية</option>{rootGroups.filter((g) => g.isActive && g.id !== dialog.group?.id).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>
         <Label text="ترتيب العرض"><input required min={0} type="number" data-testid="input-group-order" className={field} value={groupForm.displayOrder} onChange={(e) => setGroupForm({ ...groupForm, displayOrder: Number(e.target.value) })} /></Label>
         <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" data-testid="checkbox-group-active" checked={groupForm.isActive} onChange={(e) => setGroupForm({ ...groupForm, isActive: e.target.checked })} className="accent-primary" /> مجموعة نشطة</label>
         <Footer pending={pending} onClose={() => setDialog(null)} /></form></Modal>}
     {dialog?.kind === "category" && <Modal title={dialog.category ? "تعديل التصنيف" : "تصنيف جديد"} onClose={() => setDialog(null)}>
-      <form onSubmit={onCategorySubmit} className="space-y-4"><div className="grid gap-4 sm:grid-cols-[1fr_7rem]"><Label text="اسم التصنيف"><input required maxLength={100} data-testid="input-category-name" className={field} value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} /></Label><Label text="الأيقونة"><input required maxLength={24} data-testid="input-category-icon" className={field} value={categoryForm.icon} onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })} /></Label></div>
-        <Label text="المجموعة الرئيسية"><select required data-testid="select-category-primary-group" className={field} value={categoryForm.primaryGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, primaryGroupId: e.target.value })}><option value="">اختر مجموعة</option>{groups.filter((g) => g.isActive || String(g.id) === categoryForm.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}{!g.isActive ? " (معطلة)" : ""}</option>)}</select></Label>
+      <form onSubmit={onCategorySubmit} className="space-y-4">
+        <Label text="اسم التصنيف"><input required maxLength={100} data-testid="input-category-name" className={field} value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} /></Label>
+        <EmojiSuggestions name={categoryForm.name} onSelect={(icon) => setCategoryForm((form) => ({ ...form, icon }))} />
+        <div><span className="mb-1.5 block text-xs font-extrabold">الأيقونة</span><EmojiPickerField idPrefix="category-icon" name={categoryForm.name} value={categoryForm.icon} onChange={(icon) => setCategoryForm((form) => ({ ...form, icon }))} inputTestId="input-category-icon" /></div>
+        <Label text="المجموعة الرئيسية"><select required data-testid="select-category-primary-group" className={field} value={categoryForm.primaryGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, primaryGroupId: e.target.value, subGroupId: "" })}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive || String(g.id) === categoryForm.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}{!g.isActive ? " (معطلة)" : ""}</option>)}</select></Label>
+        {groups.some((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive) && <Label text="التقسيم الداخلي"><select required data-testid="select-category-subgroup" className={field} value={categoryForm.subGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, subGroupId: e.target.value })}><option value="">اختر تقسيمًا</option>{groups.filter((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Label>}
         <Label text="الوصف"><textarea maxLength={500} data-testid="input-category-description" className={`${field} min-h-20 py-2`} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} /></Label>
         {dialog.category && <><Label text="ترتيب العرض"><input type="number" min={0} required data-testid="input-category-order" className={field} value={categoryForm.displayOrder} onChange={(e) => setCategoryForm({ ...categoryForm, displayOrder: Number(e.target.value) })} /></Label><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" data-testid="checkbox-category-active" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} className="accent-primary" /> تصنيف نشط</label></>}
         <Footer pending={pending} onClose={() => setDialog(null)} /></form></Modal>}
     {dialog?.kind === "tags" && <Modal title={`وسوم ${dialog.category.name}`} onClose={() => setDialog(null)}><p className="mb-4 text-sm text-muted-foreground">المجموعة الرئيسية: <strong className="text-foreground">{groupById.get(dialog.category.primaryGroupId ?? -1)?.name ?? dialog.category.groupName}</strong>. اختر كل المجموعات الثانوية المراد ربطها بهذا التصنيف.</p>
-      <div className="max-h-72 space-y-2 overflow-auto">{groups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-bold hover:bg-muted/40"><input type="checkbox" data-testid={`checkbox-category-tag-${g.id}`} checked={tagIds.includes(g.id)} onChange={(e) => setTagIds((ids) => e.target.checked ? [...ids, g.id] : ids.filter((id) => id !== g.id))} className="accent-primary" /> <span className="text-lg">{g.icon}</span>{g.name}</label>)}</div>
+       <div className="max-h-72 space-y-2 overflow-auto">{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-bold hover:bg-muted/40"><input type="checkbox" data-testid={`checkbox-category-tag-${g.id}`} checked={tagIds.includes(g.id)} onChange={(e) => setTagIds((ids) => e.target.checked ? [...ids, g.id] : ids.filter((id) => id !== g.id))} className="accent-primary" /> <span className="text-lg">{g.icon}</span>{g.name}</label>)}</div>
       <div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-save-category-tags" className={mainButton} disabled={pending} onClick={() => setTags.mutate({ id: dialog.category.id, data: { groupIds: tagIds } })}>{pending ? "جارٍ الحفظ..." : "حفظ جميع الوسوم"}</button></div></Modal>}
-    {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك إدارة المجموعات الثانوية من نافذة الوسوم.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => setDestinationId(e.target.value)}><option value="">اختر مجموعة</option>{groups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
+    {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك إدارة المجموعات الثانوية من نافذة الوسوم.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => { setDestinationId(e.target.value); setDestinationSubGroupId(""); }}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>{groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && <div className="mt-4"><Label text="التقسيم الداخلي الجديد"><select required data-testid="select-move-category-subgroup" className={field} value={destinationSubGroupId} onChange={(e) => setDestinationSubGroupId(e.target.value)}><option value="">اختر تقسيمًا</option>{groups.filter((g) => g.parentId === Number(destinationId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Label></div>}<div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId || (groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && !destinationSubGroupId)} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), subGroupId: destinationSubGroupId ? Number(destinationSubGroupId) : null, moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
      {dialog?.kind === "delete-category" && <Modal title={dialog.category.isActive ? "تعطيل التصنيف" : "حذف التصنيف نهائياً"} onClose={() => { if (!pending) setDialog(null); }}><p className="text-sm leading-7">{dialog.category.isActive ? <>هل تريد تعطيل <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</> : <>هل تريد حذف <strong>{dialog.category.name}</strong> نهائياً؟ لا يمكن التراجع عن هذا الإجراء أو استعادة سجل التصنيف. سيُمنع الحذف إذا كانت له تصنيفات فرعية أو ارتباطات بموردين أو أسماء بديلة أو طلبات موردين تشير إليه.</>}</p>{notice?.error && <p role="alert" data-testid="error-delete-category" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.message}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" disabled={pending} className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-category" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => dialog.category.isActive ? deleteCategory.mutate({ id: dialog.category.id }) : permanentlyDeleteCategory.mutate({ id: dialog.category.id })}>{pending ? "جارٍ الحذف..." : dialog.category.isActive ? "تعطيل التصنيف" : "حذف نهائي"}</button></div></Modal>}
     {dialog?.kind === "delete-group" && <Modal title="حذف المجموعة" onClose={() => setDialog(null)}><p className="text-sm leading-7">هل تريد حذف مجموعة <strong>{dialog.group.name}</strong>؟ يجب نقل التصنيفات التي تتخذها مجموعة رئيسية قبل حذفها. ستُزال أيضاً وسوم هذه المجموعة من التصنيفات الأخرى.</p><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-group" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => deleteGroup.mutate({ id: dialog.group.id })}>حذف المجموعة</button></div></Modal>}
     {dialog && dialog.kind !== "delete-category" && notice?.error && <div role="alert" className="fixed bottom-5 left-5 right-5 z-[60] mx-auto max-w-lg rounded-xl border border-destructive/40 bg-card p-4 text-sm font-bold text-destructive shadow-warm-lg">{notice.message}</div>}

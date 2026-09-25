@@ -406,3 +406,45 @@ mtime_ms = 1790332513818
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/5ec85181-90bf-478b-8918-48d1586962e1/b285eb71-d735-4aba-aee6-adfaf3757014"
 storage_version_token = "1790332570126588"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "oJLeihaVgO-6I8rOWPDoG"
+uri = "file://screenshots/cake-home.jpg"
+type = "image"
+title = "الصفحة الرئيسية"
+description = "المجموعات الرئيسية الإحدى عشرة، بينها مستلزمات الكيك والحلويات."
+logical_id = "04591a0f-1e4e-4947-a959-7257666f2f09"
+content_hash = "sha256:4bef26a31c36a83a6666fa2503e6e52143efc1d840d573b05f48965eb28ab5f8"
+size = 230697
+mtime_ms = 1790360920276
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/04591a0f-1e4e-4947-a959-7257666f2f09/19f6a282-e279-4962-9c6a-fa5e02fe63d0"
+storage_version_token = "1790360971403800"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "RGzK1hpbF9oac83zCQfER"
+uri = "file://screenshots/cake-supplies.jpg"
+type = "image"
+title = "قسم مستلزمات الكيك والحلويات"
+description = "التقسيمات الداخلية الستة مع الأعداد الفعلية."
+logical_id = "c5b50d0c-a06f-4205-9f67-0ee2be7d0245"
+content_hash = "sha256:a92fd8271df7ffbee97e175c0b66a9c4c3f705dac23d339fe3ce9efe46568386"
+size = 71487
+mtime_ms = 1790360733492
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c5b50d0c-a06f-4205-9f67-0ee2be7d0245/08581c3d-3bb1-4301-9af4-952ff2b4cf32"
+storage_version_token = "1790360972764335"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "C7JiJk_iYd51--mWMwxUc"
+uri = "file://screenshots/cake-mixes.jpg"
+type = "image"
+title = "تقسيم خلطات جاهزة"
+description = "أصناف الخلطات التي نُقلت إلى التقسيم."
+logical_id = "28dda852-d27d-48c4-80c9-9629a3945bff"
+content_hash = "sha256:4844b5adb78a3c47442bf1650b840a5f8761b6c4b9a1073264bf0e72a9feafa4"
+size = 90896
+mtime_ms = 1790360735656
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/28dda852-d27d-48c4-80c9-9629a3945bff/963b17e1-e533-42cb-b424-6fd092a2d62f"
+storage_version_token = "1790360974022974"
+content_type = "image/jpeg"

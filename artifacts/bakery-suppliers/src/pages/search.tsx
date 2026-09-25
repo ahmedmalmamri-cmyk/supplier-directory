@@ -5,7 +5,7 @@ import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsap
 import { getSearchDirectoryQueryKey, useSearchDirectory } from "@workspace/api-client-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMemo } from "react";
-import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
+import { categoryBreadcrumb, categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getItemCategoryIcon } from "@/lib/item-category-icons";
 
 export default function SearchPage() {
@@ -25,7 +25,7 @@ export default function SearchPage() {
     return categories.filter((category) => {
       if (category.parentId === null && groups.some((group) => group.id === category.id)) return false;
       const associatedGroups = groups.filter((group) => group.id === category.primaryGroupId || category.tagGroupIds?.includes(group.id));
-      return `${category.name} ${category.description ?? ""} ${category.slug} ${associatedGroups.map((group) => group.name).join(" ")}`.toLocaleLowerCase("ar").includes(term);
+       return `${category.name} ${category.description ?? ""} ${category.slug} ${categoryBreadcrumb(category, groups)} ${associatedGroups.map((group) => group.name).join(" ")}`.toLocaleLowerCase("ar").includes(term);
     });
   }, [categories, groups, q]);
 
@@ -69,13 +69,10 @@ export default function SearchPage() {
               {isLoadingTaxonomy ? <div role="status" aria-label="جارٍ تحميل التصنيفات"><LoadingSpinner className="min-h-24" /></div>
                 : taxonomyError ? <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">تعذر تحميل التصنيفات. <button type="button" onClick={() => void refetchTaxonomy()} className="font-bold underline">إعادة المحاولة</button></div>
                 : matchingCategories.length ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{matchingCategories.map((category) => {
-                  const primaryGroup = groups.find((group) => group.id === category.primaryGroupId);
-                  const taggedGroups = groups.filter((group) => category.tagGroupIds?.includes(group.id) && group.id !== primaryGroup?.id);
-                  const groupNames = [primaryGroup?.name, ...taggedGroups.map((group) => group.name)].filter(Boolean);
                   const Icon = getItemCategoryIcon(category.icon);
                   return <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`card-search-category-${category.id}`} className="flex min-h-24 items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5">
                     <Icon className="h-9 w-9 shrink-0 text-primary" aria-hidden="true" />
-                    <span className="min-w-0"><strong className="block truncate">{category.name}</strong><span className="mt-1 block text-xs text-muted-foreground">{groupNames.length ? `ينتمي إلى: ${groupNames.join("، ")}` : category.groupName}</span></span>
+                     <span className="min-w-0"><strong className="block truncate">{category.name}</strong><span className="mt-1 block text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</span></span>
                   </Link>;
                 })}</div> : <p className="rounded-2xl border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">لا توجد تصنيفات مطابقة.</p>}
             </section>

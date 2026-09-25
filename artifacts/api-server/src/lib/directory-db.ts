@@ -1542,6 +1542,330 @@ if (!restoreSupplierRatingFallbacksMigration) {
   ).run("restore-supplier-rating-fallbacks", new Date().toISOString());
 }
 
+const cakeSupplyRestructureMigrationName = "cake-supplies-subgroups-v1";
+const cakeSupplyRestructureMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(cakeSupplyRestructureMigrationName) as { name: string } | undefined;
+if (!cakeSupplyRestructureMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const groupColumns = directoryDb.prepare("PRAGMA table_info(groups)").all() as Array<{ name: string }>;
+    if (!groupColumns.some((column) => column.name === "parent_id")) {
+      directoryDb.exec("ALTER TABLE groups ADD COLUMN parent_id INTEGER REFERENCES groups(id)");
+    }
+    const categoryColumns = directoryDb.prepare("PRAGMA table_info(item_categories)").all() as Array<{ name: string }>;
+    if (!categoryColumns.some((column) => column.name === "sub_group_id")) {
+      directoryDb.exec("ALTER TABLE item_categories ADD COLUMN sub_group_id INTEGER REFERENCES groups(id)");
+    }
+    const oldRoots = directoryDb.prepare(`
+      SELECT id, slug FROM groups WHERE slug IN ('cake-mixes', 'cake-fillings', 'others')
+    `).all() as Array<{ id: number; slug: string }>;
+    if (oldRoots.length !== 3) {
+      throw new Error("Cannot restructure cake supplies: one or more legacy roots are missing.");
+    }
+    const oldRootIds = new Map(oldRoots.map((row) => [row.slug, row.id]));
+    const cakeRootId = (directoryDb.prepare(`
+      SELECT COALESCE(MAX(id), 0) + 1 AS id FROM (
+        SELECT id FROM groups
+        UNION ALL SELECT id FROM item_categories
+        UNION ALL SELECT id FROM permanently_deleted_item_categories
+      )
+    `).get() as { id: number }).id;
+    const subgroupSpecs = [
+      ["خلطات جاهزة", "mixes", "🍰"],
+      ["حشوات وكريمات", "fillings", "🍓"],
+      ["أدوات تزيين", "decorations", "🎨"],
+      ["قوالب كيك", "molds", "🎂"],
+      ["ورق وقواعد", "paper", "📄"],
+      ["مواد خام ومتنوعات", "raw-misc", "🧴"],
+    ] as const;
+    directoryDb.prepare(`
+      INSERT INTO groups (id, name, slug, icon, display_order, is_active, parent_id)
+      VALUES (?, 'مستلزمات الكيك والحلويات', 'cake-supplies', '🎂', 6, 1, NULL)
+    `).run(cakeRootId);
+    directoryDb.prepare(`
+      INSERT INTO item_categories
+        (id, name, icon, group_name, parent_id, slug, description, display_on_home,
+         display_order, is_active, created_at, updated_at, primary_group_id, sub_group_id)
+      VALUES (?, 'مستلزمات الكيك والحلويات', '🎂', 'مستلزمات الكيك والحلويات', NULL, 'cake-supplies',
+        NULL, 1, 6, 1, ?, ?, NULL, NULL)
+    `).run(cakeRootId, now, now);
+    const addLegacyRootAlias = directoryDb.prepare(`
+      INSERT OR IGNORE INTO item_category_aliases (alias, item_category_id)
+      VALUES (?, ?)
+    `);
+    for (const alias of ["خلطات جاهزة", "خلطات قسم الكيك الجاهزة", "حشوات الكيك", "مواد أخرى"]) {
+      addLegacyRootAlias.run(alias, cakeRootId);
+    }
+
+    const subgroupIds = new Map<string, number>();
+    directoryDb.prepare(`
+      UPDATE groups SET
+        name = CASE WHEN slug = 'cake-mixes' THEN 'خلطات الكيك القديمة' ELSE name END,
+        is_active = 0, display_order = 0
+      WHERE id IN (?, ?, ?)
+    `).run(oldRootIds.get("cake-mixes")!, oldRootIds.get("cake-fillings")!, oldRootIds.get("others")!);
+    let nextId = cakeRootId + 1;
+    for (const [name, slug, icon] of subgroupSpecs) {
+      subgroupIds.set(slug, nextId);
+      directoryDb.prepare(`
+        INSERT INTO groups (id, name, slug, icon, display_order, is_active, parent_id)
+        VALUES (?, ?, ?, ?, ?, 1, ?)
+      `).run(nextId, name, slug, icon, subgroupSpecs.findIndex((item) => item[1] === slug) + 1, cakeRootId);
+      nextId += 1;
+    }
+    const updateCategory = directoryDb.prepare(`
+      UPDATE item_categories
+      SET parent_id = ?, primary_group_id = ?, sub_group_id = ?, group_name = ?,
+          display_on_home = 0, updated_at = ?
+      WHERE id = ?
+    `);
+    for (const [legacyRootSlug, subgroupSlug] of [
+      ["cake-mixes", "mixes"],
+      ["cake-fillings", "fillings"],
+      ["others", "raw-misc"],
+    ] as const) {
+      updateCategory.run(
+        cakeRootId,
+        cakeRootId,
+        subgroupIds.get(subgroupSlug)!,
+        "مستلزمات الكيك والحلويات",
+        now,
+        oldRootIds.get(legacyRootSlug)!,
+      );
+      directoryDb.prepare(`
+        UPDATE item_categories SET is_active = 1 WHERE id = ?
+      `).run(oldRootIds.get(legacyRootSlug)!);
+    }
+    const subgroupByOldRoot = new Map<number, string>([
+      [oldRootIds.get("cake-mixes")!, "mixes"],
+      [oldRootIds.get("cake-fillings")!, "fillings"],
+      [oldRootIds.get("others")!, "raw-misc"],
+    ]);
+    const oldRootChildren = directoryDb.prepare(`
+      SELECT id, primary_group_id AS primaryGroupId
+      FROM item_categories
+      WHERE primary_group_id IN (?, ?, ?) AND parent_id IS NOT NULL
+    `).all(oldRootIds.get("cake-mixes")!, oldRootIds.get("cake-fillings")!, oldRootIds.get("others")!) as Array<{
+      id: number;
+      primaryGroupId: number;
+    }>;
+    for (const category of oldRootChildren) {
+      const subgroupSlug = subgroupByOldRoot.get(category.primaryGroupId) ?? "raw-misc";
+      updateCategory.run(
+        cakeRootId,
+        cakeRootId,
+        subgroupIds.get(subgroupSlug)!,
+        "مستلزمات الكيك والحلويات",
+        now,
+        category.id,
+      );
+    }
+
+    const namedSubgroupMappings: Array<[string, string, string]> = [
+      ["خلطات كيك", "mixes", "🍰"],
+      ["أدوات تزيين", "decorations", "🎨"], ["رؤوس تزيين", "decorations", "🎂"],
+      ["ورق ذهب", "decorations", "✨"], ["لولو كرات", "decorations", "⚪"],
+      ["فرمسلي", "decorations", "✨"], ["حبر طابعة", "decorations", "🖨️"],
+      ["رشات لولو", "decorations", "✨"],
+      ["قوالب كيك دائرية", "molds", "🎂"], ["قوالب كيك مربعة", "molds", "🎂"],
+      ["قوالب كيك مستطيلة", "molds", "🎂"],
+      ["ورق كيك", "paper", "📄"], ["قواعد كيك", "paper", "📄"],
+      ["ورق زبدة", "paper", "📄"], ["ورق سكر", "paper", "📄"],
+      ["ورق ويفر", "paper", "📄"],
+    ];
+    for (const [categoryName, subgroupSlug, icon] of namedSubgroupMappings) {
+      const category = directoryDb.prepare(
+        "SELECT id FROM item_categories WHERE name = ?",
+      ).get(categoryName) as { id: number } | undefined;
+      if (category) {
+        updateCategory.run(
+          cakeRootId,
+          cakeRootId,
+          subgroupIds.get(subgroupSlug)!,
+          "مستلزمات الكيك والحلويات",
+          now,
+          category.id,
+        );
+      } else {
+        const id = nextId;
+        nextId += 1;
+        const baseSlug = itemCategorySlugBase(categoryName);
+        let slug = baseSlug;
+        let suffix = 1;
+        while (directoryDb.prepare(`
+          SELECT 1 FROM item_categories WHERE slug = ?
+          UNION ALL SELECT 1 FROM groups WHERE slug = ?
+          LIMIT 1
+        `).get(slug, slug)) {
+          slug = `${baseSlug}-${id}${suffix > 1 ? `-${suffix}` : ""}`;
+          suffix += 1;
+        }
+        directoryDb.prepare(`
+          INSERT INTO item_categories
+            (id, name, icon, group_name, parent_id, slug, description, display_on_home,
+             display_order, is_active, created_at, updated_at, primary_group_id, sub_group_id)
+          VALUES (?, ?, ?, 'مستلزمات الكيك والحلويات', ?, ?, NULL, 0, 1, 1, ?, ?, ?, ?)
+        `).run(
+          id,
+          categoryName,
+          icon,
+          cakeRootId,
+          slug,
+          now,
+          now,
+          cakeRootId,
+          subgroupIds.get(subgroupSlug)!,
+        );
+      }
+    }
+    for (const [slug, oldName, newName] of [
+      ["dairy", "منتجات الألبان", "الحليب ومشتقاته"],
+      ["dough", "العجائن والجاهز", "العجائن والمخبوزات"],
+    ] as const) {
+      const renamedRoot = directoryDb.prepare(
+        "SELECT id FROM groups WHERE slug = ? AND parent_id IS NULL",
+      ).get(slug) as { id: number } | undefined;
+      if (!renamedRoot) throw new Error(`Cannot rename missing category root: ${slug}`);
+      directoryDb.prepare("UPDATE groups SET name = ? WHERE id = ?").run(newName, renamedRoot.id);
+      directoryDb.prepare(`
+        UPDATE item_categories SET name = ?, group_name = ?, updated_at = ?
+        WHERE id = ? AND parent_id IS NULL
+      `).run(newName, newName, now, renamedRoot.id);
+      directoryDb.prepare(`
+        UPDATE item_categories SET group_name = ?, updated_at = ?
+        WHERE primary_group_id = ?
+      `).run(newName, now, renamedRoot.id);
+      addLegacyRootAlias.run(oldName, renamedRoot.id);
+    }
+    directoryDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_groups_parent_id ON groups (parent_id);
+      CREATE INDEX IF NOT EXISTS idx_item_categories_sub_group_id ON item_categories (sub_group_id);
+    `);
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(cakeSupplyRestructureMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const requestedCakeSupplyCategoriesMigrationName = "requested-cake-supply-categories-v1";
+const requestedCakeSupplyCategoriesMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(requestedCakeSupplyCategoriesMigrationName) as { name: string } | undefined;
+if (!requestedCakeSupplyCategoriesMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const root = directoryDb.prepare(`
+      SELECT id, name FROM groups WHERE slug = 'cake-supplies' AND is_active = 1 AND parent_id IS NULL
+    `).get() as { id: number; name: string } | undefined;
+    if (!root) throw new Error("Cannot seed requested cake categories: active cake-supplies root is missing.");
+    const subgroupIds = new Map(
+      (directoryDb.prepare(`
+        SELECT id, slug FROM groups WHERE parent_id = ? AND is_active = 1
+      `).all(root.id) as Array<{ id: number; slug: string }>).map((group) => [group.slug, group.id]),
+    );
+    const requestedCategories: Array<[string, string, string]> = [
+      ["خلطات كيك", "mixes", "🍰"],
+      ["أدوات تزيين", "decorations", "🎨"], ["رؤوس تزيين", "decorations", "🎂"],
+      ["ورق ذهب", "decorations", "✨"], ["لولو كرات", "decorations", "⚪"],
+      ["فرمسلي", "decorations", "✨"], ["حبر طابعة", "decorations", "🖨️"],
+      ["رشات لولو", "decorations", "✨"],
+      ["قوالب كيك دائرية", "molds", "🎂"], ["قوالب كيك مربعة", "molds", "🎂"],
+      ["قوالب كيك مستطيلة", "molds", "🎂"],
+      ["ورق كيك", "paper", "📄"], ["قواعد كيك", "paper", "📄"],
+      ["ورق زبدة", "paper", "📄"], ["ورق سكر", "paper", "📄"],
+      ["ورق ويفر", "paper", "📄"],
+    ];
+    let nextId = (directoryDb.prepare(`
+      SELECT COALESCE(MAX(id), 0) + 1 AS id FROM (
+        SELECT id FROM groups
+        UNION ALL SELECT id FROM item_categories
+        UNION ALL SELECT id FROM permanently_deleted_item_categories
+      )
+    `).get() as { id: number }).id;
+    for (const [name, subgroupSlug, icon] of requestedCategories) {
+      if (directoryDb.prepare("SELECT id FROM item_categories WHERE name = ?").get(name)) continue;
+      const subgroupId = subgroupIds.get(subgroupSlug);
+      if (subgroupId === undefined) throw new Error(`Cannot seed category ${name}: subgroup ${subgroupSlug} is missing.`);
+      const id = nextId++;
+      const baseSlug = itemCategorySlugBase(name);
+      let slug = baseSlug;
+      let suffix = 1;
+      while (directoryDb.prepare(`
+        SELECT 1 FROM item_categories WHERE slug = ?
+        UNION ALL SELECT 1 FROM groups WHERE slug = ?
+        LIMIT 1
+      `).get(slug, slug)) {
+        slug = `${baseSlug}-${id}${suffix > 1 ? `-${suffix}` : ""}`;
+        suffix += 1;
+      }
+      directoryDb.prepare(`
+        INSERT INTO item_categories
+          (id, name, icon, group_name, parent_id, slug, description, display_on_home,
+           display_order, is_active, created_at, updated_at, primary_group_id, sub_group_id)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, 0, 1, 1, ?, ?, ?, ?)
+      `).run(id, name, icon, root.name, root.id, slug, now, now, root.id, subgroupId);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(requestedCakeSupplyCategoriesMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const legacyCakeRootCategoryMigrationName = "legacy-cake-root-category-paths-v1";
+const legacyCakeRootCategoryMigration = directoryDb.prepare(
+  "SELECT name FROM directory_migrations WHERE name = ?",
+).get(legacyCakeRootCategoryMigrationName) as { name: string } | undefined;
+if (!legacyCakeRootCategoryMigration) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    const root = directoryDb.prepare(`
+      SELECT id, name FROM groups WHERE slug = 'cake-supplies' AND parent_id IS NULL
+    `).get() as { id: number; name: string } | undefined;
+    if (!root) throw new Error("Cannot preserve legacy cake category paths: cake-supplies root is missing.");
+    const legacyRows = [
+      ["cake-mixes", "mixes"],
+      ["cake-fillings", "fillings"],
+      ["others", "raw-misc"],
+    ] as const;
+    for (const [legacySlug, subgroupSlug] of legacyRows) {
+      const legacyGroup = directoryDb.prepare(
+        "SELECT id FROM groups WHERE slug = ?",
+      ).get(legacySlug) as { id: number } | undefined;
+      const subgroup = directoryDb.prepare(
+        "SELECT id FROM groups WHERE slug = ? AND parent_id = ?",
+      ).get(subgroupSlug, root.id) as { id: number } | undefined;
+      if (!legacyGroup || !subgroup) {
+        throw new Error(`Cannot preserve legacy category path ${legacySlug}: its group/subgroup is missing.`);
+      }
+      directoryDb.prepare(`
+        UPDATE item_categories
+        SET parent_id = ?, primary_group_id = ?, sub_group_id = ?, group_name = ?,
+            is_active = 1, display_on_home = 0, updated_at = ?
+        WHERE id = ? AND parent_id IS NULL
+      `).run(root.id, root.id, subgroup.id, root.name, now, legacyGroup.id);
+    }
+    directoryDb.prepare(`
+      INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
+    `).run(legacyCakeRootCategoryMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 export function refreshSupplierRatings(supplierId?: number) {
   const where = supplierId ? "WHERE id = ?" : "";
   const statement = directoryDb.prepare(`

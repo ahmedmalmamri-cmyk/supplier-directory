@@ -84,9 +84,26 @@ function createPreMigrationDatabase(databasePath: string) {
     VALUES (2001, 'Test primary leaf', '🌾', ?, 1001,
       'test-primary-leaf', 1, 1, ?, ?)
   `).run(canonicalRoots[0][0], now, now);
+  for (const [id, name, rootId] of [
+    [2002, "Test legacy mix", 14],
+    [2003, "Test legacy filling", 1012],
+    [2004, "Test legacy other", 1013],
+    [2005, "خلطات كيك", 14],
+  ] as const) {
+    database.prepare(`
+      INSERT INTO item_categories
+        (id, name, icon, group_name, parent_id, slug, display_order,
+         is_active, created_at, updated_at)
+      VALUES (?, ?, '🧪', ?, ?, ?, 1, 1, ?, ?)
+    `).run(id, name, "legacy", rootId, `test-category-${id}`, now, now);
+  }
   database.prepare(`
     INSERT INTO supplier_categories (supplier_id, item_category_id)
     VALUES (1, 2001)
+  `).run();
+  database.prepare(`
+    INSERT INTO supplier_categories (supplier_id, item_category_id)
+    VALUES (1, 2005)
   `).run();
   const insertMigration = database.prepare(`
     INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
@@ -148,8 +165,8 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
     });
     const { directoryDb } = await import(pathToFileURL(migrationEntry).href);
     const groups = directoryDb.prepare(`
-      SELECT id, name, slug FROM groups ORDER BY id
-    `).all();
+      SELECT id, name, slug, parent_id AS parentId FROM groups ORDER BY id
+    `).all().map((row: Record<string, unknown>) => ({ ...row }));
     const mirroredRoots = directoryDb.prepare(`
       SELECT g.id, g.name, g.slug
       FROM groups g
@@ -181,9 +198,72 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
       FROM supplier_categories ORDER BY supplier_id, item_category_id
     `).all();
 
-    assert.equal(groups.length, 13);
-    assert.deepEqual(groups, previousRoots);
-    assert.deepEqual(mirroredRoots, previousRoots);
+    assert.equal(groups.length, 20);
+    assert.deepEqual(
+      groups.filter((group: any) => group.parentId == null && group.slug !== "cake-supplies")
+        .map(({ id, name, slug }: any) => ({ id, name, slug })),
+      previousRoots.map((root: any) => ({
+        ...root,
+        name: root.slug === "cake-mixes" ? "خلطات الكيك القديمة" : root.name,
+      })),
+    );
+    assert.equal(mirroredRoots.length, 11);
+    assert.ok(directoryDb.prepare(`
+      SELECT id FROM groups WHERE slug = 'cake-supplies' AND parent_id IS NULL AND is_active = 1
+    `).get());
+    assert.equal((directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM groups
+      WHERE is_active = 1 AND parent_id IS NULL
+    `).get() as { count: number }).count, 11);
+    assert.equal((directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM groups
+      WHERE parent_id = (SELECT id FROM groups WHERE slug = 'cake-supplies')
+        AND slug IN ('mixes', 'fillings', 'decorations', 'molds', 'paper', 'raw-misc')
+    `).get() as { count: number }).count, 6);
+    assert.deepEqual(
+      directoryDb.prepare(`
+        SELECT c.slug, c.is_active AS isActive, g.slug AS subgroupSlug
+        FROM item_categories c JOIN groups g ON g.id = c.sub_group_id
+        WHERE c.slug IN ('cake-mixes', 'cake-fillings', 'others')
+        ORDER BY c.slug
+      `).all().map((row: Record<string, unknown>) => ({ ...row })),
+      [
+        { slug: "cake-fillings", isActive: 1, subgroupSlug: "fillings" },
+        { slug: "cake-mixes", isActive: 1, subgroupSlug: "mixes" },
+        { slug: "others", isActive: 1, subgroupSlug: "raw-misc" },
+      ],
+    );
+    const subgroupAssignments = directoryDb.prepare(`
+      SELECT c.name, c.id, g.slug AS subgroupSlug
+      FROM item_categories c
+      JOIN groups g ON g.id = c.sub_group_id
+      WHERE c.id IN (2002, 2003, 2004, 2005)
+      ORDER BY c.id
+    `).all().map((row: Record<string, unknown>) => ({ ...row }));
+    assert.deepEqual(subgroupAssignments, [
+      { name: "Test legacy mix", id: 2002, subgroupSlug: "mixes" },
+      { name: "Test legacy filling", id: 2003, subgroupSlug: "fillings" },
+      { name: "Test legacy other", id: 2004, subgroupSlug: "raw-misc" },
+      { name: "خلطات كيك", id: 2005, subgroupSlug: "mixes" },
+    ]);
+    assert.equal((directoryDb.prepare(`
+      SELECT g.slug AS slug FROM item_categories c
+      JOIN groups g ON g.id = c.sub_group_id WHERE c.name = 'أدوات تزيين'
+    `).get() as { slug: string }).slug, "decorations");
+    const requestedCategoryNames = [
+      "خلطات كيك", "أدوات تزيين", "رؤوس تزيين", "ورق ذهب", "لولو كرات", "فرمسلي",
+      "حبر طابعة", "رشات لولو", "قوالب كيك دائرية", "قوالب كيك مربعة",
+      "قوالب كيك مستطيلة", "ورق كيك", "قواعد كيك", "ورق زبدة", "ورق سكر", "ورق ويفر",
+    ];
+    assert.equal((directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM item_categories
+      WHERE name IN (${requestedCategoryNames.map(() => "?").join(", ")})
+    `).get(...requestedCategoryNames) as { count: number }).count, 16);
+    assert.equal((directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_categories sc
+      JOIN item_categories c ON c.id = sc.item_category_id
+      WHERE c.name IN (${requestedCategoryNames.map(() => "?").join(", ")})
+    `).get(...requestedCategoryNames) as { count: number }).count, 1);
     assert.equal(backfillMismatch.count, 0);
     assert.equal(orphanedPrimaryGroups.count, 0);
     assert.equal(foreignKeyViolations.length, 0);
@@ -207,7 +287,7 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
     const groupCount = afterSecondStartup.prepare(
       "SELECT COUNT(*) AS count FROM groups",
     ).get() as { count: number };
-    assert.equal(groupCount.count, 13);
+    assert.equal(groupCount.count, 20);
     const grandchildAfterSecondStartup = afterSecondStartup.prepare(`
       SELECT parent_id AS parentId, primary_group_id AS primaryGroupId, is_active AS isActive
       FROM item_categories WHERE id = ?

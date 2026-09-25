@@ -123,7 +123,7 @@ router.get("/item-categories", (_req, res): void => {
       WHERE child.is_active = 1 AND child.primary_group_id = parent.id
     )
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
-      primary_group_id AS primaryGroupId,
+      primary_group_id AS primaryGroupId, sub_group_id AS subGroupId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
@@ -138,6 +138,7 @@ router.get("/item-categories", (_req, res): void => {
     groupName: string;
     parentId: number | null;
     primaryGroupId: number | null;
+    subGroupId: number | null;
     description: string | null;
     displayOnHome: number;
     displayOrder: number;

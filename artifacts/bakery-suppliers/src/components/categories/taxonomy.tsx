@@ -22,6 +22,12 @@ export const ROOT_GROUPS = [
 ] as const;
 
 export type TaxonomyCategory = ItemCategory;
+export const groupParentId = (group: Group): number | null => group.parentId;
+export const categorySubGroupId = (category: ItemCategory): number | null => category.subGroupId;
+export function groupPath(group: Group, groups: Group[]) {
+  const parent = groups.find((candidate) => candidate.id === groupParentId(group));
+  return parent ? `/category/${parent.slug}/${group.slug}` : `/category/${group.slug}`;
+}
 export function useTaxonomy() {
   const categoryQuery = useListItemCategories({ query: { staleTime: 0, queryKey: getListItemCategoriesQueryKey() } });
   const groupQuery = useListGroups({ query: { staleTime: 0, queryKey: getListGroupsQueryKey() } });
@@ -36,7 +42,7 @@ export function useTaxonomy() {
   return {
     categories,
     groups,
-    roots: groups,
+    roots: groups.filter((group) => groupParentId(group) === null),
     isLoading: categoryQuery.isLoading || groupQuery.isLoading,
     error: categoryQuery.error || groupQuery.error,
     refetch,
@@ -46,15 +52,23 @@ export function categorySlug(category: TaxonomyCategory) {
   return category.slug;
 }
 export function categoryPath(category: TaxonomyCategory, categories: TaxonomyCategory[], groups: Group[] = []) {
+  const subGroup = groups.find((group) => group.id === categorySubGroupId(category));
+  if (subGroup) return `${groupPath(subGroup, groups)}/${categorySlug(category)}`;
   const primaryGroup = groups.find((group) => group.id === category.primaryGroupId);
-  if (primaryGroup) return `/category/${primaryGroup.slug}/${categorySlug(category)}`;
+  if (primaryGroup) return `${groupPath(primaryGroup, groups)}/${categorySlug(category)}`;
   if (category.parentId === null) return `/category/${categorySlug(category)}`;
   const parent = categories.find((item) => item.id === category.parentId);
   return parent ? `/category/${categorySlug(parent)}/${categorySlug(category)}` : "/categories/all";
 }
+export function categoryBreadcrumb(category: TaxonomyCategory, groups: Group[]) {
+  const group = groups.find((item) => item.id === categorySubGroupId(category))
+    ?? groups.find((item) => item.id === category.primaryGroupId);
+  const root = group && groups.find((item) => item.id === groupParentId(group));
+  return [...(root ? [root.name] : []), ...(group ? [group.name] : []), category.name].join(" / ");
+}
 export function CategorySearch({ value, onChange, categories, groups = [], testId = "input-category-search" }: { value: string; onChange: (value: string) => void; categories: TaxonomyCategory[]; groups?: Group[]; testId?: string }) {
   const term = value.trim().toLocaleLowerCase("ar");
-  const matches = term ? categories.filter((c) => !(c.parentId === null && groups.some((group) => group.id === c.id)) && `${c.name} ${c.description ?? ""} ${c.slug}`.toLocaleLowerCase("ar").includes(term)) : [];
+  const matches = term ? categories.filter((c) => !(c.parentId === null && groups.some((group) => group.id === c.id)) && `${c.name} ${c.description ?? ""} ${c.slug} ${categoryBreadcrumb(c, groups)}`.toLocaleLowerCase("ar").includes(term)) : [];
   const matchingGroups = term ? groups.filter((group) => `${group.name} ${group.slug}`.toLocaleLowerCase("ar").includes(term)) : [];
   return <div className="relative">
     <label className="relative block">
@@ -66,21 +80,17 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
       {matches.length || matchingGroups.length ? <>
         {matchingGroups.map((group) => {
           const Icon = getItemCategoryIcon(group.icon);
-          return <Link key={`group-${group.id}`} href={`/category/${group.slug}`} data-testid={`link-group-search-${group.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+           return <Link key={`group-${group.id}`} href={groupPath(group, groups)} data-testid={`link-group-search-${group.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-            <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{group.name}</strong><span className="text-xs text-muted-foreground">مجموعة رئيسية</span></span>
+             <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{group.name}</strong><span className="text-xs text-muted-foreground">{groupParentId(group) === null ? "مجموعة رئيسية" : `${groups.find((item) => item.id === groupParentId(group))?.name ?? "مجموعة"} / ${group.name}`}</span></span>
             <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Link>;
         })}
         {matches.map((category) => {
-        const primaryGroup = groups.find((group) => group.id === category.primaryGroupId);
-        const taggedGroups = groups.filter((group) => category.tagGroupIds?.includes(group.id) && group.id !== primaryGroup?.id);
-        const affiliation = [primaryGroup?.name, ...taggedGroups.map((group) => group.name)].filter(Boolean).join("، ");
-        const parent = categories.find((item) => item.id === category.parentId);
         const Icon = getItemCategoryIcon(category.icon);
         return <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`link-category-search-${category.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{category.name}</strong><span className="block truncate text-xs text-muted-foreground">{affiliation ? `ينتمي إلى: ${affiliation}` : parent ? `${parent.name} / صنف فرعي` : "مجموعة رئيسية"}</span></span>
+           <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{category.name}</strong><span className="block truncate text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</span></span>
           <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </Link>;
         })}
@@ -91,7 +101,7 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
 export function RootCard({ category }: { category: Group; categories?: TaxonomyCategory[] }) {
   const Icon = getItemCategoryIcon(category.icon);
   return <Link href={`/category/${category.slug}`} data-testid={`card-home-category-${category.id}`} className="group flex min-h-48 flex-col items-center justify-center rounded-2xl border border-[#E8E8E8] bg-card px-3 py-6 text-center text-[#333] shadow-sm transition-transform duration-200 hover:scale-[1.02] hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-border dark:text-foreground">
-    <Icon className="mb-4 h-16 w-16 text-[#8B4513] dark:text-primary" strokeWidth={1.5} aria-hidden="true" />
+    {category.slug === "cake-supplies" ? <span className="mb-4 flex h-16 items-center text-5xl" aria-hidden="true">{category.icon}</span> : <Icon className="mb-4 h-16 w-16 text-[#8B4513] dark:text-primary" strokeWidth={1.5} aria-hidden="true" />}
     <strong className="text-lg font-bold leading-7">{category.name}</strong>
     <span className="mt-2 text-sm text-[#888] dark:text-muted-foreground">{category.categoryCount.toLocaleString("ar-SA")} أصناف · {category.supplierCount.toLocaleString("ar-SA")} مورد</span>
   </Link>;

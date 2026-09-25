@@ -31,7 +31,7 @@ const router: IRouter = Router();
 function itemCategoryRow(id: number) {
   const row = directoryDb.prepare(`
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
-      primary_group_id AS primaryGroupId, description,
+      primary_group_id AS primaryGroupId, sub_group_id AS subGroupId, description,
       display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories WHERE id = ?
@@ -43,6 +43,7 @@ function itemCategoryRow(id: number) {
     groupName: string;
     parentId: number | null;
     primaryGroupId: number | null;
+    subGroupId: number | null;
     description: string | null;
     displayOnHome: number;
     displayOrder: number;
@@ -66,6 +67,7 @@ function itemCategoryRow(id: number) {
   return {
     ...row,
     primaryGroupId: row.primaryGroupId,
+    subGroupId: row.subGroupId,
     tagGroupIds,
     displayOnHome: Boolean(row.displayOnHome),
     isActive: Boolean(row.isActive),
@@ -90,6 +92,14 @@ router.post("/admin/groups", (req, res): void => {
     return;
   }
   const { name, icon, displayOrder, isActive } = parsed.data;
+  const parentId = parsed.data.parentId ?? null;
+  if (parentId !== null) {
+    const parent = getGroupRecord(parentId);
+    if (!parent || !parent.isActive || parent.parentId !== null) {
+      res.status(400).json({ error: "يجب اختيار مجموعة رئيسية نشطة للأقسام الفرعية." });
+      return;
+    }
+  }
   const duplicate = directoryDb.prepare(`
     SELECT id FROM groups WHERE lower(trim(name)) = lower(?)
     UNION ALL
@@ -120,16 +130,18 @@ router.post("/admin/groups", (req, res): void => {
       LIMIT 1
     `).get(candidate, candidate)));
     directoryDb.prepare(`
-      INSERT INTO groups (id, name, slug, icon, display_order, is_active)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, name, slug, icon, displayOrder, isActive ? 1 : 0);
-    directoryDb.prepare(`
-      INSERT INTO item_categories
-        (id, name, icon, group_name, parent_id, slug, description,
-         display_on_home, display_order, is_active, created_at, updated_at,
-         primary_group_id)
-      VALUES (?, ?, ?, ?, NULL, ?, NULL, 1, ?, ?, ?, ?, NULL)
-    `).run(id, name, icon, name, slug, displayOrder, isActive ? 1 : 0, now, now);
+      INSERT INTO groups (id, name, slug, icon, display_order, is_active, parent_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, slug, icon, displayOrder, isActive ? 1 : 0, parentId);
+    if (parentId === null) {
+      directoryDb.prepare(`
+        INSERT INTO item_categories
+          (id, name, icon, group_name, parent_id, slug, description,
+           display_on_home, display_order, is_active, created_at, updated_at,
+           primary_group_id, sub_group_id)
+        VALUES (?, ?, ?, ?, NULL, ?, NULL, 1, ?, ?, ?, ?, NULL, NULL)
+      `).run(id, name, icon, name, slug, displayOrder, isActive ? 1 : 0, now, now);
+    }
     directoryDb.exec("COMMIT");
     const created = listGroupSummaries(true).find((group) => group.id === id)!;
     res.status(201).json(CreateAdminGroupResponse.parse(created));
@@ -162,9 +174,9 @@ router.patch("/admin/groups/:id", (req, res): void => {
     res.status(404).json({ error: "المجموعة غير موجودة." });
     return;
   }
-  const mirror = directoryDb.prepare(`
+  const mirror = existing.parentId === null ? directoryDb.prepare(`
     SELECT id FROM item_categories WHERE id = ? AND parent_id IS NULL
-  `).get(existing.id);
+  `).get(existing.id) : true;
   if (!mirror) {
     res.status(404).json({ error: "سجل المجموعة المقابل غير موجود." });
     return;
@@ -173,10 +185,26 @@ router.patch("/admin/groups/:id", (req, res): void => {
   const icon = parsed.data.icon ?? existing.icon;
   const displayOrder = parsed.data.displayOrder ?? existing.displayOrder;
   const isActive = parsed.data.isActive ?? Boolean(existing.isActive);
+  const parentId = parsed.data.parentId === undefined ? existing.parentId : parsed.data.parentId;
+  if (existing.parentId === null && parentId !== null) {
+    res.status(400).json({ error: "لا يمكن تحويل المجموعة الرئيسية إلى قسم فرعي." });
+    return;
+  }
+  if (existing.parentId !== null && parentId === null) {
+    res.status(400).json({ error: "لا يمكن تحويل القسم الفرعي إلى مجموعة رئيسية." });
+    return;
+  }
+  if (parentId !== null) {
+    const parent = getGroupRecord(parentId);
+    if (!parent || !parent.isActive || parent.parentId !== null) {
+      res.status(400).json({ error: "يجب اختيار مجموعة رئيسية نشطة للأقسام الفرعية." });
+      return;
+    }
+  }
   if (existing.isActive && !isActive) {
     const activePrimaryCategory = directoryDb.prepare(`
       SELECT id FROM item_categories
-      WHERE primary_group_id = ? AND is_active = 1
+      WHERE ${existing.parentId === null ? "primary_group_id = ?" : "sub_group_id = ?"} AND is_active = 1
       LIMIT 1
     `).get(existing.id);
     if (activePrimaryCategory) {
@@ -202,26 +230,31 @@ router.patch("/admin/groups/:id", (req, res): void => {
   try {
     directoryDb.prepare(`
       UPDATE groups
-      SET name = ?, icon = ?, display_order = ?, is_active = ?
+      SET name = ?, icon = ?, display_order = ?, is_active = ?, parent_id = ?
       WHERE id = ?
-    `).run(name, icon, displayOrder, isActive ? 1 : 0, existing.id);
-    directoryDb.prepare(`
+    `).run(name, icon, displayOrder, isActive ? 1 : 0, parentId, existing.id);
+    if (existing.parentId === null) directoryDb.prepare(`
       UPDATE item_categories
       SET name = ?, icon = ?, group_name = ?, display_order = ?,
         is_active = ?, display_on_home = 1, updated_at = ?
       WHERE id = ?
     `).run(name, icon, name, displayOrder, isActive ? 1 : 0, now, existing.id);
-    if (name !== existing.name) {
+    if (existing.parentId === null && name !== existing.name) {
       directoryDb.prepare(`
         INSERT OR IGNORE INTO item_category_aliases (alias, item_category_id)
         VALUES (?, ?)
       `).run(existing.name, existing.id);
     }
-    directoryDb.prepare(`
+    if (existing.parentId === null) directoryDb.prepare(`
       UPDATE item_categories
       SET group_name = ?, updated_at = ?
       WHERE primary_group_id = ?
     `).run(name, now, existing.id);
+    else directoryDb.prepare(`
+      UPDATE item_categories
+      SET parent_id = ?, primary_group_id = ?, group_name = ?, updated_at = ?
+      WHERE sub_group_id = ?
+    `).run(parentId, parentId, getGroupRecord(parentId!)?.name ?? "", now, existing.id);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");

@@ -22,6 +22,11 @@ export interface Group {
   name: string;
   slug: string;
   icon: string;
+  /**
+     * Null for a root group; otherwise the parent group ID.
+     * @nullable
+     */
+  parentId: number | null;
   displayOrder: number;
   isActive: boolean;
   categoryCount: number;
@@ -42,6 +47,8 @@ export interface GroupInput {
   /** @minimum 0 */
   displayOrder: number;
   isActive: boolean;
+  /** @nullable */
+  parentId?: number | null;
 }
 
 export interface GroupUpdate {
@@ -58,6 +65,8 @@ export interface GroupUpdate {
   /** @minimum 0 */
   displayOrder?: number;
   isActive?: boolean;
+  /** @nullable */
+  parentId?: number | null;
 }
 
 export interface GroupDeleteResponse {
@@ -87,6 +96,11 @@ export interface ItemCategory {
   parentId: number | null;
   /** @nullable */
   primaryGroupId: number | null;
+  /**
+     * Optional subdivision within the primary group.
+     * @nullable
+     */
+  subGroupId: number | null;
   tagGroupIds: number[];
   /** @nullable */
   description: string | null;
@@ -116,6 +130,8 @@ export interface ItemCategoryInput {
   primaryGroupId: number;
   /** Optional legacy alias for primaryGroupId. */
   parentId?: number;
+  /** @nullable */
+  subGroupId?: number | null;
   /**
      * @maxLength 500
      * @nullable
@@ -140,6 +156,8 @@ export interface ItemCategoryUpdate {
      */
   description?: string | null;
   primaryGroupId?: number;
+  /** @nullable */
+  subGroupId?: number | null;
   /** @minimum 0 */
   displayOrder?: number;
   isActive?: boolean;
@@ -154,6 +172,11 @@ export interface ItemCategoryTransferInput {
   /** @nullable */
   destinationId: number | null;
   moveSubcategories: boolean;
+  /**
+     * Destination subdivision; null clears the subdivision.
+     * @nullable
+     */
+  subGroupId?: number | null;
 }
 
 export interface ItemCategoryOrderInput {

@@ -1025,12 +1025,13 @@ components:
         productCount: { type: integer }
     Group:
       type: object
-      required: [id, name, slug, icon, displayOrder, isActive, categoryCount, supplierCount]
+      required: [id, name, slug, icon, parentId, displayOrder, isActive, categoryCount, supplierCount]
       properties:
         id: { type: integer }
         name: { type: string }
         slug: { type: string }
         icon: { type: string }
+        parentId: { type: ["integer", "null"], description: "Null for a root group; otherwise the parent group ID." }
         displayOrder: { type: integer }
         isActive: { type: boolean }
         categoryCount: { type: integer }
@@ -1043,6 +1044,7 @@ components:
         icon: { type: string, minLength: 1, maxLength: 24 }
         displayOrder: { type: integer, minimum: 0 }
         isActive: { type: boolean }
+        parentId: { type: ["integer", "null"] }
     GroupUpdate:
       type: object
       properties:
@@ -1050,6 +1052,7 @@ components:
         icon: { type: string, minLength: 1, maxLength: 24 }
         displayOrder: { type: integer, minimum: 0 }
         isActive: { type: boolean }
+        parentId: { type: ["integer", "null"] }
     GroupDeleteResponse:
       type: object
       required: [success]
@@ -1075,7 +1078,7 @@ components:
         groupCount: { type: integer }
     ItemCategory:
       type: object
-      required: [id, name, icon, slug, groupName, parentId, primaryGroupId, tagGroupIds, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
+      required: [id, name, icon, slug, groupName, parentId, primaryGroupId, subGroupId, tagGroupIds, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -1084,6 +1087,7 @@ components:
         groupName: { type: string }
         parentId: { type: ["integer", "null"] }
         primaryGroupId: { type: ["integer", "null"] }
+        subGroupId: { type: ["integer", "null"], description: "Optional subdivision within the primary group." }
         tagGroupIds:
           type: array
           items: { type: integer }
@@ -1109,6 +1113,7 @@ components:
         icon: { type: string, minLength: 1, maxLength: 24 }
         primaryGroupId: { type: integer }
         parentId: { type: integer, description: "Optional legacy alias for primaryGroupId." }
+        subGroupId: { type: ["integer", "null"] }
         description: { type: ["string", "null"], maxLength: 500 }
     ItemCategoryUpdate:
       type: object
@@ -1117,6 +1122,7 @@ components:
         icon: { type: string, minLength: 1, maxLength: 24 }
         description: { type: ["string", "null"], maxLength: 500 }
         primaryGroupId: { type: integer }
+        subGroupId: { type: ["integer", "null"] }
         displayOrder: { type: integer, minimum: 0 }
         isActive: { type: boolean }
         displayOnHome: { type: boolean }
@@ -1134,6 +1140,7 @@ components:
       properties:
         destinationId: { type: ["integer", "null"] }
         moveSubcategories: { type: boolean }
+        subGroupId: { type: ["integer", "null"], description: "Destination subdivision; null clears the subdivision." }
     ItemCategoryOrderInput:
       type: object
       required: [parentId, categoryIds]

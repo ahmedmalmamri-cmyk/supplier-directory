@@ -124,6 +124,7 @@ type ItemCategoryRow = {
   groupName: string;
   parentId: number | null;
   primaryGroupId: number | null;
+  subGroupId: number | null;
   tagGroupIds: number[];
   description: string | null;
   displayOnHome: number;
@@ -136,7 +137,7 @@ type ItemCategoryRow = {
 function getItemCategoryRows() {
   const rows = directoryDb.prepare(`
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
-      primary_group_id AS primaryGroupId,
+      primary_group_id AS primaryGroupId, sub_group_id AS subGroupId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
@@ -153,7 +154,7 @@ function getItemCategoryRows() {
 function getItemCategory(id: number) {
   const row = directoryDb.prepare(`
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
-      primary_group_id AS primaryGroupId,
+      primary_group_id AS primaryGroupId, sub_group_id AS subGroupId,
       description, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories WHERE id = ?
@@ -184,6 +185,7 @@ function itemCategorySnapshot(row: ItemCategoryRow) {
     groupName: row.groupName,
     parentId: row.parentId,
     primaryGroupId: row.primaryGroupId,
+    subGroupId: row.subGroupId,
     tagGroupIds: row.tagGroupIds,
     description: row.description,
     displayOnHome: Boolean(row.displayOnHome),
@@ -1207,6 +1209,9 @@ router.post("/admin/item-categories", (req, res): void => {
     return;
   }
   const parentId = typeof rawParentId === "number" ? rawParentId : Number.NaN;
+  const rawSubGroupId = body.subGroupId === undefined || body.subGroupId === null
+    ? null
+    : Number(body.subGroupId);
   const description = body.description === undefined || body.description === null
     ? null
     : typeof body.description === "string"
@@ -1215,6 +1220,7 @@ router.post("/admin/item-categories", (req, res): void => {
   if (!name || name.length > 100 || !icon || icon.length > 24 || description === undefined ||
       description && description.length > 500 ||
       !Number.isInteger(parentId) ||
+      (rawSubGroupId !== null && !Number.isInteger(rawSubGroupId)) ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
     res.status(400).json({ error: "تحقق من اسم التصنيف وأيقونته ووصفه." });
     return;
@@ -1225,9 +1231,16 @@ router.post("/admin/item-categories", (req, res): void => {
   }
   const parent = getItemCategory(parentId);
   const primaryGroup = getGroupRecord(parentId);
-  if (!isActiveCanonicalItemCategoryRoot(parent) || !primaryGroup?.isActive) {
+  if (!isActiveCanonicalItemCategoryRoot(parent) || !primaryGroup?.isActive || primaryGroup.parentId !== null) {
     res.status(400).json({ error: "يجب اختيار مجموعة رئيسية نشطة كأب للتصنيف." });
     return;
+  }
+  if (rawSubGroupId !== null) {
+    const subgroup = getGroupRecord(rawSubGroupId);
+    if (!subgroup?.isActive || subgroup.parentId !== parentId) {
+      res.status(400).json({ error: "يجب اختيار قسم فرعي تابع للمجموعة الرئيسية المحددة." });
+      return;
+    }
   }
   const displayOnHome = false;
   const displayOrder = (
@@ -1260,8 +1273,8 @@ router.post("/admin/item-categories", (req, res): void => {
     const result = directoryDb.prepare(`
       INSERT INTO item_categories
         (id, name, icon, slug, group_name, parent_id, description, display_on_home,
-         display_order, is_active, created_at, updated_at, primary_group_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+         display_order, is_active, created_at, updated_at, primary_group_id, sub_group_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
     `).run(
       id,
       name,
@@ -1275,6 +1288,7 @@ router.post("/admin/item-categories", (req, res): void => {
       now,
       now,
       parentId,
+      rawSubGroupId,
     );
     const created = getItemCategory(Number(result.lastInsertRowid))!;
     recordItemCategoryActivity("add", id, null, itemCategorySnapshot(created));
@@ -1362,6 +1376,10 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     : Number(body.primaryGroupId);
   const primaryGroupId = rawPrimaryGroupId === null ? Number.NaN : Number(rawPrimaryGroupId);
   const primaryGroup = Number.isInteger(primaryGroupId) ? getGroupRecord(primaryGroupId) : undefined;
+  const rawSubGroupId = body.subGroupId === undefined ? existing.subGroupId :
+    body.subGroupId === null ? null : Number(body.subGroupId);
+  const subGroup = rawSubGroupId === null ? undefined :
+    Number.isInteger(rawSubGroupId) ? getGroupRecord(rawSubGroupId) : undefined;
   const displayOrder = body.displayOrder === undefined
     ? existing.displayOrder
     : Number(body.displayOrder);
@@ -1377,8 +1395,14 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
       (body.isActive !== undefined && typeof body.isActive !== "boolean") ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean") ||
       !Number.isInteger(displayOrder) || displayOrder < 0 ||
-      !Number.isInteger(primaryGroupId) || !primaryGroup || !primaryGroup.isActive) {
+      !Number.isInteger(primaryGroupId) || !primaryGroup || !primaryGroup.isActive ||
+      primaryGroup.parentId !== null || !isActiveCanonicalItemCategoryRoot(getItemCategory(primaryGroupId))) {
     res.status(400).json({ error: "تحقق من بيانات التصنيف." });
+    return;
+  }
+  if (rawSubGroupId !== null &&
+      (!Number.isInteger(rawSubGroupId) || !subGroup?.isActive || subGroup.parentId !== primaryGroupId)) {
+    res.status(400).json({ error: "يجب اختيار قسم فرعي تابع للمجموعة الرئيسية المحددة." });
     return;
   }
   const duplicate = directoryDb.prepare(`
@@ -1403,7 +1427,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
   try {
     directoryDb.prepare(`
       UPDATE item_categories
-      SET name = ?, icon = ?, group_name = ?, parent_id = ?, primary_group_id = ?,
+      SET name = ?, icon = ?, group_name = ?, parent_id = ?, primary_group_id = ?, sub_group_id = ?,
           description = ?, is_active = ?, display_order = ?, display_on_home = ?, updated_at = ?
       WHERE id = ?
     `).run(
@@ -1411,6 +1435,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
       icon,
       groupName,
       primaryGroupId,
+      rawSubGroupId,
       primaryGroupId,
       description,
       isActive ? 1 : 0,
@@ -1450,6 +1475,7 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
   const rawDestinationId = req.body?.destinationId;
   const destinationId = rawDestinationId == null ? null : Number(rawDestinationId);
   const moveSubcategories = req.body?.moveSubcategories;
+  const rawSubGroupId = req.body?.subGroupId;
   if (!Number.isInteger(id) ||
       (destinationId !== null && !Number.isInteger(destinationId)) ||
       typeof moveSubcategories !== "boolean") {
@@ -1479,6 +1505,16 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
   if (destinationId === null) {
     res.status(400).json({ error: "يجب اختيار مجموعة رئيسية كوجهة للنقل." });
     return;
+  }
+  const subGroupId = rawSubGroupId === undefined
+    ? (destinationId === existing.primaryGroupId ? existing.subGroupId : null)
+    : rawSubGroupId === null ? null : Number(rawSubGroupId);
+  if (subGroupId !== null) {
+    const subgroup = Number.isInteger(subGroupId) ? getGroupRecord(subGroupId) : undefined;
+    if (!subgroup?.isActive || subgroup.parentId !== destinationId) {
+      res.status(400).json({ error: "يجب اختيار قسم فرعي تابع للمجموعة المستهدفة." });
+      return;
+    }
   }
   const destination = getItemCategory(destinationId);
   const destinationGroup = getGroupRecord(destinationId);
@@ -1512,12 +1548,13 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
   try {
     directoryDb.prepare(`
       UPDATE item_categories
-      SET parent_id = ?, primary_group_id = ?, group_name = ?, display_on_home = ?,
+      SET parent_id = ?, primary_group_id = ?, sub_group_id = ?, group_name = ?, display_on_home = ?,
           display_order = ?, updated_at = ?
       WHERE id = ?
     `).run(
       destinationId,
       destinationId,
+      subGroupId,
       nextGroupName,
       0,
       nextOrder,
