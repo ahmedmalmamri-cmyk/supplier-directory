@@ -252,3 +252,87 @@ mtime_ms = 1790292358197
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d8957aed-2113-4d43-9dfa-88c2ab5dab4d/6ed9a3c0-d908-49bf-abfd-e1cdd708f44f"
 storage_version_token = "1790292683655713"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "4typiMpHXpgeiuzfAeme2"
+uri = "file://artifacts/bakery-suppliers/screenshots/home-desktop.jpg"
+type = "image"
+title = "الرئيسية — سطح المكتب"
+description = "لقطة للصفحة الرئيسية عند عرض سطح المكتب."
+logical_id = "e18c85ce-3984-4af8-85c5-ed96dc39a982"
+content_hash = "sha256:59265b98ef77e436b7ea47ebd9b0921ba454d3dc3d24a4cc56b5f83140066f5a"
+size = 174790
+mtime_ms = 1790294576209
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/e18c85ce-3984-4af8-85c5-ed96dc39a982/1c753bf3-d50d-4851-b125-c88611a7bad6"
+storage_version_token = "1790294673570336"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "WH4BQwwA2uPUdNgR8BCRU"
+uri = "file://artifacts/bakery-suppliers/screenshots/home-tablet.jpg"
+type = "image"
+title = "الرئيسية — جهاز لوحي"
+description = "لقطة للصفحة الرئيسية عند عرض الجهاز اللوحي."
+logical_id = "2bfbd467-b19c-41e7-8ff2-e7b281a74835"
+content_hash = "sha256:c719f7c97be55aba3aecbb0a3771ce2909ea0c7e5becbc6f3ebc749786192676"
+size = 101861
+mtime_ms = 1790294578176
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/2bfbd467-b19c-41e7-8ff2-e7b281a74835/bbb26aa7-bd27-4469-99b5-bd517d6fcfdf"
+storage_version_token = "1790294674854144"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "woJgJwf8otOHfmXrUNqV4"
+uri = "file://artifacts/bakery-suppliers/screenshots/home-mobile.jpg"
+type = "image"
+title = "الرئيسية — الهاتف"
+description = "لقطة للصفحة الرئيسية عند عرض الهاتف."
+logical_id = "7c512133-1d8a-4392-9f4f-b816816d8b54"
+content_hash = "sha256:0b302ef7f007031b4164f8c6c74b3b917bd0d5c76dbb4205804b9a2a78575d0b"
+size = 49360
+mtime_ms = 1790294579877
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/7c512133-1d8a-4392-9f4f-b816816d8b54/8ddffc03-03af-4730-9438-8a7f0a31b78b"
+storage_version_token = "1790294676159088"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "BDzbR1flDx9JmK9ox8_R9"
+uri = "file://artifacts/bakery-suppliers/screenshots/categories-all-desktop.jpg"
+type = "image"
+title = "كل التصنيفات — سطح المكتب"
+description = "لقطة صفحة التصنيفات الكاملة عند عرض سطح المكتب."
+logical_id = "764cf9e3-d8a2-406a-95f3-cc72d80fee50"
+content_hash = "sha256:1425d661434c31483c6e234f0ae0811b2ced2687c320f666a42fe5421b52cd11"
+size = 108373
+mtime_ms = 1790294464319
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/764cf9e3-d8a2-406a-95f3-cc72d80fee50/00531aa2-f4a4-492c-9d5b-46f17c4b1ad5"
+storage_version_token = "1790294677542237"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "J7AsY-o1_MLyVRFDy621t"
+uri = "file://artifacts/bakery-suppliers/screenshots/categories-all-tablet.jpg"
+type = "image"
+title = "كل التصنيفات — جهاز لوحي"
+description = "لقطة صفحة التصنيفات الكاملة عند عرض الجهاز اللوحي."
+logical_id = "7407ed53-cd3e-4cfa-b898-9edf73b5c13e"
+content_hash = "sha256:abbf29a04b5594e8b3b76c0d4205dab8b0515ed18541b1946d48a7a3d9138012"
+size = 58015
+mtime_ms = 1790294466583
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/7407ed53-cd3e-4cfa-b898-9edf73b5c13e/7fe48126-da12-49a0-a2bb-1c9506ddebde"
+storage_version_token = "1790294678897982"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "wYaHwqAEiqk90jEFkDxrb"
+uri = "file://artifacts/bakery-suppliers/screenshots/categories-all-mobile.jpg"
+type = "image"
+title = "كل التصنيفات — الهاتف"
+description = "لقطة صفحة التصنيفات الكاملة عند عرض الهاتف."
+logical_id = "6afc749b-8632-4ed3-a729-4ef7bbaab46d"
+content_hash = "sha256:9b48fad11406844df61db69f55d3f883d33592a66d2c163adf7524a90b598957"
+size = 28988
+mtime_ms = 1790294468401
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/6afc749b-8632-4ed3-a729-4ef7bbaab46d/b55c529e-724e-4543-b4d5-1842fb4e6b50"
+storage_version_token = "1790294680215260"
+content_type = "image/jpeg"

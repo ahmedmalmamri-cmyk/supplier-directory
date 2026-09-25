@@ -12,6 +12,7 @@ import {
 } from 'wouter';
 
 import Home from '@/pages/home';
+import CategoriesPage from '@/pages/categories';
 import CategoryPage from '@/pages/category';
 import SuppliersPage from '@/pages/suppliers';
 import SupplierProfilePage from '@/pages/supplier-profile';
@@ -46,6 +47,7 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/categories/all" component={CategoriesPage} />
         <Route path="/category/:id" component={CategoryPage} />
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/login" component={LoginChoicePage} />
