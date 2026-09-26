@@ -1,8 +1,8 @@
 export type Theme = "light" | "dark";
 
-// A fresh preference key prevents an old dark-mode selection from overriding
-// the new light-first palette on the first visit after this redesign.
-const THEME_STORAGE_KEY = "bakery-theme-v2";
+// Reset the saved theme once so the light palette is the default after the
+// dark-palette correction; users can still opt back into dark mode.
+const THEME_STORAGE_KEY = "bakery-theme-v3";
 
 export function storedTheme(): Theme {
   try {
