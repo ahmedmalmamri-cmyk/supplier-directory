@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { getBuyerIdFromRequest, setBuyerSession, clearBuyerSession } from "../lib/buyer-auth";
+import { getBuyerIdFromRequest } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest, setSupplierSession, clearSupplierSession } from "../lib/supplier-auth";
 import { requireAdmin } from "../lib/admin-auth";
 import {
@@ -42,7 +42,20 @@ router.get("/admin/test-mode", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   try {
     ensureTestModeAccounts();
-    res.json({ accounts: listTestModeAccounts(), report: buildTestModeReport() });
+    const buyerId = getBuyerIdFromRequest(req);
+    const buyer = buyerId
+      ? directoryDb.prepare("SELECT full_name AS name FROM buyer_users WHERE id = ? AND moderation_status != 'blocked'")
+        .get(buyerId) as { name: string } | undefined
+      : undefined;
+    res.json({
+      accounts: listTestModeAccounts(),
+      buyerPreview: {
+        available: Boolean(buyer),
+        name: buyer?.name ?? null,
+        route: buyer ? "/buyer/profile" : "/buyer/login",
+      },
+      report: buildTestModeReport(),
+    });
   } catch (error) {
     setupError(error, res);
   }
@@ -67,15 +80,30 @@ router.post("/admin/test-mode/start", (req, res): void => {
   }
   try {
     const accounts = ensureTestModeAccounts();
-    const account = accounts.find((item) => item.role === role && item.ready);
+    const previousMode = getTestModeSession(req);
+    const supplierId = getSupplierIdFromRequest(req);
+    const buyerId = getBuyerIdFromRequest(req);
+    if (supplierId && isTestModeAccount("supplier", supplierId) &&
+        (previousMode?.role === "supplier" || role === "buyer")) clearSupplierSession(res);
+
+    let account: { id: number; route: string } | undefined;
+    if (role === "supplier") {
+      const supplierAccount = accounts.find((item) => item.ready);
+      if (supplierAccount) account = { id: supplierAccount.id, route: supplierAccount.route };
+    } else if (buyerId) {
+      const buyer = directoryDb.prepare("SELECT id FROM buyer_users WHERE id = ? AND moderation_status != 'blocked'")
+        .get(buyerId) as { id: number } | undefined;
+      if (buyer) account = { id: buyer.id, route: "/buyer/profile" };
+    }
     if (!account) {
-      res.status(409).json({ error: "حساب المعاينة غير جاهز." });
+      res.status(409).json({
+        error: role === "buyer"
+          ? "سجّل الدخول إلى حساب صاحب العمل الموجود لديك في هذا المتصفح أولاً."
+          : "حساب المورد التجريبي غير جاهز.",
+      });
       return;
     }
-    clearBuyerSession(res);
-    clearSupplierSession(res);
-    if (role === "buyer") setBuyerSession(res, account.id);
-    else setSupplierSession(res, account.id);
+    if (role === "supplier") setSupplierSession(res, account.id);
     setTestModeSession(res, role as TestModeRole, account.id);
     res.json({
       success: true,
@@ -92,10 +120,8 @@ router.post("/admin/test-mode/exit", (req, res): void => {
   const session = getTestModeSession(req);
   const supplierId = getSupplierIdFromRequest(req);
   const buyerId = getBuyerIdFromRequest(req);
-  if ((session?.role === "supplier" && supplierId === session.id) ||
-      (supplierId && isTestModeAccount("supplier", supplierId))) clearSupplierSession(res);
-  if ((session?.role === "buyer" && buyerId === session.id) ||
-      (buyerId && isTestModeAccount("buyer", buyerId))) clearBuyerSession(res);
+    if ((session?.role === "supplier" && supplierId === session.id) ||
+        (supplierId && isTestModeAccount("supplier", supplierId))) clearSupplierSession(res);
   clearTestModeSession(res);
   res.json({ success: true });
 });

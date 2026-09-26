@@ -8,7 +8,6 @@ const testModeCookieName = "bakery_test_mode";
 const testModeDurationSeconds = 60 * 60 * 12;
 const testAccounts = {
   supplier: { phone: "0500000001", name: "مورد تجريبي" },
-  buyer: { phone: "0500000002", name: "صاحب عمل تجريبي" },
 } as const;
 
 directoryDb.exec(`
@@ -46,7 +45,8 @@ export function getTestModeSession(req: Request) {
   const providedBuffer = Buffer.from(provided);
   const expectedBuffer = Buffer.from(expected);
   if (providedBuffer.length !== expectedBuffer.length || !timingSafeEqual(providedBuffer, expectedBuffer)) return null;
-  if (!isTestModeAccount(role, id)) return null;
+  if (role === "supplier" && !isTestModeAccount("supplier", id)) return null;
+  if (role === "buyer" && !directoryDb.prepare("SELECT 1 FROM buyer_users WHERE id = ? AND moderation_status != 'blocked'").get(id)) return null;
   return { role: role as TestModeRole, id };
 }
 
@@ -89,35 +89,32 @@ function randomPasswordHash() {
   return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
 
-function accountConflict(role: TestModeRole): Error {
-  return new Error(`TEST_MODE_ACCOUNT_CONFLICT:${role}:${testAccounts[role].phone}`);
+function accountConflict(): Error {
+  return new Error(`TEST_MODE_ACCOUNT_CONFLICT:supplier:${testAccounts.supplier.phone}`);
 }
 
 export function ensureTestModeAccounts() {
   const setup = directoryDb.transaction(() => {
-    for (const role of ["supplier", "buyer"] as const) {
-      const expectedPhone = testAccounts[role].phone;
-      const known = directoryDb.prepare(
-        "SELECT entity_id AS entityId, phone FROM test_mode_accounts WHERE role = ?",
-      ).get(role) as { entityId: number; phone: string } | undefined;
-      if (known) {
-        if (known.phone !== expectedPhone) throw accountConflict(role);
-        const present = role === "supplier"
-          ? directoryDb.prepare("SELECT 1 FROM suppliers s JOIN supplier_users su ON su.supplier_id = s.id WHERE s.id = ? AND su.phone = ?").get(known.entityId, expectedPhone)
-          : directoryDb.prepare("SELECT 1 FROM buyer_users WHERE id = ? AND phone = ?").get(known.entityId, expectedPhone);
-        if (!present) throw accountConflict(role);
-        continue;
-      }
-      const conflicting = role === "supplier"
-        ? directoryDb.prepare("SELECT 1 FROM supplier_users WHERE phone = ? LIMIT 1").get(expectedPhone)
-        : directoryDb.prepare("SELECT 1 FROM buyer_users WHERE phone = ? LIMIT 1").get(expectedPhone);
-      if (conflicting) throw accountConflict(role);
-    }
-
     const now = new Date().toISOString();
     const supplierAccount = directoryDb.prepare(
       "SELECT entity_id AS entityId FROM test_mode_accounts WHERE role = 'supplier'",
     ).get() as { entityId: number } | undefined;
+    if (supplierAccount) {
+      const present = directoryDb.prepare(`
+        SELECT 1 FROM suppliers s
+        JOIN supplier_users su ON su.supplier_id = s.id
+        WHERE s.id = ? AND su.phone = ?
+      `).get(supplierAccount.entityId, testAccounts.supplier.phone);
+      const duplicate = directoryDb.prepare(
+        "SELECT supplier_id AS supplierId FROM supplier_users WHERE phone = ? AND supplier_id != ? LIMIT 1",
+      ).get(testAccounts.supplier.phone, supplierAccount.entityId);
+      if (!present || duplicate) throw accountConflict();
+    } else if (directoryDb.prepare(
+      "SELECT 1 FROM supplier_users WHERE phone = ? LIMIT 1",
+    ).get(testAccounts.supplier.phone)) {
+      throw accountConflict();
+    }
+
     if (!supplierAccount) {
       const plan = directoryDb.prepare("SELECT id FROM plans ORDER BY id LIMIT 1").get() as { id: number } | undefined;
       if (!plan) throw new Error("لم يتم إعداد أي باقة للموردين.");
@@ -165,27 +162,6 @@ export function ensureTestModeAccounts() {
       }
     }
 
-    const buyerAccount = directoryDb.prepare(
-      "SELECT entity_id AS entityId FROM test_mode_accounts WHERE role = 'buyer'",
-    ).get() as { entityId: number } | undefined;
-    if (!buyerAccount) {
-      const buyerResult = directoryDb.prepare(`
-        INSERT INTO buyer_users
-          (full_name, phone, email, city, business_type, business_name, is_owner,
-           job_title, password_hash, created_at, last_login, moderation_status)
-        VALUES (?, ?, NULL, 'الدمام', 'مخبز', 'مخبز تجريبي', 1, NULL, ?, ?, ?, 'active')
-      `).run(
-        testAccounts.buyer.name,
-        testAccounts.buyer.phone,
-        randomPasswordHash(),
-        now,
-        now,
-      );
-      directoryDb.prepare(`
-        INSERT INTO test_mode_accounts (role, entity_id, phone, created_at)
-        VALUES ('buyer', ?, ?, ?)
-      `).run(Number(buyerResult.lastInsertRowid), testAccounts.buyer.phone, now);
-    }
   });
 
   try {
@@ -200,23 +176,21 @@ export function ensureTestModeAccounts() {
 }
 
 export function listTestModeAccounts() {
-  return (["supplier", "buyer"] as const).map((role) => {
-    const row = directoryDb.prepare(`
-      SELECT entity_id AS id, phone FROM test_mode_accounts WHERE role = ?
-    `).get(role) as { id: number; phone: string } | undefined;
-    if (!row) return { role, id: 0, name: testAccounts[role].name, phone: testAccounts[role].phone, ready: false, route: role === "supplier" ? "/supplier/dashboard" : "/buyer/profile" };
-    const nameRow = role === "supplier"
-      ? directoryDb.prepare("SELECT name FROM suppliers WHERE id = ?").get(row.id) as { name: string } | undefined
-      : directoryDb.prepare("SELECT full_name AS name FROM buyer_users WHERE id = ?").get(row.id) as { name: string } | undefined;
-    return {
-      role,
-      id: row.id,
-      name: nameRow?.name ?? testAccounts[role].name,
-      phone: row.phone,
-      ready: Boolean(nameRow),
-      route: role === "supplier" ? "/supplier/dashboard" : "/buyer/profile",
-    };
-  });
+  const row = directoryDb.prepare(`
+    SELECT entity_id AS id, phone FROM test_mode_accounts WHERE role = 'supplier'
+  `).get() as { id: number; phone: string } | undefined;
+  if (!row) return [{ role: "supplier" as const, id: 0, name: testAccounts.supplier.name, phone: testAccounts.supplier.phone, ready: false, route: "/supplier/dashboard" }];
+  const supplier = directoryDb.prepare("SELECT name FROM suppliers WHERE id = ?").get(row.id) as { name: string } | undefined;
+  const supplierUser = directoryDb.prepare("SELECT 1 FROM supplier_users WHERE supplier_id = ? AND phone = ?")
+    .get(row.id, testAccounts.supplier.phone);
+  return [{
+    role: "supplier" as const,
+    id: row.id,
+    name: supplier?.name ?? testAccounts.supplier.name,
+    phone: row.phone,
+    ready: Boolean(supplier && supplierUser),
+    route: "/supplier/dashboard",
+  }];
 }
 
 export function buildTestModeReport() {
@@ -251,9 +225,9 @@ export function buildTestModeReport() {
     },
     {
       key: "test-accounts",
-      label: "حسابا المعاينة",
+      label: "حساب المورد التجريبي",
       status: accountReady ? "pass" as const : "fail" as const,
-      detail: `الحسابات الجاهزة: ${accounts.filter((account) => account.ready).length} من ${accounts.length}.`,
+      detail: `حسابات المورد الجاهزة: ${accounts.filter((account) => account.ready).length} من ${accounts.length}.`,
     },
     {
       key: "demo-isolation",
