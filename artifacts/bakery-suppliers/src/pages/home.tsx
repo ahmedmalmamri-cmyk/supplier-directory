@@ -68,8 +68,8 @@ export default function Home() {
   return (
     <MainLayout>
       <section className="relative isolate overflow-hidden bg-secondary dark:bg-background">
-        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-70" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,hsl(var(--background)/.48)_0%,hsl(var(--background)/.68)_55%,hsl(var(--background)/.9)_100%)] dark:bg-[linear-gradient(90deg,hsl(var(--background)/.55)_0%,hsl(var(--background)/.72)_55%,hsl(var(--background)/.86)_100%)]" />
+        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-80" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,hsl(var(--background)/.48)_0%,hsl(var(--background)/.68)_55%,hsl(var(--background)/.9)_100%)] dark:bg-[linear-gradient(90deg,hsl(var(--background)/.42)_0%,hsl(var(--background)/.63)_55%,hsl(var(--background)/.8)_100%)]" />
         <div className="container mx-auto px-4 py-8 md:py-20">
           <div className="max-w-2xl animate-rise-in text-right text-foreground">
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-3 py-1.5 text-xs font-semibold text-primary shadow-sm sm:px-4 sm:py-2 sm:text-sm"><Wheat className="h-4 w-4 text-gold-ink" aria-hidden="true" /> دليل موثوق للمنطقة الشرقية</p>
