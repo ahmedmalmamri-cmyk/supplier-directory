@@ -350,6 +350,9 @@ if (!requestUnitMigration) {
     directoryDb.exec("BEGIN IMMEDIATE");
     try {
       const before = directoryDb.prepare("SELECT COUNT(*) AS count FROM requests").get() as { count: number };
+      const previousSequence = directoryDb
+        .prepare("SELECT seq FROM sqlite_sequence WHERE name = 'requests'")
+        .get() as { seq: number } | undefined;
       directoryDb.exec(`
         ALTER TABLE requests RENAME TO requests_units_legacy;
         CREATE TABLE requests (
@@ -380,7 +383,18 @@ if (!requestUnitMigration) {
       if (before.count !== after.count) {
         throw new Error(`Requests migration lost rows: expected ${before.count}, found ${after.count}`);
       }
-      const foreignKeyErrors = directoryDb.prepare("PRAGMA foreign_key_check").all();
+      if (previousSequence) {
+        const currentSequence = directoryDb
+          .prepare("SELECT seq FROM sqlite_sequence WHERE name = 'requests'")
+          .get() as { seq: number } | undefined;
+        const sequence = Math.max(previousSequence.seq, currentSequence?.seq ?? 0);
+        if (currentSequence) {
+          directoryDb.prepare("UPDATE sqlite_sequence SET seq = ? WHERE name = 'requests'").run(sequence);
+        } else {
+          directoryDb.prepare("INSERT INTO sqlite_sequence (name, seq) VALUES ('requests', ?)").run(sequence);
+        }
+      }
+      const foreignKeyErrors = directoryDb.prepare("PRAGMA foreign_key_check(requests)").all();
       if (foreignKeyErrors.length > 0) {
         throw new Error("Requests migration failed foreign-key validation");
       }
