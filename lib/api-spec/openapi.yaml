@@ -1057,7 +1057,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SupplierActivationInfo" }
         "400": { description: Invalid activation token }
-        "404": { description: Activation link is invalid, expired, or revoked }
+        "404": { description: "Activation link is invalid, expired, or revoked" }
         "409": { description: Supplier account is already active }
   /supplier/activation/complete:
     post:
@@ -1075,7 +1075,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SupplierActivationResult" }
         "400": { description: Password is invalid or confirmation does not match }
-        "404": { description: Activation link is invalid, expired, or revoked }
+        "404": { description: "Activation link is invalid, expired, or revoked" }
         "409": { description: Link already used or account already active }
   /admin/supplier-requests/{id}/activation-link:
     post:
