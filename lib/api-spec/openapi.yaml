@@ -100,7 +100,6 @@ paths:
         "403": { description: Only active business owners may publish requests }
         "404": { description: Category or city is unavailable }
   /admin/item-categories:
-  /admin/item-categories:
     get:
       operationId: listAdminItemCategories
       tags: [admin]
