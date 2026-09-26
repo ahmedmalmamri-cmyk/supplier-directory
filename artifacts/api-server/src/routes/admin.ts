@@ -1643,7 +1643,19 @@ function buildItemCategoryDeletionPreview(existing: ItemCategoryRow) {
   const supplierLinkCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(id) as { count: number }).count;
   const aliasCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(id) as { count: number }).count;
   const productCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM products WHERE category_id = ?").get(id) as { count: number }).count;
-  const selectedNames = new Set([existing.name, ...legacyItemCategoryAliasesForNames([existing.name])]);
+  const selectedNames = new Set([existing.name]);
+  // A legacy selection may point to multiple item categories. Removing this
+  // category does not discard the selection when an active alternative still
+  // resolves the same alias.
+  const alternativeForAlias = directoryDb.prepare(`
+    SELECT 1 FROM item_category_aliases a
+    JOIN item_categories c ON c.id = a.item_category_id
+    WHERE a.alias = ? AND c.id != ? AND c.is_active = 1
+    LIMIT 1
+  `);
+  for (const alias of legacyItemCategoryAliasesForNames([existing.name])) {
+    if (!alternativeForAlias.get(alias, id)) selectedNames.add(alias);
+  }
   const requests = directoryDb.prepare(`
     SELECT categories FROM supplier_requests
     WHERE status IN ('pending', 'pending_review', 'approved')
