@@ -3,11 +3,12 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useListSuppliers } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { Search, MapPin, Star, BadgeCheck, CheckCircle2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // We'll create this
 import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/SupplierFilterControls";
 import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getItemCategoryIcon } from "@/lib/item-category-icons";
+import { trackEvent } from "@/lib/analytics";
 
 export default function SuppliersPage() {
   const [initialParams] = useState(() => new URLSearchParams(window.location.search));
@@ -34,6 +35,24 @@ export default function SuppliersPage() {
       ...(supplierPackage ? { package: supplierPackage } : {}),
       sort,
     });
+  const lastTrackedFilter = useRef("");
+  useEffect(() => {
+    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage) || sort !== "rating";
+    if (!hasActiveFilter || isLoading || error || !suppliers) return;
+    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, sort });
+    if (lastTrackedFilter.current === key) return;
+    lastTrackedFilter.current = key;
+    trackEvent("supplier_directory_filtered", {
+      has_search: Boolean(debouncedSearch),
+      has_category: Boolean(category),
+      has_city: Boolean(city),
+      has_type: Boolean(type),
+      has_rating: Boolean(rating),
+      has_plan: Boolean(supplierPackage),
+      sort,
+      results_count: suppliers.length,
+    });
+  }, [category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
   const cities = useMemo(
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],

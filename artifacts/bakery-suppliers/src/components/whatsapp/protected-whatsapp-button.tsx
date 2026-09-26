@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useSupplierAuth } from "@/lib/supplier-auth";
+import { trackEvent } from "@/lib/analytics";
 
 type DialogMode = "gate" | "compose" | null;
 
@@ -57,6 +58,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
         }
         throw new Error(result.error || "تعذر تجهيز رسالة واتساب.");
       }
+      trackEvent("supplier_contact_started", { channel: "whatsapp" });
       if (popup) popup.location.href = result.whatsappUrl;
       else window.location.assign(result.whatsappUrl);
       setDialog(null);

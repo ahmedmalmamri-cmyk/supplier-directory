@@ -4,9 +4,10 @@ import { Lightbulb, MapPin, Search as SearchIcon, Star } from "lucide-react";
 import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
 import { getSearchDirectoryQueryKey, useSearchDirectory } from "@workspace/api-client-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { categoryBreadcrumb, categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getItemCategoryIcon } from "@/lib/item-category-icons";
+import { trackEvent } from "@/lib/analytics";
 
 export default function SearchPage() {
   const q = new URLSearchParams(window.location.search).get("q") || "";
@@ -18,6 +19,16 @@ export default function SearchPage() {
     { query: { enabled: true, queryKey: getSearchDirectoryQueryKey({ q }) } }
   );
   const suppliers = data?.suppliers ?? [];
+  const trackedQuery = useRef("");
+  useEffect(() => {
+    const normalizedQuery = q.trim();
+    if (!normalizedQuery || !data || trackedQuery.current === normalizedQuery) return;
+    trackedQuery.current = normalizedQuery;
+    trackEvent("directory_search_completed", {
+      query_length: normalizedQuery.length,
+      results_count: suppliers.length,
+    });
+  }, [data, q, suppliers.length]);
   const { categories, groups, isLoading: isLoadingTaxonomy, error: taxonomyError, refetch: refetchTaxonomy } = useTaxonomy();
   const matchingCategories = useMemo(() => {
     const term = q.trim().toLocaleLowerCase("ar");

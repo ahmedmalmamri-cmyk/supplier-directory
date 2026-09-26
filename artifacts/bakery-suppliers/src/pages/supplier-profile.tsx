@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
 import { useSupplierAuth } from "@/lib/supplier-auth";
 import { useBuyerAuth } from "@/lib/buyer-auth";
+import { trackEvent } from "@/lib/analytics";
 
 const reviewSchema = z.object({
   reviewerName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(80),
@@ -37,7 +38,7 @@ export default function SupplierProfilePage() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const { data: supplier, isLoading, error } = useGetSupplier(supplierId ?? 0, { query: { enabled: !!supplierId, queryKey: getGetSupplierQueryKey(supplierId ?? 0) } });
   const form = useForm<ReviewFormValues>({ resolver: zodResolver(reviewSchema), defaultValues: { reviewerName: "", rating: 5, comment: "" } });
-  const addReview = useAddReview({ mutation: { onSuccess: () => { setIsReviewOpen(false); form.reset(); if (supplierId) void queryClient.invalidateQueries({ queryKey: getGetSupplierQueryKey(supplierId) }); } } });
+  const addReview = useAddReview({ mutation: { onSuccess: (review) => { trackEvent("supplier_review_submitted", { rating: review.rating }); setIsReviewOpen(false); form.reset(); if (supplierId) void queryClient.invalidateQueries({ queryKey: getGetSupplierQueryKey(supplierId) }); } } });
 
   if (!supplierId) return <MainLayout><EmptyState title="معرف المورد غير صحيح" description="الرابط الذي وصلت منه غير مكتمل." /></MainLayout>;
   if (isLoading) return <MainLayout><LoadingSpinner className="min-h-[60vh]" /></MainLayout>;

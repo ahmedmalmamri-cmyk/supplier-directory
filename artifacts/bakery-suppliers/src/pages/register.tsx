@@ -2,6 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { CategoryIconValue } from "@/components/category-special-icons";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
+import { trackEvent } from "@/lib/analytics";
 import { useListItemCategories } from "@workspace/api-client-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
@@ -211,6 +212,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
                   idCard: supplier.idCard, healthCertificate: supplier.healthCertificate,
                   acceptedData: supplier.acceptedData, acceptedTerms: supplier.acceptedTerms, acceptedBusiness: supplier.acceptedBusiness, acceptedPublish: supplier.acceptedPublish,
                 });
+                trackEvent("registration_submitted", { account_type: "supplier" });
                 setSubmitted({ code: response.requestCode, type: "supplier" });
                 localStorage.removeItem("bakery-supplier-registration-draft");
               } catch (submitError) {
@@ -237,6 +239,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
                    phone: normalizeSaudiPhone(buyer.phone),
                  });
                  await refresh();
+                 trackEvent("registration_submitted", { account_type: "buyer" });
                 setSubmitted({ code: response.requestCode, type: "buyer" });
                 localStorage.removeItem("bakery-buyer-registration-draft");
               } catch (submitError) {
