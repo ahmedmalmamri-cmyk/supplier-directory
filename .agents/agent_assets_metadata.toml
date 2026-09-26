@@ -518,3 +518,31 @@ mtime_ms = 1790445733073
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d0559159-c8f4-4ef9-937c-587bf2641a1a/a46b75ca-e184-4148-9da5-bc9ce28d5856"
 storage_version_token = "1790445792149351"
 content_type = "image/png"
+
+[[outputs]]
+id = "B1933IISsYD_AiKXrg5ue"
+uri = "file://screenshots/buyer-business-details-redacted.jpg"
+type = "image"
+title = "واجهة صاحب العمل — بيانات النشاط"
+description = "لقطة الجوال بعد إخفاء البريد الإلكتروني الظاهر."
+logical_id = "520f3d62-d027-475f-9dcb-8fed46ab825c"
+content_hash = "sha256:0682f3166ed5d17c98708277e9f709114a545014db9db7363adb32f99b127050"
+size = 294184
+mtime_ms = 1790446880512
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/520f3d62-d027-475f-9dcb-8fed46ab825c/693a522b-420d-4d51-83c3-c70bf17970f9"
+storage_version_token = "1790446927708420"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "HPpHhgWeLqSjStzFIAG2T"
+uri = "file://screenshots/buyer-account-redacted.jpg"
+type = "image"
+title = "واجهة صاحب العمل — الحساب"
+description = "لقطة حساب صاحب العمل بعد إخفاء الاسم ورقم الجوال."
+logical_id = "09ec5b25-f022-4241-9911-d22e6b2539c2"
+content_hash = "sha256:c0f3d9319e3e6e1ad08ac9dcc3e8a2a8e9568d62f03f87595663229fd3c2a83e"
+size = 367453
+mtime_ms = 1790446906264
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/09ec5b25-f022-4241-9911-d22e6b2539c2/fa826b76-fdaf-406f-905b-18c23ac80f02"
+storage_version_token = "1790446928979390"
+content_type = "image/jpeg"
