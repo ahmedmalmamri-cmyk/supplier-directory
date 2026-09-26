@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, Store, ShoppingCart, LogOut, AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
+import { useBuyerAuth } from "@/lib/buyer-auth";
+import { useSupplierAuth } from "@/lib/supplier-auth";
 
 type TestRole = "supplier" | "buyer";
 type TestModeStatus = { active: false } | { active: true; role: TestRole; accountType: "test" | "existing" };
@@ -31,6 +34,9 @@ async function requestTestMode<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export function TestModeBanner() {
+  const [location, navigate] = useLocation();
+  const buyerAuth = useBuyerAuth();
+  const supplierAuth = useSupplierAuth();
   const [status, setStatus] = useState<TestModeStatus | null>(null);
   const [error, setError] = useState("");
   const [isExiting, setIsExiting] = useState(false);
@@ -54,7 +60,7 @@ export function TestModeBanner() {
       mounted = false;
       window.clearInterval(refreshTimer);
     };
-  }, []);
+  }, [location]);
 
   const exitTestMode = async () => {
     if (isExiting) return;
@@ -66,6 +72,8 @@ export function TestModeBanner() {
         body: JSON.stringify({}),
       });
       setStatus({ active: false });
+      await Promise.all([buyerAuth.refresh(), supplierAuth.refresh()]);
+      navigate("/test-mode");
     } catch (exitError) {
       setError(exitError instanceof TestModeRequestError && exitError.status === 409
         ? "لا يمكن إنهاء وضع المعاينة أثناء وجود عملية قيد التنفيذ."

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useSupplierAuth } from "@/lib/supplier-auth";
 import { chooseTheme } from "@/lib/theme";
+import { TestModeBanner } from "@/components/test-mode-banner";
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -30,6 +31,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
+      <TestModeBanner />
       <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-4">
           <div className="flex min-w-0 items-center gap-6">

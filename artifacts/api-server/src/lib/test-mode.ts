@@ -94,7 +94,7 @@ function accountConflict(): Error {
 }
 
 export function ensureTestModeAccounts() {
-  const setup = directoryDb.transaction(() => {
+  const setup = () => {
     const now = new Date().toISOString();
     const supplierAccount = directoryDb.prepare(
       "SELECT entity_id AS entityId FROM test_mode_accounts WHERE role = 'supplier'",
@@ -161,8 +161,7 @@ export function ensureTestModeAccounts() {
         `).run(supplierId, productCategory.id, now);
       }
     }
-
-  });
+  };
 
   try {
     directoryDb.exec("BEGIN IMMEDIATE");

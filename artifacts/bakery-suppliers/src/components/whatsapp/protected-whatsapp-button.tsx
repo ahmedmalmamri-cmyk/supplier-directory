@@ -23,6 +23,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
   const [customMessage, setCustomMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
+  const [simulationComplete, setSimulationComplete] = useState(false);
 
   useEffect(() => {
     if (!dialog) return;
@@ -34,6 +35,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
   const openContact = async () => {
     if (!hasWhatsApp || isSending) return;
     setError("");
+    setSimulationComplete(false);
     const currentUser = isLoading ? await refresh() : user;
     setCustomMessage(initialMessage ?? "");
     setDialog(currentUser ? "compose" : "gate");
@@ -50,7 +52,12 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ supplierId, message: customMessage }),
       });
-      const result = await response.json() as { whatsappUrl?: string; error?: string };
+      const result = await response.json() as { whatsappUrl?: string; error?: string; simulated?: boolean };
+      if (response.ok && result.simulated) {
+        popup?.close();
+        setSimulationComplete(true);
+        return;
+      }
       if (!response.ok || !result.whatsappUrl) {
         if (response.status === 401) {
           await refresh();
@@ -93,7 +100,15 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 <p className="mt-5 text-center text-sm text-muted-foreground">مسجل بالفعل؟ <Link href="/buyer/login" onClick={() => setDialog(null)} className="font-extrabold text-primary hover:underline">تسجيل الدخول</Link></p>
                 <button type="button" onClick={() => setDialog(null)} className="mt-5 w-full rounded-xl border border-border px-5 py-3 font-bold hover:bg-muted">إلغاء</button>
               </div>
-            ) : (
+      ) : simulationComplete ? (
+        <div className="pt-7">
+          <div className="rounded-2xl border border-success/25 bg-success/10 p-5 text-success" role="status" data-testid="status-simulated-contact">
+            <p className="flex items-center gap-2 font-extrabold"><CheckCircle2 className="h-5 w-5" /> تمت محاكاة طلب التواصل</p>
+            <p className="mt-2 text-sm leading-7">لم يُسجل الطلب ولم يتم فتح واتساب أثناء وضع الاختبار.</p>
+          </div>
+          <button type="button" onClick={() => { setDialog(null); setSimulationComplete(false); }} className="mt-5 w-full rounded-xl border border-border px-5 py-3 font-bold hover:bg-muted">إغلاق</button>
+        </div>
+      ) : (
               <div className="pt-7">
                 <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-whatsapp/10 text-whatsapp"><MessageCircle className="h-7 w-7" /></div>
                 <h2 id="whatsapp-dialog-title" className="text-2xl font-extrabold">التواصل مع {supplierName}</h2>

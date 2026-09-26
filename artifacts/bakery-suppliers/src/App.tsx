@@ -29,6 +29,7 @@ import SupplierInvitePage from '@/pages/supplier-invite';
 import BuyerInvitePage from '@/pages/buyer-invite';
 import BuyerLoginPage from '@/pages/buyer-login';
 import BuyerProfilePage from '@/pages/buyer-profile';
+import TestModePage from '@/pages/test-mode';
 import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
 import SupplierDashboardPage from '@/pages/supplier-dashboard';
@@ -74,6 +75,8 @@ function Router() {
          <Route path="/register" component={() => <RegisterPage />} />
          <Route path="/buyer/login" component={BuyerLoginPage} />
           <Route path="/buyer/profile" component={BuyerProfilePage} />
+        <Route path="/test-mode" component={() => <TestModePage />} />
+        <Route path="/test-mode/report" component={() => <TestModePage view="report" />} />
         <Route path="/expansion" component={ExpansionPage} />
         <Route path="/admin/categories" component={() => <AdminPage initialTab="item-categories" />} />
         <Route path="/admin" component={() => <AdminPage />} />
