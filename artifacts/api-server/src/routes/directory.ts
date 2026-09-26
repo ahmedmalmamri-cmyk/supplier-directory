@@ -28,6 +28,7 @@ import { categoryTagGroupIdsMap } from "../lib/item-category-groups";
 import { getBuyerIdFromRequest } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest } from "../lib/supplier-auth";
 import { recordSupplierStat } from "../lib/supplier-stats";
+import { isTestModeRequest, isTestModeAccount } from "../lib/test-mode";
 
 const router: IRouter = Router();
 
@@ -170,7 +171,7 @@ router.get("/search", (req, res): void => {
   }
   const searchTerm = (parsed.data.q ?? "").trim().slice(0, 120);
   const buyerId = getSupplierIdFromRequest(req) ? null : getBuyerIdFromRequest(req);
-  if (searchTerm && buyerId) {
+  if (searchTerm && buyerId && !isTestModeRequest(req, "buyer", buyerId)) {
     directoryDb.prepare(`
       INSERT INTO buyer_search_logs (search_term, searched_at, buyer_id) VALUES (?, ?, ?)
     `).run(searchTerm, new Date().toISOString(), buyerId);
@@ -435,10 +436,12 @@ router.get("/suppliers/:id", (req, res): void => {
     return;
   }
   const viewedAt = new Date().toISOString();
-  directoryDb.prepare(
-    "INSERT INTO supplier_page_views (supplier_id, viewed_at) VALUES (?, ?)",
-  ).run(parsed.data.id, viewedAt);
-  recordSupplierStat(parsed.data.id, "view", viewedAt);
+  if (!isTestModeRequest(req, "buyer") && !isTestModeAccount("supplier", parsed.data.id)) {
+    directoryDb.prepare(
+      "INSERT INTO supplier_page_views (supplier_id, viewed_at) VALUES (?, ?)",
+    ).run(parsed.data.id, viewedAt);
+    recordSupplierStat(parsed.data.id, "view", viewedAt);
+  }
   const products = directoryDb.prepare(`
     ${productSelect} WHERE p.supplier_id = ? ORDER BY p.sort_order ASC, p.created_at DESC, p.id DESC
    `).all(parsed.data.id);
@@ -464,6 +467,10 @@ router.post("/suppliers/:id/reviews", (req, res): void => {
     .get(buyerId) as { name: string; status: string } | undefined;
   if (!buyer || buyer.status !== "active") {
     res.status(403).json({ error: "حساب صاحب العمل غير مفعل للتقييم." });
+    return;
+  }
+  if (isTestModeRequest(req, "buyer", buyerId)) {
+    res.status(403).json({ error: "إضافة التقييمات متوقفة أثناء وضع الاختبار." });
     return;
   }
   const params = AddReviewParams.safeParse(req.params);

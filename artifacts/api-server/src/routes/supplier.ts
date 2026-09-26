@@ -4,6 +4,7 @@ import { directoryDb } from "../lib/directory-db";
 import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } from "../lib/supplier-auth";
 import { clearBuyerSession } from "../lib/buyer-auth";
 import { getSupplierMarket } from "../lib/supplier-market";
+import { isTestModeAccount, isTestModeRequest } from "../lib/test-mode";
 
 const router: IRouter = Router();
 const reportReasons = ["إساءة أو إزعاج", "بيانات غير صحيحة", "طلب مخالف", "احتيال أو انتحال", "أخرى"];
@@ -54,13 +55,15 @@ function publicSupplier(supplier: Record<string, unknown>) {
   };
 }
 
-function getSupplier(supplierId: number) {
+function getSupplier(supplierId: number, allowTestMode = false) {
   return directoryDb.prepare(`
     SELECT s.id, s.name, s.city, s.phone, s.whatsapp, s.is_verified AS isVerified
     FROM suppliers s
     JOIN supplier_users su ON su.supplier_id = s.id
-    WHERE s.id = ? AND s.is_active = 1 AND su.status = 'active'
-  `).get(supplierId) as Record<string, unknown> | undefined;
+    WHERE s.id = ? AND (s.is_active = 1 OR (? = 1 AND EXISTS (
+      SELECT 1 FROM test_mode_accounts t WHERE t.role = 'supplier' AND t.entity_id = s.id
+    ))) AND su.status = 'active'
+  `).get(supplierId, allowTestMode ? 1 : 0) as Record<string, unknown> | undefined;
 }
 
 function requireSupplier(req: Request, res: Response) {
@@ -69,7 +72,7 @@ function requireSupplier(req: Request, res: Response) {
     res.status(401).json({ error: "يجب تسجيل دخول المورد أولاً." });
     return null;
   }
-  const supplier = getSupplier(supplierId);
+  const supplier = getSupplier(supplierId, isTestModeRequest(req, "supplier", supplierId));
   if (!supplier) {
     clearSupplierSession(res);
     res.status(401).json({ error: "صلاحية المورد غير متاحة حالياً." });
@@ -216,22 +219,25 @@ router.get("/supplier/dashboard", (req, res): void => {
     description: "أضف وصفاً يوضح منتجاتك ومناطق خدمتك. تواصل مع الإدارة لتحديث بيانات ملفك.",
   });
   const dynamicTitles = ["بحث المشترين عن أصنافك", "مدن تحتاج موردي أصنافك", "أضف صوراً لمنتجاتك", "حدّث نبذة نشاطك"];
+  const testMode = isTestModeRequest(req, "supplier", supplierId);
   const upsert = directoryDb.prepare(`
     INSERT INTO supplier_opportunities (supplier_id, type, title, description, created_at)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(supplier_id, type, title) DO UPDATE SET description = excluded.description
   `);
-  for (const item of fresh) upsert.run(supplierId, item.type, item.title, item.description, now.toISOString());
+  if (!testMode) for (const item of fresh) upsert.run(supplierId, item.type, item.title, item.description, now.toISOString());
   const remove = directoryDb.prepare("DELETE FROM supplier_opportunities WHERE supplier_id = ? AND title = ?");
-  for (const title of dynamicTitles) if (!fresh.some((item) => item.title === title)) remove.run(supplierId, title);
-  const opportunities = directoryDb.prepare(`
+  if (!testMode) for (const title of dynamicTitles) if (!fresh.some((item) => item.title === title)) remove.run(supplierId, title);
+  const opportunities = testMode
+    ? fresh.map((item, index) => ({ ...item, id: -(index + 1), isRead: false }))
+    : directoryDb.prepare(`
     SELECT id, type, title, description, is_read AS isRead
     FROM supplier_opportunities WHERE supplier_id = ?
     ORDER BY is_read, created_at DESC LIMIT 20
   `).all(supplierId).map((row) => {
     const item = row as { id: number; type: string; title: string; description: string; isRead: number };
     return { ...item, isRead: Boolean(item.isRead) };
-  });
+    });
   const rating = Number((directoryDb.prepare("SELECT average_rating AS rating FROM suppliers WHERE id = ?")
     .get(supplierId) as { rating: number }).rating);
   const totalReviews = count("reviews", "created_at", "1970-01-01");
@@ -259,6 +265,10 @@ router.get("/supplier/dashboard", (req, res): void => {
 router.post("/supplier/opportunities/:id/read", (req, res): void => {
   const session = requireSupplier(req, res);
   if (!session) return;
+  if (isTestModeRequest(req, "supplier", session.supplierId)) {
+    res.status(403).json({ error: "تعديل التنبيهات متوقف أثناء وضع الاختبار." });
+    return;
+  }
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id <= 0) {
     res.status(400).json({ error: "معرّف الفرصة غير صالح." });
@@ -297,6 +307,10 @@ router.get("/supplier/contacts", (req, res): void => {
 router.post("/supplier/reports", (req, res): void => {
   const session = requireSupplier(req, res);
   if (!session) return;
+  if (isTestModeRequest(req, "supplier", session.supplierId)) {
+    res.status(403).json({ error: "رفع البلاغات متوقف أثناء وضع الاختبار." });
+    return;
+  }
   const contactLogId = Number(req.body?.contactLogId);
   const reason = text(req.body?.reason);
   const note = text(req.body?.note);

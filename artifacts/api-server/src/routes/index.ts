@@ -7,12 +7,14 @@ import buyerRouter from "./buyer";
 import supplierRouter from "./supplier";
 import buyerInvitationsRouter from "./buyer-invitations";
 import itemCategoryGroupsRouter from "./item-category-groups";
+import testModeRouter from "./test-mode";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(directoryRouter);
 router.use(itemCategoryGroupsRouter);
+router.use(testModeRouter);
 router.use(adminRouter);
 router.use(registrationsRouter);
 router.use(buyerRouter);

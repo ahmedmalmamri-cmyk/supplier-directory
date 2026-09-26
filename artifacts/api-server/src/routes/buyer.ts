@@ -6,6 +6,7 @@ import { getSupplierIdFromRequest } from "../lib/supplier-auth";
 import { recordSupplierStat } from "../lib/supplier-stats";
 import { clearSupplierSession } from "../lib/supplier-auth";
 import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
+import { isTestModeRequest } from "../lib/test-mode";
 
 const router: IRouter = Router();
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
@@ -272,6 +273,14 @@ router.post("/buyer/contact", (req, res): void => {
   const supplier = directoryDb.prepare("SELECT id, name, whatsapp FROM suppliers WHERE id = ? AND is_active = 1").get(supplierId) as { id: number; name: string; whatsapp: string } | undefined;
   if (!supplier) {
     res.status(404).json({ error: "المورد غير موجود." });
+    return;
+  }
+  if (isTestModeRequest(req, "buyer", buyer.id)) {
+    res.json({
+      success: true,
+      simulated: true,
+      message: "تمت محاكاة طلب التواصل. لم يُسجل النشاط ولم يتم فتح واتساب.",
+    });
     return;
   }
   const whatsappNumber = normalizeWhatsAppNumber(supplier.whatsapp);
