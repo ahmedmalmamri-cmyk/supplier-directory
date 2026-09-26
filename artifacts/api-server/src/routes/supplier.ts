@@ -509,10 +509,17 @@ function handleSupplierRequestContact(req: Request, res: Response, mode: "contac
   const formattedSupplierContact = `\u2066+${supplierContact}\u2069`;
   let message: string;
   if (mode === "offer") {
-    const activityRow = directoryDb.prepare(`
-      SELECT google_category AS activity FROM suppliers WHERE id = ?
-    `).get(session.supplierId) as { activity: string | null } | undefined;
-    const supplierActivity = text(activityRow?.activity) || "غير محدد";
+    const supplierCategories = directoryDb.prepare(`
+      SELECT ic.name
+      FROM supplier_categories sc
+      JOIN item_categories ic ON ic.id = sc.item_category_id
+      WHERE sc.supplier_id = ?
+      ORDER BY ic.display_order, ic.name
+    `).all(session.supplierId) as Array<{ name: string }>;
+    const supplierCategoryNames = supplierCategories.map((category) => text(category.name)).filter(Boolean);
+    const supplierCategoryLabel = supplierCategoryNames.length
+      ? `${supplierCategoryNames.slice(0, 4).join("، ")}${supplierCategoryNames.length > 4 ? "، وغيرها" : ""}`
+      : "غير محددة";
     message = [
       "السلام عليكم ورحمة الله وبركاته",
       "",
@@ -522,17 +529,20 @@ function handleSupplierRequestContact(req: Request, res: Response, mode: "contac
       "👤 معلومات المورد:",
       "━━━━━━━━━━━━━━━━━━━━",
       `• الاسم: ${supplierName || "مورد معتمد"}`,
-      `• النشاط: ${supplierActivity}`,
+      `• فئات الأصناف: ${supplierCategoryLabel}`,
       `• المدينة: ${supplierCity || "غير محددة"}`,
       `• الجوال: ${formattedSupplierContact}`,
       "",
       "━━━━━━━━━━━━━━━━━━━━",
       "📋 بخصوص طلبك:",
       "━━━━━━━━━━━━━━━━━━━━",
+      `• المنشأة: ${request.businessName || request.businessType || "صاحب عمل"}`,
       `• الصنف: ${request.title}`,
+      `• التصنيف: ${request.categoryName}`,
       `• الكمية: ${formattedQuantity} ${request.unit}`,
       `• التكرار: ${request.frequency}`,
       `• مدينتك: ${request.city}`,
+      ...(request.description ? [`• التفاصيل: ${request.description}`] : []),
       "",
       "━━━━━━━━━━━━━━━━━━━━",
       "💬 العرض:",

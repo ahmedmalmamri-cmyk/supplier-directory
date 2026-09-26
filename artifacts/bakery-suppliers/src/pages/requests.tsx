@@ -112,17 +112,20 @@ function buildPreviewOfferMessage(item: Request, offer: string) {
     "👤 معلومات المورد:",
     "━━━━━━━━━━━━━━━━━━━━",
     "• الاسم: مؤسسة مذاق الشرقية",
-    "• النشاط: مورد مواد المخابز والحلويات",
+    "• فئات الأصناف: مواد المخابز والحلويات",
     "• المدينة: الدمام",
     "• الجوال: \u2066+966 55 000 0000\u2069",
     "",
     "━━━━━━━━━━━━━━━━━━━━",
     "📋 بخصوص طلبك:",
     "━━━━━━━━━━━━━━━━━━━━",
+    `• المنشأة: ${item.businessName || "مخبز رغيف الشرقية"}`,
     `• الصنف: ${item.title}`,
+    `• التصنيف: ${item.categoryName}`,
     `• الكمية: ${formatQuantity(item.quantity, item.unit)}`,
     `• التكرار: ${item.frequency}`,
     `• مدينتك: ${item.city}`,
+    ...(item.description ? [`• التفاصيل: ${item.description}`] : []),
     "",
     "━━━━━━━━━━━━━━━━━━━━",
     "💬 العرض:",
@@ -741,8 +744,9 @@ function OfferComposeDialog({
               <p className="text-xs font-bold text-muted-foreground">الطلب</p>
               <p className="mt-1 text-sm font-extrabold">{request.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatQuantity(request.quantity, request.unit)} · {request.frequency} · {request.city}
+                {request.categoryName} · {formatQuantity(request.quantity, request.unit)} · {request.frequency} · {request.city}
               </p>
+              {request.description && <p className="mt-2 text-xs leading-6 text-muted-foreground">{request.description}</p>}
             </div>
             <label htmlFor="supplier-offer-text" className="block text-sm font-extrabold">
               تفاصيل العرض
