@@ -117,6 +117,10 @@ function normalizeWhatsAppNumber(value: string) {
 }
 
 function requireBuyer(req: Parameters<IRouter["get"]>[1] extends never ? never : any, res: any) {
+  if (isTestModeRequest(req, "supplier")) {
+    res.status(401).json({ error: "جلسة صاحب العمل غير متاحة أثناء معاينة المورد." });
+    return null;
+  }
   const buyerId = getBuyerIdFromRequest(req);
   if (!buyerId) {
     res.status(401).json({ error: "يجب تسجيل الدخول أولاً." });
@@ -257,7 +261,7 @@ router.get("/buyer/me", (req, res): void => {
 });
 
 router.post("/buyer/contact", (req, res): void => {
-  if (getSupplierIdFromRequest(req)) {
+  if (getSupplierIdFromRequest(req) && !isTestModeRequest(req, "buyer")) {
     res.status(403).json({ error: "لا يمكن للمورد التواصل مع مورد آخر عبر المنصة." });
     return;
   }

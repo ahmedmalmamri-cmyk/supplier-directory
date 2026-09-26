@@ -2,6 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import { getBuyerIdFromRequest } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest, setSupplierSession, clearSupplierSession } from "../lib/supplier-auth";
 import { requireAdmin } from "../lib/admin-auth";
+import { directoryDb } from "../lib/directory-db";
 import {
   buildTestModeReport,
   clearTestModeSession,
@@ -35,7 +36,11 @@ router.get("/test-mode/status", (req, res): void => {
     res.json({ active: false });
     return;
   }
-  res.json({ active: true, role: session.role });
+  res.json({
+    active: true,
+    role: session.role,
+    accountType: session.role === "supplier" ? "test" : "existing",
+  });
 });
 
 router.get("/admin/test-mode", (req, res): void => {

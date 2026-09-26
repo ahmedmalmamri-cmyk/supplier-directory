@@ -67,6 +67,10 @@ function getSupplier(supplierId: number, allowTestMode = false) {
 }
 
 function requireSupplier(req: Request, res: Response) {
+  if (isTestModeRequest(req, "buyer")) {
+    res.status(401).json({ error: "جلسة المورد غير متاحة أثناء معاينة صاحب العمل." });
+    return null;
+  }
   const supplierId = getSupplierIdFromRequest(req);
   if (!supplierId) {
     res.status(401).json({ error: "يجب تسجيل دخول المورد أولاً." });

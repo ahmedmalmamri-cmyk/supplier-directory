@@ -28,7 +28,7 @@ import { categoryTagGroupIdsMap } from "../lib/item-category-groups";
 import { getBuyerIdFromRequest } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest } from "../lib/supplier-auth";
 import { recordSupplierStat } from "../lib/supplier-stats";
-import { isTestModeRequest, isTestModeAccount } from "../lib/test-mode";
+import { getTestModeSession, isTestModeRequest, isTestModeAccount } from "../lib/test-mode";
 
 const router: IRouter = Router();
 
@@ -171,7 +171,7 @@ router.get("/search", (req, res): void => {
   }
   const searchTerm = (parsed.data.q ?? "").trim().slice(0, 120);
   const buyerId = getSupplierIdFromRequest(req) ? null : getBuyerIdFromRequest(req);
-  if (searchTerm && buyerId && !isTestModeRequest(req, "buyer", buyerId)) {
+  if (searchTerm && buyerId && !getTestModeSession(req)) {
     directoryDb.prepare(`
       INSERT INTO buyer_search_logs (search_term, searched_at, buyer_id) VALUES (?, ?, ?)
     `).run(searchTerm, new Date().toISOString(), buyerId);
@@ -436,7 +436,7 @@ router.get("/suppliers/:id", (req, res): void => {
     return;
   }
   const viewedAt = new Date().toISOString();
-  if (!isTestModeRequest(req, "buyer") && !isTestModeAccount("supplier", parsed.data.id)) {
+  if (!getTestModeSession(req) && !isTestModeAccount("supplier", parsed.data.id)) {
     directoryDb.prepare(
       "INSERT INTO supplier_page_views (supplier_id, viewed_at) VALUES (?, ?)",
     ).run(parsed.data.id, viewedAt);
@@ -454,7 +454,7 @@ router.get("/suppliers/:id", (req, res): void => {
 });
 
 router.post("/suppliers/:id/reviews", (req, res): void => {
-  if (getSupplierIdFromRequest(req)) {
+  if (getSupplierIdFromRequest(req) && !isTestModeRequest(req, "buyer")) {
     res.status(403).json({ error: "لا يمكن للمورد تقييم مورد آخر أو التعليق عليه." });
     return;
   }
