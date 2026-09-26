@@ -6,6 +6,8 @@ import {
   AdminLoginBody,
   AdminLoginResponse,
   CreateSupplierInvitationDraftBody,
+  CreateSupplierActivationLinkParams,
+  CreateSupplierActivationLinkResponse,
   GetSupplierInvitationOptionsResponse,
   GetSupplierSourceStatsResponse,
   GetAdminItemCategoryDeletionPreviewParams,
@@ -485,6 +487,80 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
     throw error;
   }
   res.json({ success: true, message: "تمت الموافقة ونشر المورد في الدليل." });
+});
+
+router.post("/admin/supplier-requests/:id/activation-link", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const parsed = CreateSupplierActivationLinkParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: "رقم طلب المورد غير صالح." });
+    return;
+  }
+
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  let failure: { status: number; message: string } | null = null;
+  let activationPath = "";
+
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const request = directoryDb.prepare(`
+      SELECT id, status, invited_supplier_id AS invitedSupplierId
+      FROM supplier_requests WHERE id = ?
+    `).get(parsed.data.id) as { id: number; status: string; invitedSupplierId: number | null } | undefined;
+    if (!request) {
+      failure = { status: 404, message: "طلب المورد غير موجود." };
+    } else if (request.status !== "approved") {
+      failure = { status: 409, message: "يمكن إنشاء رابط التفعيل بعد الموافقة على ملف المورد فقط." };
+    } else {
+      const invitedSupplierId = Number(request.invitedSupplierId) || 0;
+      const supplier = directoryDb.prepare(`
+        SELECT id, is_active AS isActive
+        FROM suppliers
+        WHERE id = ? OR request_id = ?
+        ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END
+        LIMIT 1
+      `).get(invitedSupplierId, request.id, invitedSupplierId) as { id: number; isActive: number } | undefined;
+      if (!supplier) {
+        failure = { status: 404, message: "لم يُعثر على ملف المورد المرتبط بهذا الطلب." };
+      } else if (supplier.isActive !== 1) {
+        failure = { status: 409, message: "ملف المورد غير نشط، ولا يمكن إنشاء رابط تفعيل له." };
+      } else {
+        const access = directoryDb.prepare("SELECT status FROM supplier_users WHERE supplier_id = ?").get(supplier.id) as { status: string } | undefined;
+        if (access?.status === "active") {
+          failure = { status: 409, message: "حساب المورد مفعّل بالفعل، ولن يتم استبدال كلمة مروره." };
+        } else {
+          directoryDb.prepare(`
+            UPDATE supplier_activation_tokens
+            SET revoked_at = ?
+            WHERE supplier_id = ? AND used_at IS NULL AND revoked_at IS NULL
+          `).run(now, supplier.id);
+          directoryDb.prepare(`
+            INSERT INTO supplier_activation_tokens (supplier_id, token_hash, expires_at, created_at)
+            VALUES (?, ?, ?, ?)
+          `).run(supplier.id, tokenHash, expiresAt, now);
+          activationPath = `/supplier/activate?token=${token}`;
+        }
+      }
+    }
+    if (failure) {
+      directoryDb.exec("ROLLBACK");
+    } else {
+      directoryDb.exec("COMMIT");
+    }
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+
+  if (failure) {
+    res.status(failure.status).json({ error: failure.message });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  res.json(CreateSupplierActivationLinkResponse.parse({ path: activationPath, expiresAt }));
 });
 
 router.post("/admin/supplier-requests/:id/reject", (req, res): void => {

@@ -1,5 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  CompleteSupplierActivationBody,
+  CompleteSupplierActivationResponse,
+  GetSupplierActivationQueryParams,
+  GetSupplierActivationResponse,
+} from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
 import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } from "../lib/supplier-auth";
 import { clearBuyerSession } from "../lib/buyer-auth";
@@ -122,6 +128,123 @@ router.post("/supplier/login", (req, res): void => {
 router.post("/supplier/logout", (_req, res): void => {
   clearSupplierSession(res);
   res.json({ success: true });
+});
+
+router.get("/supplier/activation", (req, res): void => {
+  const parsed = GetSupplierActivationQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "رابط التفعيل غير صالح." });
+    return;
+  }
+  const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
+  const now = new Date().toISOString();
+  const activation = directoryDb.prepare(`
+    SELECT t.id, t.expires_at AS expiresAt, s.id AS supplierId, s.name AS supplierName, s.phone
+    FROM supplier_activation_tokens t
+    JOIN suppliers s ON s.id = t.supplier_id
+    WHERE t.token_hash = ? AND t.used_at IS NULL AND t.revoked_at IS NULL
+      AND t.expires_at > ? AND s.is_active = 1
+  `).get(tokenHash, now) as {
+    id: number;
+    expiresAt: string;
+    supplierId: number;
+    supplierName: string;
+    phone: string;
+  } | undefined;
+  if (!activation) {
+    res.status(404).json({ error: "رابط التفعيل غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً من الإدارة." });
+    return;
+  }
+  const access = directoryDb.prepare("SELECT status FROM supplier_users WHERE supplier_id = ?").get(activation.supplierId) as { status: string } | undefined;
+  if (access?.status === "active") {
+    res.status(409).json({ error: "تم تفعيل حساب هذا المورد مسبقاً." });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  res.json(GetSupplierActivationResponse.parse({
+    supplierName: activation.supplierName,
+    phone: activation.phone,
+    expiresAt: activation.expiresAt,
+  }));
+});
+
+router.post("/supplier/activation/complete", (req, res): void => {
+  const parsed = CompleteSupplierActivationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "أدخل كلمة مرور من 8 أحرف على الأقل وأعد كتابتها للتأكيد." });
+    return;
+  }
+  const { token, password, confirmPassword } = parsed.data;
+  if (password !== confirmPassword || Buffer.byteLength(password, "utf8") > 1024) {
+    res.status(400).json({ error: "كلمتا المرور غير متطابقتين أو كلمة المرور طويلة جداً." });
+    return;
+  }
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const passwordHash = hashPassword(password);
+  const now = new Date().toISOString();
+  let supplierId = 0;
+  let failure: { status: number; message: string } | null = null;
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const activation = directoryDb.prepare(`
+      SELECT t.id, s.id AS supplierId, s.phone
+      FROM supplier_activation_tokens t
+      JOIN suppliers s ON s.id = t.supplier_id
+      WHERE t.token_hash = ? AND t.used_at IS NULL AND t.revoked_at IS NULL
+        AND t.expires_at > ? AND s.is_active = 1
+    `).get(tokenHash, now) as { id: number; supplierId: number; phone: string } | undefined;
+    if (!activation) {
+      failure = { status: 404, message: "رابط التفعيل غير صالح أو انتهت صلاحيته. اطلب رابطاً جديداً من الإدارة." };
+    } else {
+      const access = directoryDb.prepare("SELECT status FROM supplier_users WHERE supplier_id = ?").get(activation.supplierId) as { status: string } | undefined;
+      if (access?.status === "active") {
+        failure = { status: 409, message: "تم تفعيل حساب هذا المورد مسبقاً." };
+      } else {
+        const consumed = directoryDb.prepare(`
+          UPDATE supplier_activation_tokens SET used_at = ?
+          WHERE id = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?
+        `).run(now, activation.id, now);
+        if (consumed.changes !== 1) {
+          failure = { status: 409, message: "تم استخدام رابط التفعيل أو إلغاؤه. اطلب رابطاً جديداً من الإدارة." };
+        } else {
+          const account = directoryDb.prepare(`
+            INSERT INTO supplier_users (supplier_id, phone, password_hash, status, created_at, last_login)
+            VALUES (?, ?, ?, 'active', ?, ?)
+            ON CONFLICT(supplier_id) DO UPDATE SET
+              phone = excluded.phone,
+              password_hash = excluded.password_hash,
+              status = 'active',
+              last_login = excluded.last_login
+            WHERE supplier_users.status = 'revoked'
+          `).run(activation.supplierId, activation.phone, passwordHash, now, now);
+          if (account.changes !== 1) {
+            failure = { status: 409, message: "تعذر تفعيل الحساب. اطلب رابطاً جديداً من الإدارة." };
+          } else {
+            supplierId = activation.supplierId;
+          }
+        }
+      }
+    }
+    if (failure) {
+      directoryDb.exec("ROLLBACK");
+    } else {
+      directoryDb.exec("COMMIT");
+    }
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  if (failure) {
+    res.status(failure.status).json({ error: failure.message });
+    return;
+  }
+  clearBuyerSession(res);
+  setSupplierSession(res, supplierId);
+  res.set("Cache-Control", "no-store");
+  res.json(CompleteSupplierActivationResponse.parse({
+    success: true,
+    message: "تم إنشاء كلمة المرور وتفعيل حسابك. يمكنك الآن متابعة إدارة ملفك.",
+  }));
 });
 
 router.get("/supplier/me", (req, res): void => {
