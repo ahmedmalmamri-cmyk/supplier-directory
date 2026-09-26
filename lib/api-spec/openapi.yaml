@@ -132,6 +132,30 @@ paths:
         "401": { description: Active supplier login required }
         "404": { description: Request is unavailable }
         "409": { description: A valid WhatsApp number is unavailable }
+  /supplier/requests/{requestId}/offer:
+    post:
+      operationId: createSupplierRequestOfferContact
+      tags: [requests]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierRequestOfferInput" }
+      responses:
+        "200":
+          description: Prepared supplier offer WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierRequestContactResponse" }
+        "400": { description: Invalid request ID or offer message }
+        "401": { description: Active supplier login required }
+        "404": { description: Request is unavailable }
+        "409": { description: A valid WhatsApp number is unavailable }
   /admin/item-categories:
     get:
       operationId: listAdminItemCategories
@@ -1288,6 +1312,11 @@ components:
         message: { type: string }
         simulated: { type: boolean }
         whatsappUrl: { type: ["string", "null"], format: uri }
+    SupplierRequestOfferInput:
+      type: object
+      required: [offer]
+      properties:
+        offer: { type: string, minLength: 1, maxLength: 1000 }
     RequestInput:
       type: object
       required: [categoryId, quantity, unit, frequency, city, description]
