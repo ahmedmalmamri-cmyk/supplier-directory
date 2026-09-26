@@ -8,3 +8,5 @@
 - [Supplier category associations](supplier-category-associations.md) — preserve registration choices in JSON; update normalized supplier links transactionally and retain stable alias IDs.
 - [Admin browser test environment](admin-browser-test-environment.md) — browser testers may not inherit runtime secrets; use secure server-side tooling for authenticated checks.
 - [API startup proxy fallback](api-startup-proxy-fallback.md) — during startup the proxy may return HTML 404 for /api; distinguish it from an API JSON 404.
+- [Preview cookie attributes](preview-cookie-attributes.md) — HTTPS preview rewrites SameSite and Secure; verify app-issued cookie attributes at the direct origin.
+- [Gold accent contrast](gold-accent-contrast.md) — honey-gold backgrounds need dark chocolate text; reserve white text for the milk-chocolate primary.

@@ -3,6 +3,7 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useListItemCategories } from "@workspace/api-client-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { Building2, CakeSlice, CheckCircle2, ChevronDown, ChevronLeft, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
 
 type RegistrationType = "supplier" | "buyer";
@@ -177,6 +178,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
           <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center"><UserPlus className="w-7 h-7" /></div>
           <h1 className="text-4xl font-bold mb-4">{title}</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "أرسل طلب انضمامك في دقيقة: اختر فئتك وأدخل اسم النشاط ووسيلة التواصل والمدينة. تُراجع الطلبات قبل النشر."}</p>
+          <p className="mt-5 text-base font-semibold">هل لديك حساب بالفعل؟ <Link data-testid="link-register-login" href={type === "supplier" ? "/login?role=supplier" : "/login?role=buyer"} className="font-extrabold text-primary underline underline-offset-4 hover:opacity-75">تسجيل الدخول</Link></p>
         </div>
       </div>
 
@@ -625,7 +627,7 @@ function ThankYou({ requestCode, type, onAgain }: { requestCode: string; type: R
 
    const whatsappHref = buildWhatsAppUrl(whatsapp);
   return <MainLayout><div className="container mx-auto px-4 py-20 max-w-2xl text-center">
-    <CheckCircle2 className="w-20 h-20 text-green-600 mx-auto mb-6" />
+    <CheckCircle2 className="w-20 h-20 text-success mx-auto mb-6" />
      <h1 className="text-3xl font-bold mb-4">{type === "buyer" ? "شكراً لك! تم استلام طلبك كصاحب عمل" : "تم استلام طلبك بنجاح"}</h1>
       <p className="text-lg text-muted-foreground leading-8">{type === "buyer" ? "تم إنشاء حسابك وتسجيل دخولك تلقائياً. يمكنك الآن التواصل مع جميع الموردين." : "تم استلام طلبك. تراجعه الإدارة قبل نشر ملف المورد، ثم تتواصل معك خلال 48 ساعة. لا يلزمك تحديث المنتجات يومياً؛ يمكن لأصحاب الأعمال الاستفسار عن الأنواع والتوفر عبر واتساب."}</p>
     <div className="my-8 rounded-2xl bg-primary/10 border border-primary/20 p-5"><div className="text-sm text-muted-foreground mb-2">رقم طلبك المرجعي</div><strong dir="ltr" className="text-2xl text-primary">{requestCode}</strong></div>
@@ -658,7 +660,7 @@ function CheckField({ label, checked, onChange }: { label: string; checked: bool
   return <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-1" /><span>{label}</span></label>;
 }
 function FileField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block border border-dashed rounded-xl p-4 cursor-pointer hover:border-primary"><span className="flex items-center gap-2 text-sm font-bold mb-2"><FileUp className="w-4 h-4 text-primary" />{label}</span><input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={async (event) => { const file = event.target.files?.[0]; if (file) onChange(await readFile(file)); }} className="block w-full text-sm" />{value && <span className="text-xs text-green-700 mt-2 block">تم تجهيز الملف للإرسال</span>}</label>;
+  return <label className="block border border-dashed rounded-xl p-4 cursor-pointer hover:border-primary"><span className="flex items-center gap-2 text-sm font-bold mb-2"><FileUp className="w-4 h-4 text-primary" />{label}</span><input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={async (event) => { const file = event.target.files?.[0]; if (file) onChange(await readFile(file)); }} className="block w-full text-sm" />{value && <span className="text-xs text-success mt-2 block">تم تجهيز الملف للإرسال</span>}</label>;
 }
 
 function validateSupplier(form: SupplierForm) {

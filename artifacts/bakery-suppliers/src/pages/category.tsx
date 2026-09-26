@@ -140,11 +140,11 @@ export default function CategoryPage() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold group-hover:text-primary transition-colors flex items-center gap-2 truncate">
                             {supplier.name}
-                            {supplier.isVerified && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full shrink-0">موثق ✓</span>}
+                            {supplier.isVerified && <span className="text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded-full shrink-0">موثق ✓</span>}
                           </h3>
                           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3"/> {supplier.city}</span>
-                            <span className="text-amber-600">★ {supplier.averageRating.toFixed(1)}</span>
+                            <span className="text-gold-ink">★ {supplier.averageRating.toFixed(1)}</span>
                           </div>
                         </div>
                       </Link>

@@ -109,7 +109,7 @@ export default function SearchPage() {
                             </div>
                           </div>
                           <div className="mt-4 flex items-center gap-1.5 text-sm font-bold">
-                            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                            <Star className="h-4 w-4 fill-accent text-accent" />
                             <span>{rating > 0 ? rating.toFixed(1) : "جديد"}</span>
                             <span className="font-normal text-muted-foreground">{rating > 0 ? "تقييم المورد" : "لا توجد تقييمات بعد"}</span>
                           </div>
@@ -121,7 +121,7 @@ export default function SearchPage() {
                             hasWhatsApp={Boolean(supplier.whatsapp)}
                             label="اسأل عبر واتساب"
                             initialMessage={initialMessage}
-                            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#287d56] px-3 py-3 text-sm font-extrabold text-white hover:bg-[#216a49] disabled:opacity-60"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-whatsapp px-3 py-3 text-sm font-extrabold text-whatsapp-foreground hover:bg-whatsapp/90 disabled:opacity-60"
                           />
                           <Link href={`/supplier/${supplier.id}`} className="rounded-xl border px-4 py-3 text-sm font-bold hover:bg-muted">الملف</Link>
                         </div>

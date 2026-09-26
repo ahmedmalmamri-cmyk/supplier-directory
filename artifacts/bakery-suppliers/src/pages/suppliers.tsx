@@ -143,13 +143,13 @@ export default function SuppliersPage() {
                       {supplier.name.substring(0,1)}
                     </div>
                     {supplier.isVerified && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                      <span className="flex items-center gap-1 text-xs font-medium text-success bg-success/10 border border-success/25 px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         موثق
                       </span>
                     )}
                     {supplier.isFeatured && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-accent bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
+                      <span className="flex items-center gap-1 text-xs font-medium text-gold-ink bg-accent/10 border border-accent/20 px-2.5 py-1 rounded-full">
                         <BadgeCheck className="w-3.5 h-3.5" />
                         مميز
                       </span>
@@ -163,8 +163,8 @@ export default function SuppliersPage() {
                       <MapPin className="w-3.5 h-3.5" />
                       {supplier.city}
                     </div>
-                     <div className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-100 px-2 py-1 rounded-md font-medium">
-                      <Star className="w-3.5 h-3.5 fill-amber-500" />
+                     <div className="flex items-center gap-1 bg-accent/10 text-foreground border border-accent/25 px-2 py-1 rounded-md font-medium">
+                      <Star className="w-3.5 h-3.5 fill-accent text-accent" />
                        {(supplier.googleRating ?? supplier.averageRating).toFixed(1)}
                     </div>
                      {supplier.googleCategory && <div className="flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 px-2 py-1 rounded-md font-medium">{supplier.googleCategory}</div>}

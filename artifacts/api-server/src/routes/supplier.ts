@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { directoryDb } from "../lib/directory-db";
 import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } from "../lib/supplier-auth";
+import { clearBuyerSession } from "../lib/buyer-auth";
 
 const router: IRouter = Router();
 const reportReasons = ["إساءة أو إزعاج", "بيانات غير صحيحة", "طلب مخالف", "احتيال أو انتحال", "أخرى"];
@@ -77,8 +78,13 @@ function requireSupplier(req: Request, res: Response) {
 }
 
 router.post("/supplier/login", (req, res): void => {
+  if (req.body?.rememberMe !== undefined && typeof req.body.rememberMe !== "boolean") {
+    res.status(400).json({ error: "قيمة تذكرني غير صحيحة." });
+    return;
+  }
   const phone = normalizeSaudiPhone(text(req.body?.phone));
   const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const remember = req.body?.rememberMe === true;
   if (!isSaudiPhone(phone) || password.length < 6) {
     res.status(400).json({ error: "أدخل رقم جوال المورد وكلمة المرور الصحيحة." });
     return;
@@ -100,7 +106,8 @@ router.post("/supplier/login", (req, res): void => {
     res.status(401).json({ error: "حساب المورد غير متاح حالياً." });
     return;
   }
-  setSupplierSession(res, account.supplierId);
+  clearBuyerSession(res);
+  setSupplierSession(res, account.supplierId, remember);
   res.json({ success: true, supplier: publicSupplier(supplier) });
 });
 

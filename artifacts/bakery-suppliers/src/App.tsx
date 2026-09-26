@@ -33,6 +33,7 @@ import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
 import LoginChoicePage from '@/pages/login-choice';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
+import { SupplierAuthProvider } from '@/lib/supplier-auth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,7 +56,7 @@ function Router() {
           {(params) => /^\d+$/.test(params.value) ? <CategoryPage /> : <ItemCategoryPage />}
         </Route>
         <Route path="/suppliers" component={SuppliersPage} />
-        <Route path="/login" component={LoginChoicePage} />
+        <Route path="/login" component={() => <LoginChoicePage />} />
          <Route path="/supplier/login" component={SupplierLoginPage} />
          <Route path="/supplier/portal" component={SupplierPortalPage} />
          <Route path="/supplier/:id" component={SupplierProfilePage} />
@@ -89,12 +90,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BuyerAuthProvider>
+        <SupplierAuthProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <Router />
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
+        </SupplierAuthProvider>
       </BuyerAuthProvider>
     </QueryClientProvider>
   );

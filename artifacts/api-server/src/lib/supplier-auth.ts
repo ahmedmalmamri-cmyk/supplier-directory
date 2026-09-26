@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 
 const supplierCookieName = "bakery_supplier_session";
 const sessionDurationSeconds = 60 * 60 * 12;
+const rememberDurationSeconds = 60 * 60 * 24 * 30;
 
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -10,25 +11,32 @@ function getSessionSecret() {
   return secret;
 }
 
-function createSessionToken(supplierId: number) {
-  const expiresAt = Math.floor(Date.now() / 1000) + sessionDurationSeconds;
+function createSessionToken(supplierId: number, remember: boolean) {
+  const expiresAt = Math.floor(Date.now() / 1000) + (remember ? rememberDurationSeconds : sessionDurationSeconds);
   const payload = `supplier:${supplierId}:${expiresAt}`;
   const signature = createHmac("sha256", getSessionSecret()).update(payload).digest("hex");
   return `${payload}.${signature}`;
 }
 
-export function setSupplierSession(res: Response, supplierId: number) {
-  res.cookie(supplierCookieName, createSessionToken(supplierId), {
+export function setSupplierSession(res: Response, supplierId: number, remember = false) {
+  const cookieOptions = {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: sessionDurationSeconds * 1000,
     path: "/",
-  });
+  } as const;
+  res.cookie(supplierCookieName, createSessionToken(supplierId, remember), remember
+    ? { ...cookieOptions, maxAge: rememberDurationSeconds * 1000 }
+    : cookieOptions);
 }
 
 export function clearSupplierSession(res: Response) {
-  res.clearCookie(supplierCookieName, { httpOnly: true, sameSite: "lax", path: "/" });
+  res.clearCookie(supplierCookieName, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
 }
 
 export function getSupplierIdFromRequest(req: Request) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type BuyerUser = {
   id: number;
@@ -27,29 +27,34 @@ const BuyerAuthContext = createContext<BuyerAuthContextValue | null>(null);
 export function BuyerAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<BuyerUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const requestId = useRef(0);
 
   const refresh = async () => {
+    const id = ++requestId.current;
     setIsLoading(true);
     try {
       const response = await fetch("/api/buyer/me", { credentials: "same-origin" });
       if (!response.ok) {
-        setUser(null);
+        if (id === requestId.current) setUser(null);
         return null;
       }
       const result = await response.json() as { user: BuyerUser };
-      setUser(result.user);
+      if (id === requestId.current) setUser(result.user);
       return result.user;
     } catch {
-      setUser(null);
+      if (id === requestId.current) setUser(null);
       return null;
     } finally {
-      setIsLoading(false);
+      if (id === requestId.current) setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    await fetch("/api/buyer/logout", { method: "POST", credentials: "same-origin" }).catch(() => undefined);
+    const response = await fetch("/api/buyer/logout", { method: "POST", credentials: "same-origin" });
+    if (!response.ok) throw new Error("تعذر تسجيل الخروج. حاول مرة أخرى.");
+    requestId.current++;
     setUser(null);
+    setIsLoading(false);
   };
 
   useEffect(() => { void refresh(); }, []);

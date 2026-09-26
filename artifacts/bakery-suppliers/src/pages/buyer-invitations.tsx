@@ -24,15 +24,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { publishedPageUrl } from "@/lib/public-site-url";
 
 type Status = "invited" | "activated" | "active" | "suspended";
 type BusinessType = typeof BuyerInvitationInputBusinessType[keyof typeof BuyerInvitationInputBusinessType];
 type FormState = { fullName: string; phone: string; businessName: string; businessType: BusinessType; city: string; internalNotes: string };
 const statuses: { id: Status; label: string; tone: string }[] = [
-  { id: "invited", label: "مدعوون", tone: "bg-amber-100 text-amber-800" },
-  { id: "activated", label: "مفعّلون", tone: "bg-sky-100 text-sky-800" },
-  { id: "active", label: "نشطون", tone: "bg-emerald-100 text-emerald-800" },
-  { id: "suspended", label: "موقوفون مؤقتاً", tone: "bg-rose-100 text-rose-800" },
+  { id: "invited", label: "مدعوون", tone: "bg-warning/10 text-warning" },
+  { id: "activated", label: "مفعّلون", tone: "bg-primary/10 text-primary" },
+  { id: "active", label: "نشطون", tone: "bg-success/10 text-success" },
+  { id: "suspended", label: "موقوفون مؤقتاً", tone: "bg-destructive/10 text-destructive" },
 ];
 const businessTypes = Object.values(BuyerInvitationInputBusinessType);
 const emptyForm: FormState = { fullName: "", phone: "", businessName: "", businessType: "مخبز", city: "", internalNotes: "" };
@@ -61,8 +62,7 @@ export function BuyerInvitationsPanel() {
   const linkMutation = useGetBuyerInvitationLink();
   const markSent = useMarkBuyerInvitationSent();
   const accountStatus = useUpdateInvitedBuyerAccountStatus();
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const registrationUrl = `${window.location.origin}${basePath}/register/buyer`;
+  const registrationUrl = publishedPageUrl("/register/buyer");
   const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كصاحب عمل في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى تعبئة البيانات وإنشاء حسابكم.`;
   const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
@@ -150,7 +150,7 @@ export function BuyerInvitationsPanel() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button data-testid="button-create-buyer-invitation" type="button" onClick={openCreate} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground shadow-warm"><Plus className="h-4 w-4" /> دعوة جديدة</button>
-          <button data-testid="button-add-buyer-whatsapp" type="button" onClick={() => { setError(""); setShowWhatsApp(true); }} className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#287c62]/30 bg-[#287c62]/10 px-4 text-sm font-bold text-[#21674f] hover:bg-[#287c62]/15"><MessageCircle className="h-4 w-4" /> دعوة أصحاب أعمال عبر واتساب</button>
+          <button data-testid="button-add-buyer-whatsapp" type="button" onClick={() => { setError(""); setShowWhatsApp(true); }} className="inline-flex h-11 items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 text-sm font-bold text-primary hover:bg-primary/15"><MessageCircle className="h-4 w-4" /> دعوة أصحاب أعمال عبر واتساب</button>
           <button data-testid="button-export-buyer-invitations" type="button" onClick={() => void exportCsv()} disabled={exportQuery.isFetching} className="inline-flex h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted disabled:opacity-60"><Download className="h-4 w-4" /> {exportQuery.isFetching ? "جاري التجهيز..." : "تصدير Excel"}</button>
         </div>
       </div>
@@ -167,7 +167,7 @@ export function BuyerInvitationsPanel() {
               <p data-testid="text-buyer-registration-url" className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a data-testid="button-share-buyer-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#287c62] px-4 text-sm font-bold text-white hover:bg-[#21674f]">
+              <a data-testid="button-share-buyer-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground hover:bg-primary/90">
                 <MessageCircle className="h-4 w-4" /> اختيار مستلم في واتساب
               </a>
               <button data-testid="button-copy-buyer-registration-link" type="button" onClick={() => void copyRegistrationLink()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold hover:bg-muted">
@@ -197,7 +197,7 @@ export function BuyerInvitationsPanel() {
         {statuses.map((item) => <div data-testid={`stat-buyer-invitations-${item.id}`} key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.tone}`}>{item.label}</span><Users className="h-4 w-4 text-muted-foreground" /></div><strong className="text-2xl">{stats.data?.[item.id] ?? "—"}</strong><span className="mr-2 text-xs text-muted-foreground">حساب</span></div>)}
       </div>
       {stats.data && <div className="grid gap-4 lg:grid-cols-2"><Insight title="أكثر عمليات البحث" items={stats.data.topSearches.map((item) => `${item.term} · ${item.count}`)} testId="buyer-top-searches" /><Insight title="محاولات التواصل اليومية" items={stats.data.dailyContactAttempts.slice(-5).map((item) => `${item.date} · ${item.count}`)} testId="buyer-daily-contact-attempts" /></div>}
-      {notice && <div data-testid="status-buyer-invitation-notice" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
+      {notice && <div data-testid="status-buyer-invitation-notice" className="rounded-xl border border-success/25 bg-success/10 p-3 text-sm text-success">{notice}</div>}
       {error && !showForm && <div data-testid="status-buyer-invitation-error" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-3 md:flex-row md:items-center md:justify-between">
@@ -206,7 +206,7 @@ export function BuyerInvitationsPanel() {
         </div>
         {list.isLoading ? <InvitationSkeleton /> : list.isError ? <div className="p-10 text-center text-sm text-destructive">تعذر تحميل الدعوات. <button data-testid="button-retry-buyer-invitations" type="button" onClick={() => void list.refetch()} className="font-bold underline">إعادة المحاولة</button></div> : items.length === 0 ? <div data-testid="empty-buyer-invitations" className="p-12 text-center"><UserPlus className="mx-auto mb-3 h-9 w-9 text-muted-foreground/40" /><h3 className="font-bold">لا توجد دعوات في هذه القائمة</h3><p className="mt-1 text-sm text-muted-foreground">أنشئ دعوة جديدة لتبدأ متابعة التفعيل.</p></div> : <div className="divide-y">{items.map((item) => <InvitationCard key={item.id} item={item} details={details === item.id} onDetails={() => setDetails(details === item.id ? null : item.id)} onEdit={() => openEdit(item)} onDelete={() => { if (window.confirm("هل تريد حذف الدعوة غير المفعّلة؟")) remove.mutate({ id: item.id }, { onSuccess: () => { setNotice("تم حذف الدعوة."); refresh(); }, onError: () => setError("تعذر حذف الدعوة.") }); }} onCopy={() => copyLink(item)} onWhatsApp={() => copyLink(item, true)} onSuspend={() => { setSuspendId(item.id); setReason(""); }} onReactivate={() => updateStatus(item.id, "active")} />)}</div>}
       </div>
-      {suspendId !== null && <div data-testid="dialog-suspend-buyer" className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/30 p-4"><div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-warm-lg"><h3 className="text-xl font-extrabold">إيقاف الحساب مؤقتاً</h3><p className="mt-1 text-sm text-muted-foreground">سيبقى سجل التواصل محفوظاً ويمكن إعادة التفعيل لاحقاً.</p><label className="mt-5 block"><span className="mb-1.5 block text-sm font-bold">مدة الإيقاف بالأيام</span><select data-testid="select-suspend-duration" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3">{[1, 3, 7, 14, 30, 90].map((day) => <option key={day} value={day}>{day} يوم</option>)}</select></label><label className="mt-4 block"><span className="mb-1.5 block text-sm font-bold">سبب داخلي <span className="font-normal text-muted-foreground">(اختياري)</span></span><textarea data-testid="textarea-suspend-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={3} className="w-full rounded-xl border bg-background p-3" /></label><div className="mt-5 flex gap-2"><button data-testid="button-confirm-suspend-buyer" type="button" onClick={() => updateStatus(suspendId, "suspended", Number(durationDays))} className="rounded-xl bg-rose-700 px-4 py-2.5 text-sm font-bold text-white">تأكيد الإيقاف</button><button data-testid="button-cancel-suspend-buyer" type="button" onClick={() => setSuspendId(null)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">إلغاء</button></div></div></div>}
+      {suspendId !== null && <div data-testid="dialog-suspend-buyer" className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/30 p-4"><div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-warm-lg"><h3 className="text-xl font-extrabold">إيقاف الحساب مؤقتاً</h3><p className="mt-1 text-sm text-muted-foreground">سيبقى سجل التواصل محفوظاً ويمكن إعادة التفعيل لاحقاً.</p><label className="mt-5 block"><span className="mb-1.5 block text-sm font-bold">مدة الإيقاف بالأيام</span><select data-testid="select-suspend-duration" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3">{[1, 3, 7, 14, 30, 90].map((day) => <option key={day} value={day}>{day} يوم</option>)}</select></label><label className="mt-4 block"><span className="mb-1.5 block text-sm font-bold">سبب داخلي <span className="font-normal text-muted-foreground">(اختياري)</span></span><textarea data-testid="textarea-suspend-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={3} className="w-full rounded-xl border bg-background p-3" /></label><div className="mt-5 flex gap-2"><button data-testid="button-confirm-suspend-buyer" type="button" onClick={() => updateStatus(suspendId, "suspended", Number(durationDays))} className="rounded-xl bg-destructive px-4 py-2.5 text-sm font-bold text-destructive-foreground">تأكيد الإيقاف</button><button data-testid="button-cancel-suspend-buyer" type="button" onClick={() => setSuspendId(null)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">إلغاء</button></div></div></div>}
     </section>
   );
 }

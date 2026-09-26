@@ -39,6 +39,7 @@ import {
   invalidSaudiPhoneMessage,
   normalizeSaudiMobile,
 } from "@/lib/saudi-phone";
+import { publishedPageUrl } from "@/lib/public-site-url";
 
 type InvitationStatus = "unsent" | "sent" | "completed";
 type Draft = { name: string; whatsapp: string; city: string };
@@ -208,8 +209,7 @@ export function SupplierInvitationsPanel() {
   };
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const registrationUrl = `${window.location.origin}${basePath}/register/supplier`;
+  const registrationUrl = publishedPageUrl("/register/supplier");
   const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى إدخال بيانات منشأتكم بأنفسكم. سيُراجع الطلب من الإدارة قبل اعتماده ونشره.`;
   const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
@@ -232,7 +232,7 @@ export function SupplierInvitationsPanel() {
           <button data-testid="button-add-supplier-whatsapp" type="button" onClick={() => {
             setError("");
             setShowWhatsApp(true);
-          }} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#287c62]/30 bg-[#287c62]/10 px-4 text-sm font-bold text-[#21674f] transition-colors hover:bg-[#287c62]/15">
+          }} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 text-sm font-bold text-primary transition-colors hover:bg-primary/15">
             <MessageCircle className="h-4 w-4" /> دعوة مورد عبر واتساب
           </button>
         </div>
@@ -264,7 +264,7 @@ export function SupplierInvitationsPanel() {
               <p className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a data-testid="button-share-supplier-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#287c62] px-4 text-sm font-bold text-white hover:bg-[#21674f]">
+              <a data-testid="button-share-supplier-registration-whatsapp" href={whatsAppShareUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground hover:bg-primary/90">
                 <MessageCircle className="h-4 w-4" /> اختيار مستلم في واتساب
               </a>
               <button data-testid="button-copy-supplier-registration-link" type="button" onClick={() => {
@@ -281,9 +281,9 @@ export function SupplierInvitationsPanel() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="مرسلة" value={stats.data?.sent} icon={<Send className="h-4 w-4" />} accent="text-primary" />
-        <StatCard label="فتحت الرابط" value={stats.data?.opened} icon={<ExternalLink className="h-4 w-4" />} accent="text-amber-700" />
-        <StatCard label="مكتملة" value={stats.data?.completed} icon={<Clipboard className="h-4 w-4" />} accent="text-emerald-700" />
-        <StatCard label="نسبة الاستجابة" value={stats.data ? `${stats.data.responseRate}%` : undefined} icon={<Users className="h-4 w-4" />} accent="text-sky-700" />
+        <StatCard label="فتحت الرابط" value={stats.data?.opened} icon={<ExternalLink className="h-4 w-4" />} accent="text-warning" />
+        <StatCard label="مكتملة" value={stats.data?.completed} icon={<Clipboard className="h-4 w-4" />} accent="text-success" />
+        <StatCard label="نسبة الاستجابة" value={stats.data ? `${stats.data.responseRate}%` : undefined} icon={<Users className="h-4 w-4" />} accent="text-primary" />
       </div>
 
       <section aria-labelledby="supplier-source-stats-title" className="space-y-3">
@@ -292,12 +292,12 @@ export function SupplierInvitationsPanel() {
         {formOptions.isError && <p role="status" data-testid="status-supplier-city-options-error" className="text-xs text-destructive">تعذر تحميل اقتراحات المدن. يمكنك مراجعة إعدادات المدن.</p>}
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard label="أُضيف يدوياً" value={sourceStats.data?.manual} icon={<Store className="h-4 w-4" />} accent="text-primary" />
-          <StatCard label="أُضيف عبر واتساب" value={sourceStats.data?.whatsapp} icon={<MessageCircle className="h-4 w-4" />} accent="text-[#21674f]" />
-          <StatCard label="تسجيل ذاتي معتمد" value={sourceStats.data?.selfRegistered} icon={<Users className="h-4 w-4" />} accent="text-sky-700" />
+          <StatCard label="أُضيف عبر واتساب" value={sourceStats.data?.whatsapp} icon={<MessageCircle className="h-4 w-4" />} accent="text-primary" />
+          <StatCard label="تسجيل ذاتي معتمد" value={sourceStats.data?.selfRegistered} icon={<Users className="h-4 w-4" />} accent="text-success" />
         </div>
       </section>
 
-      {(notice || error) && <div role="status" data-testid={error ? "status-invitation-error" : "status-invitation-notice"} className={`rounded-xl border p-3 text-sm ${error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || notice}</div>}
+      {(notice || error) && <div role="status" data-testid={error ? "status-invitation-error" : "status-invitation-notice"} className={`rounded-xl border p-3 text-sm ${error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-success/25 bg-success/10 text-success"}`}>{error || notice}</div>}
 
       <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -324,7 +324,7 @@ function PhoneField({ value, onChange, onVerify, error, inputTestId, verifyTestI
       <span className="mb-1.5 block text-xs font-bold">رقم واتساب</span>
       <div className="flex gap-2" dir="ltr">
         <input data-testid={inputTestId} type="tel" inputMode="tel" autoComplete="tel" required value={value} onChange={(event) => onChange(event.target.value)} placeholder="0551234567 أو 966551234567" aria-invalid={Boolean(error)} className={`h-11 min-w-0 flex-1 rounded-xl border bg-background px-3 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 ${error ? "border-destructive" : ""}`} />
-        <button data-testid={verifyTestId} type="button" onClick={onVerify} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold hover:bg-muted" dir="rtl"><CheckCircle2 className="h-4 w-4 text-[#287c62]" />تحقق</button>
+        <button data-testid={verifyTestId} type="button" onClick={onVerify} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold hover:bg-muted" dir="rtl"><CheckCircle2 className="h-4 w-4 text-primary" />تحقق</button>
       </div>
       {error && <span role="alert" data-testid={`${inputTestId}-error`} className="mt-1 block text-xs text-destructive">{error}</span>}
     </label>
@@ -352,19 +352,19 @@ function InvitationRow({ item, link, whatsAppFallback, busy, onGenerate, onWhats
     <article data-testid={`card-invitation-${item.supplierId}`} className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/20 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${rejected ? "bg-red-500" : completed ? "bg-emerald-500" : item.inviteSentAt ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
+          <span className={`h-2 w-2 rounded-full ${rejected ? "bg-destructive" : completed ? "bg-success" : item.inviteSentAt ? "bg-warning" : "bg-muted-foreground/40"}`} />
           <h3 data-testid={`text-invitation-name-${item.supplierId}`} className="font-extrabold">{item.name}</h3>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold">{stateLabel}</span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{item.city} <span className="px-1">·</span> <span dir="ltr" className="inline-block">{item.whatsapp}</span></p>
         <p className="mt-1 text-xs text-muted-foreground">الإرسال: {dateLabel(item.inviteSentAt)} · الفتح: {dateLabel(item.inviteOpenedAt)} · الإكمال: {dateLabel(item.inviteCompletedAt)}</p>
-        {item.requestStatus && <p className={`mt-1 text-xs font-bold ${rejected ? "text-red-700" : "text-emerald-700"}`}>حالة طلب التسجيل: {requestLabel[item.requestStatus] || item.requestStatus}</p>}
+        {item.requestStatus && <p className={`mt-1 text-xs font-bold ${rejected ? "text-destructive" : "text-success"}`}>حالة طلب التسجيل: {requestLabel[item.requestStatus] || item.requestStatus}</p>}
       </div>
       {(!completed || rejected) && <div className="flex flex-wrap gap-2">
         {link && <button data-testid={`button-copy-invitation-${item.supplierId}`} type="button" onClick={onCopy} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold hover:bg-muted"><Clipboard className="h-3.5 w-3.5" /> نسخ الرابط</button>}
         <button data-testid={`button-generate-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onGenerate} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-60">{busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />} إنشاء ونسخ الرابط</button>
-        <button data-testid={`button-whatsapp-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onWhatsApp} className="inline-flex items-center gap-1.5 rounded-lg bg-[#287c62] px-3 py-2 text-xs font-bold text-white hover:bg-[#21674f] disabled:opacity-60"><MessageCircle className="h-3.5 w-3.5" /> فتح واتساب</button>
-        {whatsAppFallback && <a data-testid={`link-whatsapp-fallback-${item.supplierId}`} href={whatsAppFallback} target="_blank" rel="noopener noreferrer" onClick={onWhatsAppFallback} className="inline-flex items-center gap-1.5 rounded-lg border border-[#287c62]/30 bg-[#287c62]/10 px-3 py-2 text-xs font-bold text-[#21674f] hover:bg-[#287c62]/15"><MessageCircle className="h-3.5 w-3.5" /> متابعة الإرسال عبر واتساب</a>}
+        <button data-testid={`button-whatsapp-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onWhatsApp} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"><MessageCircle className="h-3.5 w-3.5" /> فتح واتساب</button>
+        {whatsAppFallback && <a data-testid={`link-whatsapp-fallback-${item.supplierId}`} href={whatsAppFallback} target="_blank" rel="noopener noreferrer" onClick={onWhatsAppFallback} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/15"><MessageCircle className="h-3.5 w-3.5" /> متابعة الإرسال عبر واتساب</a>}
       </div>}
     </article>
   );

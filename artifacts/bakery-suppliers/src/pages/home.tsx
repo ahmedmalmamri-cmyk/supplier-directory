@@ -21,7 +21,7 @@ import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterCon
 import { CategorySearch, RootCard, useTaxonomy } from "@/components/categories/taxonomy";
 
 function Rating({ value }: { value: number }) {
-  return <span className="inline-flex items-center gap-1 text-sm font-bold text-accent"><Star className="h-4 w-4 fill-current" aria-hidden="true" />{value.toFixed(1)}</span>;
+  return <span className="inline-flex items-center gap-1 text-sm font-bold text-gold-ink"><Star className="h-4 w-4 fill-accent text-accent" aria-hidden="true" />{value.toFixed(1)}</span>;
 }
 
 export default function Home() {
@@ -67,18 +67,18 @@ export default function Home() {
 
   return (
     <MainLayout>
-      <section className="relative isolate overflow-hidden bg-[#f0e4d2] dark:bg-[#241812]">
-        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="lazy" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-45" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(250,246,239,.48)_0%,rgba(250,246,239,.68)_55%,rgba(250,246,239,.88)_100%)] dark:bg-[linear-gradient(90deg,rgba(20,15,12,.55)_0%,rgba(20,15,12,.72)_55%,rgba(20,15,12,.88)_100%)]" />
+      <section className="relative isolate overflow-hidden bg-secondary dark:bg-background">
+        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="lazy" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-55" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,hsl(var(--background)/.48)_0%,hsl(var(--background)/.68)_55%,hsl(var(--background)/.9)_100%)] dark:bg-[linear-gradient(90deg,hsl(var(--background)/.68)_0%,hsl(var(--background)/.8)_55%,hsl(var(--background)/.94)_100%)]" />
         <div className="container mx-auto px-4 py-12 md:py-20">
-          <div className="max-w-2xl animate-rise-in text-right text-foreground dark:text-[#fffaf1]">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm dark:border-[#e1b96a]/40 dark:text-[#f2cf8a]"><Wheat className="h-4 w-4" aria-hidden="true" /> دليل موثوق للمنطقة الشرقية</p>
+          <div className="max-w-2xl animate-rise-in text-right text-foreground">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm"><Wheat className="h-4 w-4 text-gold-ink" aria-hidden="true" /> دليل موثوق للمنطقة الشرقية</p>
             <h1 className="text-balance text-3xl font-extrabold leading-[1.25] sm:text-4xl md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
-            <p className="mt-3 text-xl font-semibold text-primary dark:text-[#f2cf8a] md:text-2xl">في المنطقة الشرقية</p>
+            <p className="mt-3 text-xl font-semibold text-primary md:text-2xl">في المنطقة الشرقية</p>
             <form onSubmit={handleSearch} className="relative mt-6 max-w-xl" data-testid="form-home-search">
               <label htmlFor="home-search" className="sr-only">ابحث عن مورد أو منتج</label>
               <input id="home-search" data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-14 w-full rounded-2xl border border-border bg-card px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none placeholder:text-muted-foreground md:h-16" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-              <button data-testid="button-home-search" type="submit" aria-label="بحث" className="absolute left-2 top-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform hover:-translate-y-0.5 md:h-12 md:w-12"><Search className="h-5 w-5" aria-hidden="true" /></button>
+              <button data-testid="button-home-search" type="submit" aria-label="بحث" className="absolute left-2 top-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground transition-transform hover:-translate-y-0.5 md:h-12 md:w-12"><Search className="h-5 w-5" aria-hidden="true" /></button>
             </form>
           </div>
         </div>
@@ -151,7 +151,7 @@ function BrowseSupplierCard({ supplier }: { supplier: { id: number; name: string
   return (
     <Link href={`/supplier/${supplier.id}`} data-testid={`card-supplier-${supplier.id}`} className="group flex min-h-56 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <div className="flex items-start gap-3"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-lg font-extrabold text-primary">{supplier.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><h3 className="truncate text-lg font-extrabold group-hover:text-primary">{supplier.name}</h3><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{supplier.city}</p></div></div>
-      <div className="mt-4 flex flex-wrap gap-2">{supplier.isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />موثق</span>}{supplier.isFeatured && <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />مميز</span>}</div>
+      <div className="mt-4 flex flex-wrap gap-2">{supplier.isVerified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />موثق</span>}{supplier.isFeatured && <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-gold-ink"><BadgeCheck className="h-3.5 w-3.5 text-accent" aria-hidden="true" />مميز</span>}</div>
       <p className="mt-3 line-clamp-2 flex-1 text-sm leading-6 text-muted-foreground">{supplier.description}</p>
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3"><Rating value={supplier.averageRating} /><span className="text-xs font-semibold text-muted-foreground">{supplier.productCount ?? 0} منتج</span></div>
     </Link>

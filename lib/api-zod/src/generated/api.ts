@@ -790,11 +790,12 @@ export const RegisterBuyerResponse = zod.object({
 
 
 
-
+export const loginBuyerBodyRememberMeDefault = false;
 
 export const LoginBuyerBody = zod.object({
   "identifier": zod.string(),
-  "password": zod.string().min(1)
+  "password": zod.string().min(1),
+  "rememberMe": zod.boolean().default(loginBuyerBodyRememberMeDefault)
 })
 
 export const LoginBuyerResponse = zod.object({
@@ -814,6 +815,28 @@ export const LoginBuyerResponse = zod.object({
   "jobTitle": zod.string().nullable(),
   "createdAt": zod.string(),
   "lastLogin": zod.string().nullable()
+})
+})
+
+
+
+export const loginSupplierBodyRememberMeDefault = false;
+
+export const LoginSupplierBody = zod.object({
+  "phone": zod.string(),
+  "password": zod.string().min(1),
+  "rememberMe": zod.boolean().default(loginSupplierBodyRememberMeDefault)
+})
+
+export const LoginSupplierResponse = zod.object({
+  "success": zod.boolean(),
+  "supplier": zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "phone": zod.string(),
+  "whatsapp": zod.string(),
+  "isVerified": zod.boolean()
 })
 })
 

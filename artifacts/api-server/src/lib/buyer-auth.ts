@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 
 export const buyerCookieName = "bakery_buyer_session";
-const sessionDurationSeconds = 60 * 60 * 24 * 30;
+const sessionDurationSeconds = 60 * 60 * 12;
+const rememberDurationSeconds = 60 * 60 * 24 * 30;
 
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -14,8 +15,8 @@ function sign(payload: string) {
   return createHmac("sha256", getSessionSecret()).update(payload).digest("hex");
 }
 
-export function createBuyerSessionToken(buyerId: number) {
-  const expiresAt = Math.floor(Date.now() / 1000) + sessionDurationSeconds;
+export function createBuyerSessionToken(buyerId: number, remember = false) {
+  const expiresAt = Math.floor(Date.now() / 1000) + (remember ? rememberDurationSeconds : sessionDurationSeconds);
   const payload = `${buyerId}.${expiresAt}`;
   return `${payload}.${sign(payload)}`;
 }
@@ -36,14 +37,16 @@ export function getBuyerIdFromRequest(req: Request) {
   return buyerId;
 }
 
-export function setBuyerSession(res: Response, buyerId: number) {
-  res.cookie(buyerCookieName, createBuyerSessionToken(buyerId), {
+export function setBuyerSession(res: Response, buyerId: number, remember = false) {
+  const cookieOptions = {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: sessionDurationSeconds * 1000,
     path: "/",
-  });
+  } as const;
+  res.cookie(buyerCookieName, createBuyerSessionToken(buyerId, remember), remember
+    ? { ...cookieOptions, maxAge: rememberDurationSeconds * 1000 }
+    : cookieOptions);
 }
 
 export function clearBuyerSession(res: Response) {

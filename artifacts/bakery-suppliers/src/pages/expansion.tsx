@@ -36,7 +36,7 @@ export default function ExpansionPage() {
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <h2 className="text-xl font-bold">{phase.title}</h2>
-                    <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${isCurrent ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${isCurrent ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
                       {isCurrent ? <Sparkles className="w-4 h-4" /> : <Clock3 className="w-4 h-4" />}
                       {phase.timing}
                     </span>

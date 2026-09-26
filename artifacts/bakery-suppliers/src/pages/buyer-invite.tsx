@@ -49,5 +49,5 @@ function Check({ checked, onChange, label, "data-testid": testId }: { checked: b
 }
 function StateCard({ kind, title, body }: { kind: "error" | "complete" | "success"; title: string; body: string }) {
   const success = kind === "success";
-  return <div data-testid={`state-buyer-invite-${kind}`} className="rounded-2xl border bg-card p-8 text-center shadow-sm md:p-12"><div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${success ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{success ? <CheckCircle2 className="h-9 w-9" /> : <AlertCircle className="h-8 w-8" />}</div><h2 className="text-2xl font-extrabold">{title}</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-muted-foreground">{body}</p></div>;
+  return <div data-testid={`state-buyer-invite-${kind}`} className="rounded-2xl border bg-card p-8 text-center shadow-sm md:p-12"><div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${success ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{success ? <CheckCircle2 className="h-9 w-9" /> : <AlertCircle className="h-8 w-8" />}</div><h2 className="text-2xl font-extrabold">{title}</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-muted-foreground">{body}</p></div>;
 }

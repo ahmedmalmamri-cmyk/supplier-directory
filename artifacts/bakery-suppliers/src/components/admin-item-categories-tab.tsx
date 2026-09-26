@@ -240,7 +240,7 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
   return <div className="px-4 py-3 md:px-6"><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">{icon}{label}</div><strong className="mt-1 block text-xl font-extrabold" data-testid={`metric-category-${label}`}>{fmt(value)}</strong></div>;
 }
 function Pill({ active }: { active: boolean }) {
-  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{active ? "نشط" : "معطل"}</span>;
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{active ? "نشط" : "معطل"}</span>;
 }
 function State({ title, detail, action }: { title: string; detail: string; action?: ReactNode }) {
   return <div className="rounded-2xl border border-dashed bg-card px-5 py-14 text-center"><FolderTree className="mx-auto mb-3 h-7 w-7 text-primary" /><h3 className="font-extrabold">{title}</h3><p className="mt-2 text-sm text-muted-foreground">{detail}</p>{action && <div className="mt-5">{action}</div>}</div>;

@@ -90,7 +90,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
               </div>
             ) : (
               <div className="pt-7">
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#287d56]/10 text-[#287d56]"><MessageCircle className="h-7 w-7" /></div>
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-whatsapp/10 text-whatsapp"><MessageCircle className="h-7 w-7" /></div>
                 <h2 id="whatsapp-dialog-title" className="text-2xl font-extrabold">التواصل مع {supplierName}</h2>
                 <div className="mt-5 rounded-2xl bg-primary/5 p-4">
                   <p className="flex items-center gap-2 font-extrabold text-primary"><CheckCircle2 className="h-5 w-5" /> مرحباً {user?.fullName}</p>
@@ -109,7 +109,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 {error && <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">{error}</p>}
                 <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
                   <button type="button" onClick={() => setDialog(null)} className="flex-1 rounded-xl border border-border px-5 py-3 font-bold hover:bg-muted">إلغاء</button>
-                  <button type="button" onClick={() => void sendMessage()} disabled={isSending} className="flex-1 rounded-xl bg-[#287d56] px-5 py-3 font-extrabold text-white hover:bg-[#216a49] disabled:opacity-60"><MessageCircle className="ml-1 inline h-4 w-4" /> {isSending ? "جاري التجهيز..." : "إرسال عبر واتساب"}</button>
+                  <button type="button" onClick={() => void sendMessage()} disabled={isSending} className="flex-1 rounded-xl bg-whatsapp px-5 py-3 font-extrabold text-whatsapp-foreground hover:bg-whatsapp/90 disabled:opacity-60"><MessageCircle className="ml-1 inline h-4 w-4" /> {isSending ? "جاري التجهيز..." : "إرسال عبر واتساب"}</button>
                 </div>
               </div>
             )}

@@ -112,13 +112,13 @@ export default function ContactPage() {
               <h2 className="text-2xl font-bold mb-6">أرسل رسالة</h2>
               
               {isSuccess ? (
-                <div className="bg-green-50 border border-green-200 text-green-800 p-8 rounded-2xl text-center">
-                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="bg-success/10 border border-success/25 text-success p-8 rounded-2xl text-center">
+                  <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                   </div>
                   <h3 className="text-xl font-bold mb-2">تم الإرسال بنجاح!</h3>
-                  <p className="text-green-700/80 mb-6">شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت ممكن.</p>
-                  <button onClick={() => setIsSuccess(false)} className="px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                  <p className="text-success/80 mb-6">شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت ممكن.</p>
+                  <button onClick={() => setIsSuccess(false)} className="px-6 py-2 bg-success text-success-foreground rounded-lg text-sm font-medium hover:bg-success/90 transition-colors">
                     إرسال رسالة أخرى
                   </button>
                 </div>

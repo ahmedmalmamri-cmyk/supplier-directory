@@ -125,10 +125,10 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
             {tabs.map(({ id, label, icon: Icon }) => (
               <button data-testid={`button-admin-tab-${id}`} key={id} type="button" onClick={() => setTab(id)} className={`w-full flex items-center gap-3 text-right px-3 py-3 rounded-xl text-sm font-bold transition-colors ${tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                 <Icon className="w-4 h-4" />{label}
-                {id === "suppliers" && (stats?.pendingSupplierRequests ?? 0) > 0 && <span className="mr-auto rounded-full bg-amber-200 text-amber-900 text-[11px] px-2 py-0.5">{stats?.pendingSupplierRequests}</span>}
+                {id === "suppliers" && (stats?.pendingSupplierRequests ?? 0) > 0 && <span className="mr-auto rounded-full bg-card text-warning text-[11px] px-2 py-0.5">{stats?.pendingSupplierRequests}</span>}
               </button>
             ))}
-            <button type="button" onClick={() => logout.mutate()} className="w-full flex items-center gap-3 text-right px-3 py-3 rounded-xl text-sm font-bold text-red-700 hover:bg-red-50 mt-3 border-t pt-4"><LogOut className="w-4 h-4" /> تسجيل الخروج</button>
+            <button type="button" onClick={() => logout.mutate()} className="w-full flex items-center gap-3 text-right px-3 py-3 rounded-xl text-sm font-bold text-destructive hover:bg-destructive/10 mt-3 border-t pt-4"><LogOut className="w-4 h-4" /> تسجيل الخروج</button>
           </div>
         </aside>
 
@@ -137,7 +137,7 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
             <div><h2 className="text-2xl font-bold">{tabs.find((item) => item.id === tab)?.label}</h2><p className="text-sm text-muted-foreground mt-1">إدارة دليل موردي المخابز والحلويات</p></div>
             <button type="button" onClick={() => void refresh()} className="text-sm text-primary font-bold hover:underline">{loading ? "جاري التحديث..." : "تحديث البيانات"}</button>
           </div>
-          {notice && <div className="mb-5 rounded-xl bg-green-50 border border-green-200 text-green-800 p-3 text-sm">{notice}</div>}
+          {notice && <div className="mb-5 rounded-xl bg-success/10 border border-success/25 text-success p-3 text-sm">{notice}</div>}
           {error && <div className="mb-5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive p-3 text-sm">{error}</div>}
           {tab === "suppliers" && <SupplierRequestsTab requests={supplierRequests} selected={selectedRequest} onSelect={setSelectedRequest} onAction={act} />}
           {tab === "buyers" && <BuyerRequestsTab requests={buyerRequests} onDelete={(id) => void act(`/api/admin/buyer-requests/${id}`, { method: "DELETE" }, "تم حذف طلب صاحب العمل.")} />}
@@ -188,12 +188,12 @@ function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { reque
               <div className="flex shrink-0 flex-wrap gap-2">
                 <button data-testid={`button-view-supplier-request-${request.id}`} type="button" onClick={() => onSelect(selected?.id === request.id ? null : request)} className="rounded-xl border px-3 py-2 text-sm font-bold hover:bg-muted"><FileText className="ml-1 inline h-4 w-4" /> عرض التفاصيل</button>
                 {pending && <>
-                  <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-green-600 px-3 py-2 text-sm font-bold text-white hover:bg-green-700"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
-                  <button data-testid={`button-reject-supplier-request-${request.id}`} type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-red-200 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-50"><XCircle className="ml-1 inline h-4 w-4" /> رفض</button>
+                  <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-success px-3 py-2 text-sm font-bold text-success-foreground hover:bg-success/90"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
+                  <button data-testid={`button-reject-supplier-request-${request.id}`} type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-destructive/25 px-3 py-2 text-sm font-bold text-destructive hover:bg-destructive/10"><XCircle className="ml-1 inline h-4 w-4" /> رفض</button>
                 </>}
               </div>
             </div>
-            {pending && rejectReason !== "" && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-red-600 px-4 font-bold text-white">تأكيد الرفض</button></div>}
+            {pending && rejectReason !== "" && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-destructive px-4 font-bold text-destructive-foreground">تأكيد الرفض</button></div>}
             {selected?.id === request.id && <div className="mt-5 space-y-4 border-t pt-5"><DetailGrid request={request} /><div><label className="mb-2 block text-sm font-bold">طلب معلومات إضافية</label><div className="flex gap-2"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ما المعلومات المطلوبة؟" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/request-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, "تم حفظ طلب المعلومات.")} className="rounded-lg border px-4 font-bold">حفظ</button></div></div></div>}
           </article>
         );
@@ -254,10 +254,10 @@ function BuyerModerationTab({ reports, users, onAction }: { reports: BuyerReport
   const reportLabels = { open: "مفتوح", reviewed: "تمت المراجعة", dismissed: "مرفوض", actioned: "تم اتخاذ إجراء" };
   return <div className="space-y-8">
     <section>
-      <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">البلاغات الواردة</h3><p className="mt-1 text-sm text-muted-foreground">كل بلاغ مرتبط بتواصل مسجل فعلياً مع المورد.</p></div><span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-900">{reports.filter((report) => report.status === "open").length} مفتوح</span></div>
+      <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">البلاغات الواردة</h3><p className="mt-1 text-sm text-muted-foreground">كل بلاغ مرتبط بتواصل مسجل فعلياً مع المورد.</p></div><span className="rounded-full bg-warning/10 px-3 py-1 text-sm font-bold text-warning">{reports.filter((report) => report.status === "open").length} مفتوح</span></div>
       {reports.length === 0 ? <Empty title="لا توجد بلاغات" description="ستظهر هنا البلاغات التي يرفعها الموردون عن تواصل موثق." /> : <div className="space-y-4">{reports.map((report) => <article key={report.id} className="rounded-2xl border bg-card p-5">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" /><h4 className="text-lg font-bold">{report.buyerName}</h4><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{reportLabels[report.status]}</span><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{statusLabels[report.buyerStatus]}</span></div>
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AlertTriangle className="h-5 w-5 text-warning" /><h4 className="text-lg font-bold">{report.buyerName}</h4><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{reportLabels[report.status]}</span><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{statusLabels[report.buyerStatus]}</span></div>
             <p className="mt-2 text-sm text-muted-foreground">المورد: {report.supplierName} · السبب: <strong className="text-foreground">{report.reason}</strong></p>
             <p className="mt-1 text-xs text-muted-foreground">سجل التواصل: {report.messageId} · {formatDate(report.createdAt)} · {report.buyerPhone}</p>
             {report.note && <p className="mt-4 rounded-xl bg-muted/40 p-3 text-sm leading-7">{report.note}</p>}
@@ -267,7 +267,7 @@ function BuyerModerationTab({ reports, users, onAction }: { reports: BuyerReport
               <option value="reviewed">تمت المراجعة</option><option value="dismissed">رفض البلاغ</option><option value="actioned">تم اتخاذ إجراء</option>
             </select>
             <button type="button" onClick={() => void onAction(`/api/admin/buyer-reports/${report.id}/review`, { method: "POST", body: JSON.stringify({ status: reviewStatuses[report.id] || "reviewed" }) }, "تم حفظ نتيجة البلاغ.")} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground">حفظ النتيجة</button>
-            <button type="button" onClick={() => void onAction(`/api/admin/buyer-users/${report.buyerId}/status`, { method: "POST", body: JSON.stringify({ status: "under_review", reason: `بلاغ من المورد ${report.supplierName}: ${report.reason}` }) }, "تم وضع الحساب قيد المراجعة.")} className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-bold text-amber-800">قيد المراجعة</button>
+            <button type="button" onClick={() => void onAction(`/api/admin/buyer-users/${report.buyerId}/status`, { method: "POST", body: JSON.stringify({ status: "under_review", reason: `بلاغ من المورد ${report.supplierName}: ${report.reason}` }) }, "تم وضع الحساب قيد المراجعة.")} className="rounded-lg border border-warning/25 px-3 py-2 text-sm font-bold text-warning">قيد المراجعة</button>
           </div>
         </div>
       </article>)}</div>}
@@ -388,7 +388,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>
            <button type="button" onClick={() => setAccessEditing({ supplierId: supplier.id, password: "" })} className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-bold text-primary">تفعيل دخول المورد</button>
           <button type="button" onClick={() => void onAction(`/api/admin/suppliers/${supplier.id}/pause`, { method: "POST" }, supplier.isActive ? "تم إيقاف المورد." : "تم إعادة تفعيل المورد.")} className="rounded-lg border px-3 py-2 text-sm font-bold">{supplier.isActive ? "إيقاف مؤقت" : "تفعيل"}</button>
-          <button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-bold text-red-700">حذف</button>
+          <button type="button" onClick={() => { if (window.confirm("سيتم حذف المورد ومنتجاته. هل تريد المتابعة؟")) void onAction(`/api/admin/suppliers/${supplier.id}`, { method: "DELETE" }, "تم حذف المورد."); }} className="rounded-lg border border-destructive/25 px-3 py-2 text-sm font-bold text-destructive">حذف</button>
         </div>
       </div>
 
@@ -549,7 +549,7 @@ function SettingsTab({ settings, suppliers, onAction }: { settings: Settings | n
 
 function Status({ status }: { status: "pending" | "pending_review" | "approved" | "rejected" }) {
   const labels = { pending: "معلق", pending_review: "بانتظار المراجعة", approved: "موافق", rejected: "مرفوض" };
-  const styles = { pending: "bg-amber-100 text-amber-800", pending_review: "bg-amber-100 text-amber-800", approved: "bg-green-100 text-green-800", rejected: "bg-red-100 text-red-800" };
+  const styles = { pending: "bg-warning/10 text-warning", pending_review: "bg-warning/10 text-warning", approved: "bg-success/10 text-success", rejected: "bg-destructive/10 text-destructive" };
   return <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${styles[status]}`}>{labels[status]}</span>;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><strong>{label}:</strong> <span className="text-muted-foreground">{value}</span></div>; }

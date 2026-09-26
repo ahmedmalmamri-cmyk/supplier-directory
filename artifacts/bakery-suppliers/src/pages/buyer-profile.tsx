@@ -1,20 +1,31 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { Building2, LogOut, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 
 export default function BuyerProfilePage() {
   const { user, isLoading, logout } = useBuyerAuth();
   const [, navigate] = useLocation();
+  const [logoutError, setLogoutError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/buyer/login");
   }, [isLoading, user, navigate]);
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/buyer/login");
+    if (loggingOut) return;
+    setLogoutError("");
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/buyer/login");
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : "تعذر تسجيل الخروج. حاول مرة أخرى.");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return <MainLayout>
@@ -23,8 +34,9 @@ export default function BuyerProfilePage() {
         <div className="flex items-center gap-2 text-primary"><UserRound className="h-5 w-5" /><span className="font-bold">حساب صاحب العمل</span></div>
         <div className="mt-3 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div><h1 className="text-3xl font-extrabold md:text-4xl">{user?.fullName || "ملفي الشخصي"}</h1><p className="mt-2 text-muted-foreground">بيانات الحساب المستخدمة عند التواصل مع الموردين.</p></div>
-          {user && <button type="button" onClick={() => void handleLogout()} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold hover:bg-muted"><LogOut className="h-4 w-4" /> تسجيل الخروج</button>}
+          {user && <button type="button" onClick={() => void handleLogout()} disabled={loggingOut} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold hover:bg-muted disabled:opacity-60"><LogOut className="h-4 w-4" />{loggingOut ? "جاري الخروج..." : "تسجيل الخروج"}</button>}
         </div>
+        {logoutError && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">{logoutError}</p>}
       </div>
     </div>
     <div className="container mx-auto max-w-3xl px-4 py-10">

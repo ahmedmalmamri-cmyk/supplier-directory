@@ -511,6 +511,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/BuyerAuthResponse"
         "401": { description: Invalid credentials }
+  /supplier/login:
+    post:
+      operationId: loginSupplier
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierLoginInput" }
+      responses:
+        "200":
+          description: Supplier session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAuthResponse" }
+        "400": { description: Invalid login input }
+        "401": { description: Invalid credentials }
   /buyer/logout:
     post:
       operationId: logoutBuyer
@@ -1478,6 +1495,29 @@ components:
       properties:
         identifier: { type: string }
         password: { type: string, minLength: 1 }
+        rememberMe: { type: boolean, default: false }
+    SupplierLoginInput:
+      type: object
+      required: [phone, password]
+      properties:
+        phone: { type: string }
+        password: { type: string, minLength: 1 }
+        rememberMe: { type: boolean, default: false }
+    SupplierAuthResponse:
+      type: object
+      required: [success, supplier]
+      properties:
+        success: { type: boolean }
+        supplier:
+          type: object
+          required: [id, name, city, phone, whatsapp, isVerified]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            city: { type: string }
+            phone: { type: string }
+            whatsapp: { type: string }
+            isVerified: { type: boolean }
     BuyerAuthResponse:
       type: object
       required: [success, message, user]

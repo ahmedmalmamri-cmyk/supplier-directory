@@ -652,6 +652,28 @@ export interface BuyerLoginInput {
   identifier: string;
   /** @minLength 1 */
   password: string;
+  rememberMe?: boolean;
+}
+
+export interface SupplierLoginInput {
+  phone: string;
+  /** @minLength 1 */
+  password: string;
+  rememberMe?: boolean;
+}
+
+export type SupplierAuthResponseSupplier = {
+  id: number;
+  name: string;
+  city: string;
+  phone: string;
+  whatsapp: string;
+  isVerified: boolean;
+};
+
+export interface SupplierAuthResponse {
+  success: boolean;
+  supplier: SupplierAuthResponseSupplier;
 }
 
 export interface BuyerAuthResponse {

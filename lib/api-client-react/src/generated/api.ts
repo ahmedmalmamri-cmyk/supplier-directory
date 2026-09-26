@@ -74,6 +74,7 @@ import type {
   SearchDirectoryParams,
   SearchResults,
   Supplier,
+  SupplierAuthResponse,
   SupplierDetail,
   SupplierInvitation,
   SupplierInvitationDraftInput,
@@ -83,6 +84,7 @@ import type {
   SupplierInvite,
   SupplierInviteCompletion,
   SupplierInviteInput,
+  SupplierLoginInput,
   SupplierSourceStats
 } from './api.schemas';
 
@@ -2253,6 +2255,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLoginBuyerMutationOptions(options));
+    }
+
+export const getLoginSupplierUrl = () => {
+
+
+
+
+  return `/api/supplier/login`
+}
+
+export const loginSupplier = async (supplierLoginInput: SupplierLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierAuthResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierAuthResponse>(getLoginSupplierUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierLoginInput)
+  }
+);}
+
+
+
+
+
+export const getLoginSupplierMutationKey = () => ['loginSupplier'] as const;
+
+export const getLoginSupplierMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginSupplier>>, TError,LoginSupplierMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginSupplier>>, TError,LoginSupplierMutationVariables, TContext> => {
+
+const mutationKey = getLoginSupplierMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginSupplier>>, LoginSupplierMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginSupplier(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginSupplierMutationResult = NonNullable<Awaited<ReturnType<typeof loginSupplier>>>
+    export type LoginSupplierMutationBody = BodyType<SupplierLoginInput>
+    export type LoginSupplierMutationError = ErrorType<void>
+    export type LoginSupplierMutationVariables = {data: BodyType<SupplierLoginInput>}
+
+    export const useLoginSupplier = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginSupplier>>, TError,LoginSupplierMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginSupplier>>,
+        TError,
+        LoginSupplierMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginSupplierMutationOptions(options));
     }
 
 export const getLogoutBuyerUrl = () => {

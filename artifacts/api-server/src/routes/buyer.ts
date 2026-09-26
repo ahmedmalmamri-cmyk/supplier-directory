@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { directoryDb } from "../lib/directory-db";
 import { clearBuyerSession, getBuyerIdFromRequest, setBuyerSession } from "../lib/buyer-auth";
+import { clearSupplierSession } from "../lib/supplier-auth";
 import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 
 const router: IRouter = Router();
@@ -185,7 +186,8 @@ router.post("/buyer/register", (req, res): void => {
     directoryDb.prepare("UPDATE buyer_requests SET request_code = ? WHERE id = ?").run(requestCode, requestId);
     const buyer = getBuyer(buyerId);
     if (!buyer) throw new Error("تعذر إنشاء حساب صاحب العمل.");
-    setBuyerSession(res, buyerId);
+    clearSupplierSession(res);
+    setBuyerSession(res, buyerId, true);
     res.status(201).json({ success: true, requestCode, message: "تم إنشاء حسابك وتسجيل دخولك بنجاح.", user: publicBuyer(buyer) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -202,8 +204,13 @@ router.post("/buyer/register", (req, res): void => {
 });
 
 router.post("/buyer/login", (req, res): void => {
+  if (req.body?.rememberMe !== undefined && typeof req.body.rememberMe !== "boolean") {
+    res.status(400).json({ error: "قيمة تذكرني غير صحيحة." });
+    return;
+  }
   const identifier = text(req.body?.identifier);
   const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const remember = req.body?.rememberMe === true;
   if (!identifier || !password) {
     res.status(400).json({ error: "أدخل رقم الجوال أو البريد الإلكتروني وكلمة المرور." });
     return;
@@ -230,7 +237,8 @@ router.post("/buyer/login", (req, res): void => {
   }
   const now = new Date().toISOString();
   directoryDb.prepare("UPDATE buyer_users SET last_login = ? WHERE id = ?").run(now, buyer.id);
-  setBuyerSession(res, buyer.id);
+  clearSupplierSession(res);
+  setBuyerSession(res, buyer.id, remember);
   res.json({ success: true, message: "تم تسجيل الدخول بنجاح.", user: publicBuyer({ ...buyer, lastLogin: now }) });
 });
 

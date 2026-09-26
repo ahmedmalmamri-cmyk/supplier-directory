@@ -58,7 +58,7 @@ export default function ProductDetailPage() {
                 {product.supplierName.substring(0,1)}
               </div>
               <span className="font-medium text-sm">المورد: {product.supplierName}</span>
-              {product.supplier.isVerified && <ShieldCheck className="w-4 h-4 text-green-600" />}
+              {product.supplier.isVerified && <ShieldCheck className="w-4 h-4 text-success" />}
             </Link>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
