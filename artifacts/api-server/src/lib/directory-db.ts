@@ -225,6 +225,24 @@ directoryDb.exec(`
     moderation_updated_at TEXT,
     suspended_until TEXT
   );
+  CREATE TABLE IF NOT EXISTS requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
+    category_id INTEGER NOT NULL REFERENCES item_categories(id),
+    title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+    description TEXT NOT NULL,
+    quantity REAL NOT NULL CHECK (typeof(quantity) IN ('integer', 'real') AND quantity > 0),
+    unit TEXT NOT NULL CHECK (unit IN ('كيلو', 'كرتون', 'كيس')),
+    frequency TEXT NOT NULL CHECK (frequency IN ('مرة واحدة', 'أسبوعي', 'شهري')),
+    city TEXT NOT NULL CHECK (length(trim(city)) > 0),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'expired')),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_requests_buyer_status_created
+    ON requests (buyer_id, status, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_requests_category_city_status_expires
+    ON requests (category_id, city, status, expires_at);
   CREATE TABLE IF NOT EXISTS supplier_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER NOT NULL UNIQUE REFERENCES suppliers(id) ON DELETE CASCADE,
