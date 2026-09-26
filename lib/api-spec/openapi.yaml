@@ -1141,10 +1141,10 @@ components:
             supplierCount: { type: integer }
     ItemCategoryInput:
       type: object
-      required: [name, icon, primaryGroupId]
+      required: [name, primaryGroupId]
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
-        icon: { type: string, minLength: 1, maxLength: 24 }
+        icon: { type: string, maxLength: 24, description: "Optional. Blank or omitted uses the default package icon." }
         primaryGroupId: { type: integer }
         parentId: { type: integer, description: "Optional legacy alias for primaryGroupId." }
         subGroupId: { type: ["integer", "null"] }
@@ -1153,7 +1153,7 @@ components:
       type: object
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
-        icon: { type: string, minLength: 1, maxLength: 24 }
+        icon: { type: string, maxLength: 24, description: "Blank selects the default package icon; omission preserves the existing icon." }
         description: { type: ["string", "null"], maxLength: 500 }
         primaryGroupId: { type: integer }
         subGroupId: { type: ["integer", "null"] }

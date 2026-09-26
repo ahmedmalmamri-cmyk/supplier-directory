@@ -1204,7 +1204,7 @@ router.post("/admin/item-categories", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const body = req.body as Record<string, unknown>;
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  const icon = typeof body.icon === "string" ? body.icon.trim() : "";
+  const icon = (typeof body.icon === "string" ? body.icon.trim() : "") || "icon:package";
   const rawParentId = body.primaryGroupId ?? body.parentId;
   if (rawParentId === undefined || rawParentId === null) {
     res.status(400).json({ error: "يجب إضافة التصنيف الفرعي تحت مجموعة رئيسية نشطة." });
@@ -1219,12 +1219,12 @@ router.post("/admin/item-categories", (req, res): void => {
     : typeof body.description === "string"
       ? body.description.trim() || null
       : undefined;
-  if (!name || name.length > 100 || !icon || icon.length > 24 || description === undefined ||
+  if (!name || name.length > 100 || (body.icon !== undefined && typeof body.icon !== "string") || icon.length > 24 || description === undefined ||
       description && description.length > 500 ||
       !Number.isInteger(parentId) ||
       (rawSubGroupId !== null && !Number.isInteger(rawSubGroupId)) ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
-    res.status(400).json({ error: "تحقق من اسم التصنيف وأيقونته ووصفه." });
+    res.status(400).json({ error: "تحقق من اسم التصنيف ووصفه." });
     return;
   }
   if (directoryDb.prepare("SELECT id FROM item_categories WHERE lower(trim(name)) = lower(?)").get(name)) {
@@ -1372,7 +1372,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     return;
   }
   const name = body.name === undefined ? existing.name : typeof body.name === "string" ? body.name.trim() : "";
-  const icon = body.icon === undefined ? existing.icon : typeof body.icon === "string" ? body.icon.trim() : "";
+  const icon = body.icon === undefined ? existing.icon : (typeof body.icon === "string" ? body.icon.trim() : "") || "icon:package";
   const rawPrimaryGroupId = body.primaryGroupId === undefined
     ? existing.primaryGroupId
     : Number(body.primaryGroupId);
@@ -1392,7 +1392,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
       : typeof body.description === "string"
         ? body.description.trim() || null
         : undefined;
-  if (!name || name.length > 100 || !icon || icon.length > 24 ||
+  if (!name || name.length > 100 || (body.icon !== undefined && typeof body.icon !== "string") || icon.length > 24 ||
       description === undefined || description && description.length > 500 ||
       (body.isActive !== undefined && typeof body.isActive !== "boolean") ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean") ||

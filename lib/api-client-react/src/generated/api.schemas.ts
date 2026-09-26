@@ -123,10 +123,10 @@ export interface ItemCategoryInput {
      */
   name: string;
   /**
-     * @minLength 1
+     * Optional. Blank or omitted uses the default package icon.
      * @maxLength 24
      */
-  icon: string;
+  icon?: string;
   primaryGroupId: number;
   /** Optional legacy alias for primaryGroupId. */
   parentId?: number;
@@ -146,7 +146,7 @@ export interface ItemCategoryUpdate {
      */
   name?: string;
   /**
-     * @minLength 1
+     * Blank selects the default package icon; omission preserves the existing icon.
      * @maxLength 24
      */
   icon?: string;

@@ -7,6 +7,12 @@ import {
   Scale, Scissors, Settings, ShoppingBag, Snowflake, Soup, SprayCan, Sprout, Tag,
   Thermometer, Timer, Utensils, Wheat, WheatOff, Wine,
 } from "lucide-react";
+import {
+  BaguetteIcon, BrownBreadIcon, CartonIcon, CheesecakeIcon, ChocolateIcon,
+  DonutIcon, GlassJarIcon, HotDrinkIcon, JuiceIcon, KunafaIcon, MaamoulIcon,
+  OilBottleIcon, PaperBagIcon, PieIcon, PlasticBagIcon, PlateIcon, SaltIcon,
+  SamoonIcon, SodaIcon, SpoonIcon, SugarIcon, YeastIcon,
+} from "./bakery-extra-icons";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -69,6 +75,17 @@ function TeapotIcon(props: IconProps) {
 }
 
 export const specialIcons = {
+  "icon:baguette": BaguetteIcon, "icon:samoon": SamoonIcon,
+  "icon:brown-bread": BrownBreadIcon, "icon:pie": PieIcon,
+  "icon:cheesecake": CheesecakeIcon, "icon:donut": DonutIcon,
+  "icon:chocolate": ChocolateIcon, "icon:maamoul": MaamoulIcon,
+  "icon:kunafa": KunafaIcon, "icon:juice": JuiceIcon,
+  "icon:soda": SodaIcon, "icon:hot-drink": HotDrinkIcon,
+  "icon:carton": CartonIcon, "icon:paper-bag": PaperBagIcon,
+  "icon:plastic-bag": PlasticBagIcon, "icon:plate": PlateIcon,
+  "icon:spoon": SpoonIcon, "icon:glass-jar": GlassJarIcon,
+  "icon:sugar": SugarIcon, "icon:oil-bottle": OilBottleIcon,
+  "icon:yeast": YeastIcon, "icon:salt": SaltIcon,
   "icon:flour-powder": FlourPowderIcon,
   "icon:round-bread": RoundBreadIcon,
   "icon:flour-sack": FlourSackIcon,
@@ -98,13 +115,20 @@ export const specialIcons = {
 };
 
 export function CategoryIconValue({ icon, className = "inline-block h-[1em] w-[1em] align-middle" }: { icon: string; className?: string }) {
-  const Icon = specialIcons[icon as keyof typeof specialIcons];
-  return Icon ? <Icon className={className} aria-hidden="true" /> : <>{icon}</>;
+  const Icon = specialIcons[(icon || "icon:package") as keyof typeof specialIcons];
+  return Icon ? <Icon className={`${className} text-[#9A6537] dark:text-[#D4A373]`} aria-hidden="true" /> : <>{icon}</>;
 }
 
 export function categoryIconText(icon: string): string {
   if (!icon.startsWith("icon:")) return icon;
   const fallback: Record<string, string> = {
+    "icon:baguette": "🥖", "icon:samoon": "🥖", "icon:brown-bread": "🍞",
+    "icon:pie": "🥧", "icon:cheesecake": "🍰", "icon:donut": "🍩",
+    "icon:chocolate": "🍫", "icon:maamoul": "🍪", "icon:kunafa": "🥮",
+    "icon:juice": "🧃", "icon:soda": "🥤", "icon:hot-drink": "☕",
+    "icon:carton": "📦", "icon:paper-bag": "🛍️", "icon:plastic-bag": "🛍️",
+    "icon:plate": "🍽️", "icon:spoon": "🥄", "icon:glass-jar": "🫙",
+    "icon:sugar": "🍬", "icon:oil-bottle": "🫒", "icon:yeast": "🍞", "icon:salt": "🧂",
     "icon:flour-powder": "🥣", "icon:flour-sack": "🌾", "icon:flour-scoop": "🥄",
     "icon:round-bread": "🫓", "icon:pita-bread": "🫓", "icon:bread-loaf": "🍞",
     "icon:dough-ball": "🥣", "icon:bread-slices": "🍞",

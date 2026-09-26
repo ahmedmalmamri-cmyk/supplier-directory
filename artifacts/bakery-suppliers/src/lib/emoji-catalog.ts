@@ -17,6 +17,10 @@ const sections = [
 /** Additional illustrated choices. IDs are stored as short strings like the existing custom icons. */
 const illustratedSections = [
   { name: "رسوم الدقيق والمكونات", choices: [
+    ["sugar", "سكر بودرة حبيبات"],
+    ["oil-bottle", "زيت زجاجة زيت نباتي"],
+    ["yeast", "خميرة عجين تخمير"],
+    ["salt", "ملح مملحة"],
     ["wheat", "سنابل قمح حبوب دقيق طحين"], ["wheat-off", "دقيق خال من القمح"],
     ["sprout", "حبوب براعم بذور"], ["bean", "حبوب فاصوليا بقوليات"], ["nut", "مكسرات بندق"],
     ["egg", "بيض بيضة"], ["milk", "حليب لبن ألبان"], ["droplets", "زيت سائل ماء"],
@@ -25,6 +29,15 @@ const illustratedSections = [
     ["leaf", "أوراق أعشاب ورقيات"], ["flower", "وردة زهرة نكهة"],
   ] },
   { name: "رسوم الخبز والحلويات", choices: [
+    ["baguette", "خبز فرنسي باغيت باجيت رغيف طويل"],
+    ["samoon", "خبز صمون صامولي رغيف"],
+    ["brown-bread", "خبز أسمر قمح كامل حبوب"],
+    ["pie", "فطائر فطيرة تارت معجنات"],
+    ["cheesecake", "تشيز كيك كعكة جبن"],
+    ["donut", "دونات حلوى"],
+    ["chocolate", "شوكولاتة لوح كاكاو"],
+    ["maamoul", "معمول حلوى تمر"],
+    ["kunafa", "كنافة حلويات"],
     ["croissant", "كرواسون معجنات"], ["sandwich", "ساندويتش خبز حشوة"],
     ["pizza", "بيتزا عجينة"], ["cookie", "بسكويت كوكيز"], ["cake-slice", "قطعة كيك حلوى"],
     ["cake", "كيك قالب تورتة"], ["dessert", "حلوى طبق تحلية"],
@@ -33,11 +46,20 @@ const illustratedSections = [
     ["soup", "وعاء شوربة حساء"], ["utensils", "أدوات طعام شوكة سكين"],
   ] },
   { name: "رسوم المشروبات والتقديم", choices: [
+    ["juice", "عصير عصائر فواكه"],
+    ["soda", "مشروبات غازية علبة صودا"],
+    ["hot-drink", "مشروبات ساخنة شاي قهوة كوب"],
     ["coffee", "قهوة فنجان"], ["cup", "كوب مشروب عصير"],
     ["glass-water", "كأس ماء"], ["wine", "كأس شراب"], ["martini", "كأس مشروب"],
     ["teapot", "إبريق شاي"], ["flame", "نار فرن حرارة"], ["snowflake", "تبريد ثلج برودة"],
   ] },
   { name: "رسوم الأدوات والتغليف", choices: [
+    ["carton", "كرتون صندوق تغليف"],
+    ["paper-bag", "كيس ورقي أكياس ورقية"],
+    ["plastic-bag", "كيس بلاستيك أكياس بلاستيكية"],
+    ["plate", "طبق أطباق تقديم"],
+    ["spoon", "ملعقة ملاعق"],
+    ["glass-jar", "مرطبان عبوة عبوات زجاجية برطمان"],
     ["scale", "ميزان وزن مقادير"], ["timer", "مؤقت وقت خبز"], ["thermometer", "مقياس حرارة فرن"],
     ["refrigerator", "ثلاجة تبريد"], ["microwave", "فرن تسخين"],
     ["package", "صندوق كرتون تغليف"], ["package-open", "صندوق مفتوح تغليف"],
@@ -47,6 +69,7 @@ const illustratedSections = [
   ] },
 ] as const;
 
+export const DEFAULT_CATEGORY_ICON = "icon:package";
 export type EmojiSection = { name: string; emojis: string[] };
 export const emojiCatalog: EmojiSection[] = [...illustratedSections.map(({ name, choices }) => ({
   name,

@@ -133,7 +133,7 @@ export const createAdminItemCategoryBodyDescriptionMax = 500;
 
 export const CreateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(createAdminItemCategoryBodyNameMax),
-  "icon": zod.string().min(1).max(createAdminItemCategoryBodyIconMax),
+  "icon": zod.string().max(createAdminItemCategoryBodyIconMax).optional().describe('Optional. Blank or omitted uses the default package icon.'),
   "primaryGroupId": zod.number().int(),
   "parentId": zod.number().int().optional().describe('Optional legacy alias for primaryGroupId.'),
   "subGroupId": zod.number().int().nullish(),
@@ -288,7 +288,7 @@ export const updateAdminItemCategoryBodyDisplayOrderMin = 0;
 
 export const UpdateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(updateAdminItemCategoryBodyNameMax).optional(),
-  "icon": zod.string().min(1).max(updateAdminItemCategoryBodyIconMax).optional(),
+  "icon": zod.string().max(updateAdminItemCategoryBodyIconMax).optional().describe('Blank selects the default package icon; omission preserves the existing icon.'),
   "description": zod.string().max(updateAdminItemCategoryBodyDescriptionMax).nullish(),
   "primaryGroupId": zod.number().int().optional(),
   "subGroupId": zod.number().int().nullish(),

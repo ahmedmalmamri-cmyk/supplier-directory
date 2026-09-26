@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { emojiKeywords, getEmojiSuggestions, searchEmojiCatalog } from "../lib/emoji-catalog";
+import { DEFAULT_CATEGORY_ICON, emojiKeywords, getEmojiSuggestions, searchEmojiCatalog } from "../lib/emoji-catalog";
 import { CategoryIconValue } from "./category-special-icons";
 
 export type EmojiPickerFieldProps = {
@@ -9,6 +9,7 @@ export type EmojiPickerFieldProps = {
   name: string;
   inputTestId: string;
   idPrefix?: string;
+  allowEmpty?: boolean;
 };
 
 export function EmojiSuggestions({ name, onSelect }: { name: string; onSelect: (emoji: string) => void }) {
@@ -25,7 +26,7 @@ export function EmojiSuggestions({ name, onSelect }: { name: string; onSelect: (
   </div>;
 }
 
-export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix }: EmojiPickerFieldProps) {
+export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix, allowEmpty = false }: EmojiPickerFieldProps) {
   const generatedId = useId().replace(/:/g, "");
   const prefix = idPrefix ?? `emoji-${generatedId}`;
   const titleId = `${prefix}-title`;
@@ -89,8 +90,8 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
       <button ref={opener} id={fieldId} type="button" data-testid={inputTestId} aria-label={`اختر أيقونة ${name || "التصنيف"}`} aria-haspopup="dialog" aria-expanded={open}
         onClick={openPicker}
         className="group flex h-14 min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-background px-2 text-right transition-colors hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-         <span data-testid={`${prefix}-preview`} aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-[40px] leading-none"><CategoryIconValue icon={value || "❓"} /></span>
-        <span className="min-w-0 flex-1 truncate text-xs font-bold text-muted-foreground">{value ? "تغيير الأيقونة" : "اختر أيقونة"}</span>
+          <span data-testid={`${prefix}-preview`} aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-[40px] leading-none"><CategoryIconValue icon={value || DEFAULT_CATEGORY_ICON} /></span>
+         <span className="min-w-0 flex-1 truncate text-xs font-bold text-muted-foreground">{value ? "تغيير الأيقونة" : allowEmpty ? "أيقونة صندوق افتراضية · يمكن تغييرها" : "اختر أيقونة"}</span>
         <span className="text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true">‹</span>
       </button>
       {value && <button type="button" data-testid={`${prefix}-clear`} aria-label="مسح الأيقونة" title="مسح الأيقونة" onClick={() => { onChange(""); setFeedback(""); }}
@@ -104,7 +105,7 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
         data-testid={`${prefix}-dialog`}
         className="flex h-[min(90dvh,740px)] w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-popover text-popover-foreground shadow-warm-lg sm:h-[min(82dvh,740px)] sm:max-w-2xl sm:rounded-3xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div><h2 id={titleId} className="text-lg font-extrabold">اختر أيقونة</h2><p className="text-xs text-muted-foreground">{sections.reduce((total, section) => total + section.emojis.length, 0)} خيار · ابحث عن رمز يناسب {name.trim() || "تصنيفك"}</p></div>
+           <div><h2 id={titleId} className="text-lg font-extrabold">اختر أيقونة</h2><p className="text-xs text-muted-foreground">{sections.reduce((total, section) => total + section.emojis.length, 0)} خيار · ابحث عن رمز يناسب {name.trim() || "تصنيفك"}{allowEmpty ? " · أو اترك الصندوق الافتراضي" : ""}</p></div>
           <button type="button" data-testid={`${prefix}-close`} aria-label="إغلاق اختيار الأيقونة" onClick={closePicker}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><X className="h-5 w-5" /></button>
         </header>
@@ -131,9 +132,9 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
           </div>}
         </div>
         <footer className="flex shrink-0 flex-wrap items-center gap-3 border-t border-border bg-card px-5 py-4">
-           <span data-testid={`${prefix}-selected`} className="ml-auto text-sm font-bold">المختار: <span className="text-2xl align-middle"><CategoryIconValue icon={draft || "❓"} /></span></span>
+            <span data-testid={`${prefix}-selected`} className="ml-auto text-sm font-bold">{draft ? "المختار:" : allowEmpty ? "الافتراضية:" : "المختار:"} <span className="text-2xl align-middle"><CategoryIconValue icon={draft || DEFAULT_CATEGORY_ICON} /></span></span>
           <button type="button" data-testid={`${prefix}-cancel`} onClick={closePicker} className="min-h-10 rounded-xl border border-border px-4 text-sm font-bold hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary">إلغاء</button>
-          <button type="button" data-testid={`${prefix}-confirm`} onClick={confirm} disabled={!draft}
+           <button type="button" data-testid={`${prefix}-confirm`} onClick={confirm} disabled={!draft && !allowEmpty}
             className="min-h-10 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">تأكيد</button>
         </footer>
       </div>
