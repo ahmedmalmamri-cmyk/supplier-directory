@@ -1770,11 +1770,10 @@ components:
         confirmPassword: { type: string, minLength: 8, maxLength: 128 }
     SupplierActivationResult:
       type: object
-      required: [success, message, supplier]
+      required: [success, message]
       properties:
         success: { type: boolean }
         message: { type: string }
-        supplier: { $ref: "#/components/schemas/SupplierSummary" }
     SupplierActivationLink:
       type: object
       required: [path, expiresAt]
