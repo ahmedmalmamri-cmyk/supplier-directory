@@ -223,6 +223,23 @@ paths:
         "401": { description: Admin login required }
         "404": { description: Category not found }
   /admin/item-categories/{id}/permanent:
+    get:
+      operationId: getAdminItemCategoryDeletionPreview
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Current dependencies and eligibility for permanent deletion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryDeletionPreview" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+        "409": { description: Supplier selections cannot be inspected safely }
     delete:
       operationId: permanentlyDeleteAdminItemCategory
       tags: [admin]
@@ -1178,6 +1195,19 @@ components:
       required: [success]
       properties:
         success: { type: boolean }
+    ItemCategoryDeletionPreview:
+      type: object
+      required: [id, name, isActive, childCategoryCount, supplierLinkCount, aliasCount, requestCount, productCount, canDelete]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        isActive: { type: boolean }
+        childCategoryCount: { type: integer }
+        supplierLinkCount: { type: integer }
+        aliasCount: { type: integer }
+        requestCount: { type: integer }
+        productCount: { type: integer }
+        canDelete: { type: boolean }
     ItemCategoryOrderResponse:
       type: object
       required: [success]

@@ -329,6 +329,23 @@ export const DeleteAdminItemCategoryResponse = zod.object({
 })
 
 
+export const GetAdminItemCategoryDeletionPreviewParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAdminItemCategoryDeletionPreviewResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "childCategoryCount": zod.number().int(),
+  "supplierLinkCount": zod.number().int(),
+  "aliasCount": zod.number().int(),
+  "requestCount": zod.number().int(),
+  "productCount": zod.number().int(),
+  "canDelete": zod.boolean()
+})
+
+
 export const PermanentlyDeleteAdminItemCategoryParams = zod.object({
   "id": zod.coerce.number().int()
 })

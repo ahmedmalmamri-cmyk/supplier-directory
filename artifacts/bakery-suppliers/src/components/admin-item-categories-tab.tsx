@@ -7,8 +7,8 @@ import {
   useCreateAdminGroup, useUpdateAdminGroup, useDeleteAdminGroup, useListAdminGroups,
   useListAdminItemCategories, useCreateAdminItemCategory, useUpdateAdminItemCategory,
   useTransferAdminItemCategory, useDeleteAdminItemCategory, usePermanentlyDeleteAdminItemCategory, useSetAdminItemCategoryTags,
-  useListAdminActivityLog,
-  type Group, type AdminItemCategory,
+  useListAdminActivityLog, useGetAdminItemCategoryDeletionPreview, getGetAdminItemCategoryDeletionPreviewQueryKey,
+  type Group, type AdminItemCategory, type ItemCategoryDeletionPreview,
 } from "@workspace/api-client-react";
 import { EmojiPickerField, EmojiSuggestions } from "./emoji-picker-field";
 
@@ -54,6 +54,12 @@ export default function AdminItemCategoriesTab() {
   const [destinationId, setDestinationId] = useState("");
   const [destinationSubGroupId, setDestinationSubGroupId] = useState("");
   const [tagIds, setTagIds] = useState<number[]>([]);
+  const [deletionReviewed, setDeletionReviewed] = useState(false);
+  const reviewingInactiveCategory = dialog?.kind === "delete-category" && !dialog.category.isActive;
+  const previewId = reviewingInactiveCategory ? dialog.category.id : 0;
+  const deletionPreview = useGetAdminItemCategoryDeletionPreview(previewId, {
+    query: { queryKey: getGetAdminItemCategoryDeletionPreviewQueryKey(previewId), enabled: reviewingInactiveCategory, retry: false, refetchOnWindowFocus: false },
+  });
   const groups = useMemo(() => [...(groupsQuery.data ?? [])].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id), [groupsQuery.data]);
   const rootGroups = groups.filter((group) => group.parentId === null);
   const categories = (categoriesQuery.data ?? []).filter((category) => category.primaryGroupId !== null);
@@ -196,7 +202,7 @@ export default function AdminItemCategoriesTab() {
               <button type="button" data-testid={`button-edit-category-${item.id}`} className={subtleButton} onClick={() => openCategory(item)}><Pencil className="h-3.5 w-3.5" /> تعديل</button>
               <button type="button" data-testid={`button-tags-category-${item.id}`} className={subtleButton} onClick={() => openTags(item)}><Tags className="h-3.5 w-3.5" /> الوسوم</button>
                <button type="button" data-testid={`button-move-category-${item.id}`} className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDestinationSubGroupId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-3.5 w-3.5" /> نقل</button>
-               <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> {item.isActive ? "حذف" : "حذف نهائي"}</button>
+                <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDeletionReviewed(false); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> حذف</button>
             </div>
           </div>)}</div>}</div>}
         </article>;
@@ -229,11 +235,44 @@ export default function AdminItemCategoriesTab() {
        <div className="max-h-72 space-y-2 overflow-auto">{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-bold hover:bg-muted/40"><input type="checkbox" data-testid={`checkbox-category-tag-${g.id}`} checked={tagIds.includes(g.id)} onChange={(e) => setTagIds((ids) => e.target.checked ? [...ids, g.id] : ids.filter((id) => id !== g.id))} className="accent-primary" /> <span className="text-lg">{g.icon}</span>{g.name}</label>)}</div>
       <div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-save-category-tags" className={mainButton} disabled={pending} onClick={() => setTags.mutate({ id: dialog.category.id, data: { groupIds: tagIds } })}>{pending ? "جارٍ الحفظ..." : "حفظ جميع الوسوم"}</button></div></Modal>}
     {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك إدارة المجموعات الثانوية من نافذة الوسوم.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => { setDestinationId(e.target.value); setDestinationSubGroupId(""); }}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>{groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && <div className="mt-4"><Label text="التقسيم الداخلي الجديد"><select required data-testid="select-move-category-subgroup" className={field} value={destinationSubGroupId} onChange={(e) => setDestinationSubGroupId(e.target.value)}><option value="">اختر تقسيمًا</option>{groups.filter((g) => g.parentId === Number(destinationId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Label></div>}<div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId || (groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && !destinationSubGroupId)} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), subGroupId: destinationSubGroupId ? Number(destinationSubGroupId) : null, moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
-     {dialog?.kind === "delete-category" && <Modal title={dialog.category.isActive ? "تعطيل التصنيف" : "حذف التصنيف نهائياً"} onClose={() => { if (!pending) setDialog(null); }}><p className="text-sm leading-7">{dialog.category.isActive ? <>هل تريد تعطيل <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</> : <>هل تريد حذف <strong>{dialog.category.name}</strong> نهائياً؟ لا يمكن التراجع عن هذا الإجراء أو استعادة سجل التصنيف. سيُمنع الحذف إذا كانت له تصنيفات فرعية أو ارتباطات بموردين أو أسماء بديلة أو طلبات موردين تشير إليه.</>}</p>{notice?.error && <p role="alert" data-testid="error-delete-category" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.message}</p>}<div className="mt-5 flex justify-end gap-2"><button type="button" disabled={pending} className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-category" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => dialog.category.isActive ? deleteCategory.mutate({ id: dialog.category.id }) : permanentlyDeleteCategory.mutate({ id: dialog.category.id })}>{pending ? "جارٍ الحذف..." : dialog.category.isActive ? "تعطيل التصنيف" : "حذف نهائي"}</button></div></Modal>}
+      {dialog?.kind === "delete-category" && <Modal title={dialog.category.isActive ? "تعطيل التصنيف" : "مراجعة الحذف النهائي"} onClose={() => { if (!pending) setDialog(null); }}>
+        {dialog.category.isActive
+          ? <p className="text-sm leading-7">هل تريد تعطيل <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</p>
+          : <div className="space-y-4">
+            <p className="text-sm leading-7">راجع بيانات التصنيف والارتباطات أدناه قبل تأكيد حذفه نهائياً. لا يمكن التراجع عن الحذف أو استعادة سجل التصنيف.</p>
+            <DeletionReview category={dialog.category} preview={deletionPreview.data} groupById={groupById} />
+            {deletionPreview.isFetching && <p role="status" className="text-sm text-muted-foreground">جارٍ فحص الارتباطات قبل الحذف...</p>}
+            {deletionPreview.isError && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage(deletionPreview.error)} <button type="button" className="underline" onClick={() => void deletionPreview.refetch()}>إعادة الفحص</button></div>}
+            {deletionPreview.data && !deletionPreview.isFetching && !deletionPreview.data.canDelete && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">لا يمكن الحذف النهائي قبل نقل أو معالجة البيانات المرتبطة المذكورة أعلاه.</p>}
+            {deletionPreview.data?.canDelete && !deletionPreview.isFetching && <label className="flex items-start gap-2 rounded-xl border p-3 text-sm font-bold"><input type="checkbox" data-testid="checkbox-review-permanent-delete" checked={deletionReviewed} onChange={(e) => setDeletionReviewed(e.target.checked)} className="mt-1 accent-destructive" />راجعت بيانات التصنيف وأؤكد حذفه نهائياً</label>}
+          </div>}
+        {notice?.error && <p role="alert" data-testid="error-delete-category" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.message}</p>}
+        <div className="mt-5 flex justify-end gap-2"><button type="button" disabled={pending} className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-category" disabled={pending || (!dialog.category.isActive && (!deletionPreview.data?.canDelete || deletionPreview.isFetching || !deletionReviewed))} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => dialog.category.isActive ? deleteCategory.mutate({ id: dialog.category.id }) : permanentlyDeleteCategory.mutate({ id: dialog.category.id })}>{pending ? "جارٍ الحذف..." : dialog.category.isActive ? "تعطيل التصنيف" : "تأكيد الحذف النهائي"}</button></div>
+      </Modal>}
     {dialog?.kind === "delete-group" && <Modal title="حذف المجموعة" onClose={() => setDialog(null)}><p className="text-sm leading-7">هل تريد حذف مجموعة <strong>{dialog.group.name}</strong>؟ يجب نقل التصنيفات التي تتخذها مجموعة رئيسية قبل حذفها. ستُزال أيضاً وسوم هذه المجموعة من التصنيفات الأخرى.</p><div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-delete-group" disabled={pending} className={`${mainButton} !bg-destructive !text-destructive-foreground`} onClick={() => deleteGroup.mutate({ id: dialog.group.id })}>حذف المجموعة</button></div></Modal>}
     {dialog && dialog.kind !== "delete-category" && notice?.error && <div role="alert" className="fixed bottom-5 left-5 right-5 z-[60] mx-auto max-w-lg rounded-xl border border-destructive/40 bg-card p-4 text-sm font-bold text-destructive shadow-warm-lg">{notice.message}</div>}
     {pending && <span role="status" className="sr-only">جارٍ حفظ التغيير</span>}
   </section>;
+}
+
+function DeletionReview({ category, preview, groupById }: { category: AdminItemCategory; preview?: ItemCategoryDeletionPreview; groupById: Map<number, Group> }) {
+  const dependencies = preview && [
+    ["تصنيفات فرعية", preview.childCategoryCount],
+    ["ارتباطات بموردين", preview.supplierLinkCount],
+    ["منتجات", preview.productCount],
+    ["أسماء بديلة", preview.aliasCount],
+    ["طلبات موردين", preview.requestCount],
+  ] as const;
+  return <div data-testid="review-category-deletion" className="space-y-3 rounded-xl border bg-muted/30 p-4 text-sm">
+    <div className="flex items-center gap-2"><span className="text-lg">{category.icon}</span><strong>{category.name}</strong><Pill active={category.isActive} /></div>
+    <dl className="grid gap-2 sm:grid-cols-2">
+      <div><dt className="text-muted-foreground">رقم التصنيف</dt><dd dir="ltr" className="text-right font-bold">{category.id}</dd></div>
+      <div><dt className="text-muted-foreground">المجموعة الرئيسية</dt><dd className="font-bold">{groupById.get(category.primaryGroupId ?? -1)?.name ?? category.groupName}</dd></div>
+      {category.subGroupId && <div><dt className="text-muted-foreground">التقسيم الداخلي</dt><dd className="font-bold">{groupById.get(category.subGroupId)?.name ?? "غير متاح"}</dd></div>}
+      {category.description && <div><dt className="text-muted-foreground">الوصف</dt><dd className="font-bold">{category.description}</dd></div>}
+    </dl>
+    {dependencies && <div className="border-t pt-3"><p className="mb-2 font-bold">البيانات المرتبطة</p><dl className="grid grid-cols-2 gap-2">{dependencies.map(([label, count]) => <div key={label} className="rounded-lg bg-background px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className={`font-bold ${count ? "text-destructive" : ""}`}>{fmt(count)}</dd></div>)}</dl></div>}
+  </div>;
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

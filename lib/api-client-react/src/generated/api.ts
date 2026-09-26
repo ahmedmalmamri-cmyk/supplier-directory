@@ -55,6 +55,7 @@ import type {
   HomeData,
   ItemCategory,
   ItemCategoryDeleteResponse,
+  ItemCategoryDeletionPreview,
   ItemCategoryInput,
   ItemCategoryOrderInput,
   ItemCategoryOrderResponse,
@@ -1159,6 +1160,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteAdminItemCategoryMutationOptions(options));
     }
+
+export const getGetAdminItemCategoryDeletionPreviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/item-categories/${id}/permanent`
+}
+
+export const getAdminItemCategoryDeletionPreview = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ItemCategoryDeletionPreview> => {
+
+  return customFetch<ItemCategoryDeletionPreview>(getGetAdminItemCategoryDeletionPreviewUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminItemCategoryDeletionPreviewQueryKey = (id: number,) => {
+    return [
+    `/api/admin/item-categories/${id}/permanent`
+    ] as const;
+    }
+
+
+export const getGetAdminItemCategoryDeletionPreviewQueryOptions = <TData = Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminItemCategoryDeletionPreviewQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>> = ({ signal }) => getAdminItemCategoryDeletionPreview(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminItemCategoryDeletionPreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>>
+export type GetAdminItemCategoryDeletionPreviewQueryError = ErrorType<void>
+
+
+
+export function useGetAdminItemCategoryDeletionPreview<TData = Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryDeletionPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminItemCategoryDeletionPreviewQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPermanentlyDeleteAdminItemCategoryUrl = (id: number,) => {
 

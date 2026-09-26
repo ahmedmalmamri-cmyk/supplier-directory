@@ -8,6 +8,8 @@ import {
   CreateSupplierInvitationDraftBody,
   GetSupplierInvitationOptionsResponse,
   GetSupplierSourceStatsResponse,
+  GetAdminItemCategoryDeletionPreviewParams,
+  GetAdminItemCategoryDeletionPreviewResponse,
   ListRegistrationInterestsResponse,
   PermanentlyDeleteAdminItemCategoryParams,
   PermanentlyDeleteAdminItemCategoryResponse,
@@ -1635,6 +1637,62 @@ router.delete("/admin/item-categories/:id", (req, res): void => {
   }
 });
 
+function buildItemCategoryDeletionPreview(existing: ItemCategoryRow) {
+  const id = existing.id;
+  const childCategoryCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM item_categories WHERE parent_id = ?").get(id) as { count: number }).count;
+  const supplierLinkCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(id) as { count: number }).count;
+  const aliasCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(id) as { count: number }).count;
+  const productCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM products WHERE category_id = ?").get(id) as { count: number }).count;
+  const selectedNames = new Set([existing.name, ...legacyItemCategoryAliasesForNames([existing.name])]);
+  const requests = directoryDb.prepare(`
+    SELECT categories FROM supplier_requests
+    WHERE status IN ('pending', 'pending_review', 'approved')
+  `).all() as Array<{ categories: string }>;
+  let requestCount = 0;
+  let invalidRequests = false;
+  for (const request of requests) {
+    let selected: unknown;
+    try {
+      selected = JSON.parse(request.categories);
+    } catch {
+      invalidRequests = true;
+      break;
+    }
+    if (!Array.isArray(selected)) {
+      invalidRequests = true;
+      break;
+    }
+    if (selected.some((name) => typeof name === "string" && selectedNames.has(name))) requestCount++;
+  }
+  return {
+    id, name: existing.name, isActive: Boolean(existing.isActive),
+    childCategoryCount, supplierLinkCount, aliasCount, requestCount, productCount,
+    canDelete: existing.parentId !== null && !existing.isActive &&
+      !childCategoryCount && !supplierLinkCount && !aliasCount && !requestCount && !productCount && !invalidRequests,
+    invalidRequests,
+  };
+}
+
+router.get("/admin/item-categories/:id/permanent", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const params = GetAdminItemCategoryDeletionPreviewParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "معرف التصنيف غير صحيح." });
+    return;
+  }
+  const existing = getItemCategory(params.data.id);
+  if (!existing) {
+    res.status(404).json({ error: "التصنيف غير موجود." });
+    return;
+  }
+  const preview = buildItemCategoryDeletionPreview(existing);
+  if (preview.invalidRequests) {
+    res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
+    return;
+  }
+  res.json(GetAdminItemCategoryDeletionPreviewResponse.parse(preview));
+});
+
 router.delete("/admin/item-categories/:id/permanent", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const params = PermanentlyDeleteAdminItemCategoryParams.safeParse(req.params);
@@ -1661,38 +1719,20 @@ router.delete("/admin/item-categories/:id/permanent", (req, res): void => {
       res.status(409).json({ error: "عطّل التصنيف أولاً، ثم اختر الحذف النهائي بعد تأكيد مستقل." });
       return;
     }
-    const children = directoryDb.prepare("SELECT COUNT(*) AS count FROM item_categories WHERE parent_id = ?").get(id) as { count: number };
-    const suppliers = directoryDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(id) as { count: number };
-    const aliases = directoryDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(id) as { count: number };
-    const selectedNames = new Set([existing.name, ...legacyItemCategoryAliasesForNames([existing.name])]);
-    const requests = directoryDb.prepare(`
-      SELECT categories FROM supplier_requests
-      WHERE status IN ('pending', 'pending_review', 'approved')
-    `).all() as Array<{ categories: string }>;
-    let referencingRequests = 0;
-    for (const request of requests) {
-      let selected: unknown;
-      try {
-        selected = JSON.parse(request.categories);
-      } catch {
-        directoryDb.exec("ROLLBACK");
-        res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
-        return;
-      }
-      if (!Array.isArray(selected)) {
-        directoryDb.exec("ROLLBACK");
-        res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
-        return;
-      }
-      if (selected.some((name) => typeof name === "string" && selectedNames.has(name))) referencingRequests++;
+    const preview = buildItemCategoryDeletionPreview(existing);
+    if (preview.invalidRequests) {
+      directoryDb.exec("ROLLBACK");
+      res.status(409).json({ error: "توجد اختيارات تصنيفات غير صالحة في طلبات الموردين. راجعها قبل الحذف النهائي." });
+      return;
     }
-    if (children.count || suppliers.count || aliases.count || referencingRequests) {
+    if (!preview.canDelete) {
       directoryDb.exec("ROLLBACK");
       const linked = [
-        children.count && `${children.count} تصنيف فرعي`,
-        suppliers.count && `${suppliers.count} ارتباط مورد`,
-        aliases.count && `${aliases.count} اسم بديل`,
-        referencingRequests && `${referencingRequests} طلب مورد`,
+        preview.childCategoryCount && `${preview.childCategoryCount} تصنيف فرعي`,
+        preview.supplierLinkCount && `${preview.supplierLinkCount} ارتباط مورد`,
+        preview.aliasCount && `${preview.aliasCount} اسم بديل`,
+        preview.requestCount && `${preview.requestCount} طلب مورد`,
+        preview.productCount && `${preview.productCount} منتج`,
       ].filter(Boolean).join("، ");
       res.status(409).json({ error: `لا يمكن الحذف النهائي لوجود بيانات مرتبطة (${linked}). راجع طلبات الموردين وانقل التصنيفات الفرعية أو افصل الارتباطات أولاً.` });
       return;

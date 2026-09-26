@@ -195,6 +195,18 @@ export interface ItemCategoryPermanentDeleteResponse {
   success: boolean;
 }
 
+export interface ItemCategoryDeletionPreview {
+  id: number;
+  name: string;
+  isActive: boolean;
+  childCategoryCount: number;
+  supplierLinkCount: number;
+  aliasCount: number;
+  requestCount: number;
+  productCount: number;
+  canDelete: boolean;
+}
+
 export interface ItemCategoryOrderResponse {
   success: boolean;
 }
