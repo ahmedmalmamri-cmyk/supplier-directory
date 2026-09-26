@@ -5,13 +5,14 @@ import { MainLayout } from "@/components/layout/MainLayout";
 
 type TestRole = "supplier" | "buyer";
 type TestModeView = "home" | "report";
-type Account = { role: TestRole; id: number; name: string; phone: string; ready: boolean; route: string };
+type SupplierAccount = { role: "supplier"; id: number; name: string; phone: string; ready: boolean; route: string };
+type BuyerPreview = { available: boolean; name: string | null; route: "/buyer/profile" | "/buyer/login" };
 type TestReport = {
   generatedAt: string;
   summary: { passed: number; warnings: number; failed: number };
   checks: Array<{ key: string; label: string; status: "pass" | "warning" | "fail"; detail: string }>;
 };
-type Overview = { accounts: Account[]; report: TestReport };
+type Overview = { accounts: SupplierAccount[]; buyerPreview: BuyerPreview; report: TestReport };
 
 class AdminRequestError extends Error {
   status: number;
@@ -29,7 +30,11 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = body && typeof body.message === "string" ? body.message : "تعذر إتمام الطلب الآن.";
+    const message = body && typeof body.error === "string"
+      ? body.error
+      : body && typeof body.message === "string"
+        ? body.message
+        : "تعذر إتمام الطلب الآن.";
     throw new AdminRequestError(response.status, message);
   }
   return body as T;
@@ -243,6 +248,7 @@ function HomeView({ overview, error, startingRole, onStart, onRetry }: { overvie
       {error && <ErrorNotice message={error} onRetry={onRetry} />}
       <div className="grid gap-5 md:grid-cols-2">
         {overview?.accounts.map((account) => <AccountCard key={`${account.role}-${account.id}`} account={account} isStarting={startingRole === account.role} onStart={() => onStart(account.role)} />)}
+        {overview?.buyerPreview && <BuyerPreviewCard preview={overview.buyerPreview} isStarting={startingRole === "buyer"} onStart={() => onStart("buyer")} />}
       </div>
       <section className="grid gap-4 rounded-3xl border border-primary/15 bg-primary/[0.06] p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7" aria-labelledby="test-mode-guardrails">
         <div className="flex gap-3"><div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary"><ShieldCheck className="h-5 w-5" /></div><div><h2 id="test-mode-guardrails" className="font-extrabold">حدود البيئة الاختبارية</h2><p className="mt-1 text-sm leading-7 text-muted-foreground">زر التواصل لا يفتح واتساب، وأي نشاط تجريبي لا يُحفظ في سجلات النشاط التجاري. يمكنك العودة إلى هذه الصفحة في أي وقت.</p></div></div>
@@ -252,30 +258,58 @@ function HomeView({ overview, error, startingRole, onStart, onRetry }: { overvie
   );
 }
 
-function AccountCard({ account, isStarting, onStart }: { account: Account; isStarting: boolean; onStart: () => void }) {
-  const isSupplier = account.role === "supplier";
+function AccountCard({ account, isStarting, onStart }: { account: SupplierAccount; isStarting: boolean; onStart: () => void }) {
   return (
     <article className="group relative overflow-hidden rounded-3xl border bg-card p-6 shadow-warm transition-transform hover:-translate-y-0.5 md:p-7" data-testid={`card-test-account-${account.role}-${account.id}`}>
-      <div className={`absolute inset-x-0 top-0 h-1 ${isSupplier ? "bg-primary" : "bg-accent"}`} />
+      <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
       <div className="flex items-start justify-between gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${isSupplier ? "bg-primary/10 text-primary" : "bg-accent/20 text-gold-ink"}`}>
-          {isSupplier ? <Store className="h-6 w-6" /> : <ShoppingCart className="h-6 w-6" />}
-        </div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Store className="h-6 w-6" /></div>
         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold ${account.ready ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`} data-testid={`status-test-account-${account.role}-${account.id}`}>
           {account.ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
           {account.ready ? "جاهز للفحص" : "يحتاج مراجعة"}
         </span>
       </div>
-      <p className="mt-6 text-xs font-extrabold text-muted-foreground">{isSupplier ? "حساب مورد" : "حساب صاحب عمل"}</p>
+      <p className="mt-6 text-xs font-extrabold text-muted-foreground">حساب المورد الاختباري</p>
       <h3 className="mt-1 text-2xl font-extrabold" data-testid={`text-test-account-name-${account.role}-${account.id}`}>{account.name}</h3>
       <div className="mt-5 space-y-3 rounded-2xl bg-muted/35 p-4 text-sm">
         <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">رقم الاختبار</span><strong dir="ltr" data-testid={`text-test-account-phone-${account.role}-${account.id}`}>{account.phone}</strong></div>
         <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">الواجهة</span><strong data-testid={`text-test-account-route-${account.role}-${account.id}`}>{account.route}</strong></div>
       </div>
       <button type="button" onClick={onStart} disabled={isStarting || !account.ready} data-testid={`button-start-test-${account.role}-${account.id}`} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-extrabold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-        {isStarting ? "جارٍ فتح الحساب..." : `دخول إلى شاشة ${isSupplier ? "المورد" : "صاحب العمل"}`}
+        {isStarting ? "جارٍ فتح الحساب..." : "دخول إلى شاشة المورد"}
         <ArrowLeft className="h-4 w-4" />
       </button>
+    </article>
+  );
+}
+
+function BuyerPreviewCard({ preview, isStarting, onStart }: { preview: BuyerPreview; isStarting: boolean; onStart: () => void }) {
+  return (
+    <article className="relative overflow-hidden rounded-3xl border border-accent/35 bg-card p-6 shadow-warm md:p-7" data-testid="card-existing-buyer-preview">
+      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/20 text-gold-ink"><ShoppingCart className="h-6 w-6" /></div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-extrabold text-secondary-foreground" data-testid="status-existing-buyer-preview">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          حسابك الحالي
+        </span>
+      </div>
+      <p className="mt-6 text-xs font-extrabold text-muted-foreground">معاينة شاشة صاحب العمل</p>
+      <h3 className="mt-1 text-2xl font-extrabold" data-testid="text-existing-buyer-name">{preview.available && preview.name ? preview.name : "استخدم حسابك الحالي"}</h3>
+      <p className="mt-3 text-sm leading-7 text-muted-foreground">
+        لا يوجد حساب صاحب عمل تجريبي. عند توفر جلسة صاحب العمل في هذا المتصفح، ستفتح المعاينة بحسابك الحالي فقط.
+      </p>
+      {preview.available ? (
+        <button type="button" onClick={onStart} disabled={isStarting} data-testid="button-start-existing-buyer-preview" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-extrabold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
+          {isStarting ? "جارٍ فتح حسابك..." : "المتابعة بحسابي الحالي"}
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+      ) : (
+        <Link href="/buyer/login" data-testid="link-existing-buyer-login" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 px-4 font-extrabold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+          تسجيل الدخول بحساب صاحب العمل
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+      )}
     </article>
   );
 }

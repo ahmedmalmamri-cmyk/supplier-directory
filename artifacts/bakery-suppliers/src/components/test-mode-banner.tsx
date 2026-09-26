@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ShieldCheck, Store, ShoppingCart, LogOut, AlertTriangle } from "lucide-react";
 
 type TestRole = "supplier" | "buyer";
-type TestModeStatus = { active: false } | { active: true; role: TestRole };
+type TestModeStatus = { active: false } | { active: true; role: TestRole; accountType: "test" | "existing" };
 
 class TestModeRequestError extends Error {
   status: number;
@@ -20,7 +20,11 @@ async function requestTestMode<T>(path: string, init?: RequestInit): Promise<T> 
   });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = body && typeof body.message === "string" ? body.message : "تعذر تحديث حالة وضع المعاينة.";
+    const message = body && typeof body.error === "string"
+      ? body.error
+      : body && typeof body.message === "string"
+        ? body.message
+        : "تعذر تحديث حالة وضع المعاينة.";
     throw new TestModeRequestError(response.status, message);
   }
   return body as T;
@@ -85,6 +89,7 @@ export function TestModeBanner() {
   }
 
   const isSupplier = status?.active && status.role === "supplier";
+  const isExistingBuyer = status?.active && status.role === "buyer" && status.accountType === "existing";
   return (
     <div className="border-b border-primary/20 bg-primary/[0.08] px-4 py-3" role="region" aria-label="حالة وضع المعاينة" data-testid="banner-test-mode">
       <div className="container mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -98,7 +103,11 @@ export function TestModeBanner() {
               {isSupplier ? <Store className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4 text-primary" />}
             </p>
             <p className="text-xs text-muted-foreground" data-testid="text-test-mode-role">
-              أنت تستعرض الآن شاشة {isSupplier ? "المورد" : "صاحب العمل"} بحساب اختباري. لا يتم حفظ النشاط الحقيقي.
+              {isSupplier
+                ? "أنت تستعرض الآن شاشة المورد بحساب اختباري. لا يتم حفظ النشاط الحقيقي."
+                : isExistingBuyer
+                  ? "أنت تستعرض الآن شاشة صاحب العمل بحسابك الحالي. لا يتم إنشاء حساب تجريبي أو حفظ النشاط الحقيقي."
+                  : "أنت تستعرض الآن شاشة صاحب العمل. لا يتم حفظ النشاط الحقيقي."}
             </p>
             {error && <p className="mt-1 text-xs font-bold text-destructive" role="alert" data-testid="status-test-mode-exit-error">{error}</p>}
           </div>
