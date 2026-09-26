@@ -4,6 +4,7 @@ import {
   CreateRequestBody,
   CreateRequestResponse,
   GetRequestOptionsResponse,
+  ListRequestsQueryParams,
   ListRequestsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
@@ -19,6 +20,37 @@ const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحل�
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function buildRequestFilter(filters: { categoryId?: number; city?: string; q?: string }) {
+  const clauses: string[] = [];
+  const values: Array<string | number> = [];
+  const city = text(filters.city);
+  const query = text(filters.q);
+
+  if (filters.categoryId !== undefined) {
+    clauses.push("r.category_id = ?");
+    values.push(filters.categoryId);
+  }
+  if (city) {
+    clauses.push("r.city = ?");
+    values.push(city);
+  }
+  if (query) {
+    clauses.push(`(
+      instr(lower(r.title), lower(?)) > 0
+      OR instr(lower(r.description), lower(?)) > 0
+      OR instr(lower(c.name), lower(?)) > 0
+      OR instr(lower(coalesce(b.business_name, '')), lower(?)) > 0
+      OR instr(lower(r.city), lower(?)) > 0
+    )`);
+    values.push(query, query, query, query, query);
+  }
+
+  return {
+    sql: clauses.map((clause) => `AND ${clause}`).join("\n"),
+    values,
+  };
 }
 
 function normalizeSaudiPhone(value: string) {
@@ -292,6 +324,12 @@ router.get("/requests/options", (_req, res): void => {
 });
 
 router.get("/requests", (req, res): void => {
+  const parsedFilters = ListRequestsQueryParams.safeParse(req.query);
+  if (!parsedFilters.success) {
+    res.status(400).json({ error: "فلاتر البحث غير صالحة." });
+    return;
+  }
+  const filters = buildRequestFilter(parsedFilters.data);
   const now = new Date().toISOString();
 
   if (!getBuyerIdFromRequest(req)) {
@@ -317,14 +355,16 @@ router.get("/requests", (req, res): void => {
       const requests = directoryDb.prepare(`
         SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
           r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+          b.business_name AS businessName,
           r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
         FROM requests r
         JOIN item_categories c ON c.id = r.category_id
         JOIN buyer_users b ON b.id = r.buyer_id
         WHERE r.status = 'active' AND julianday(r.expires_at) > julianday(?)
           AND b.is_owner = 1 AND b.moderation_status = 'active'
+          ${filters.sql}
         ORDER BY r.created_at DESC, r.id DESC
-      `).all(now);
+      `).all(now, ...filters.values);
       res.json(ListRequestsResponse.parse(requests));
       return;
     }
@@ -342,12 +382,15 @@ router.get("/requests", (req, res): void => {
   const requests = directoryDb.prepare(`
     SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
       r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+      b.business_name AS businessName,
       r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
     FROM requests r
     JOIN item_categories c ON c.id = r.category_id
+    JOIN buyer_users b ON b.id = r.buyer_id
     WHERE r.buyer_id = ?
+      ${filters.sql}
     ORDER BY r.created_at DESC, r.id DESC
-  `).all(buyer.id);
+  `).all(buyer.id, ...filters.values);
   res.json(ListRequestsResponse.parse(requests));
 });
 
@@ -436,9 +479,11 @@ router.post("/requests", (req, res): void => {
   const request = directoryDb.prepare(`
     SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
       r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+      b.business_name AS businessName,
       r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
     FROM requests r
     JOIN item_categories c ON c.id = r.category_id
+    JOIN buyer_users b ON b.id = r.buyer_id
     WHERE r.id = ?
   `).get(Number(result.lastInsertRowid));
   res.status(201).json(CreateRequestResponse.parse(request));

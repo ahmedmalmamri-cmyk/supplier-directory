@@ -12,4 +12,4 @@
 - [API startup proxy fallback](api-startup-proxy-fallback.md) — during startup the proxy may return HTML 404 for /api; distinguish it from an API JSON 404.
 - [Preview cookie attributes](preview-cookie-attributes.md) — HTTPS preview rewrites SameSite and Secure; verify app-issued cookie attributes at the direct origin.
 - [Gold accent contrast](gold-accent-contrast.md) — honey-gold backgrounds need dark chocolate text; reserve white text for the milk-chocolate primary.
-- [Supply request visibility](supply-request-visibility.md) — owners see their requests; active suppliers see only live, anonymized requests, with a 30-day default expiry.
+- [Supply request visibility](supply-request-visibility.md) — suppliers see live requests and business names; owner phone stays private until an authenticated contact action.

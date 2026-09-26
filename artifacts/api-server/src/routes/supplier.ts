@@ -3,6 +3,8 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import {
   CompleteSupplierActivationBody,
   CompleteSupplierActivationResponse,
+  CreateSupplierRequestContactParams,
+  CreateSupplierRequestContactResponse,
   GetSupplierActivationQueryParams,
   GetSupplierActivationResponse,
 } from "@workspace/api-zod";
@@ -30,6 +32,11 @@ function normalizeSaudiPhone(value: string) {
 
 function isSaudiPhone(value: string) {
   return /^05\d{8}$/.test(normalizeSaudiPhone(value));
+}
+
+function toSaudiWhatsAppNumber(value: string) {
+  const localNumber = normalizeSaudiPhone(value);
+  return /^05\d{8}$/.test(localNumber) ? `966${localNumber.slice(1)}` : "";
 }
 
 function hashPassword(password: string) {
@@ -428,6 +435,112 @@ router.get("/supplier/contacts", (req, res): void => {
   res.json(rows.map((row) => {
     const item = row as Record<string, unknown>;
     return { ...item, reportId: item.reportId ? Number(item.reportId) : null };
+  }));
+});
+
+router.post("/supplier/requests/:requestId/contact", (req, res): void => {
+  const session = requireSupplier(req, res);
+  if (!session) return;
+
+  const parsedParams = CreateSupplierRequestContactParams.safeParse(req.params);
+  if (!parsedParams.success) {
+    res.status(400).json({ error: "معرّف الطلب غير صالح." });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const request = directoryDb.prepare(`
+    SELECT r.id, r.buyer_id AS buyerId, r.title, r.description, r.quantity, r.unit,
+      r.frequency, r.city, b.business_name AS businessName, b.business_type AS businessType,
+      c.name AS categoryName
+    FROM requests r
+    JOIN buyer_users b ON b.id = r.buyer_id
+    JOIN item_categories c ON c.id = r.category_id
+    WHERE r.id = ? AND r.status = 'active'
+      AND julianday(r.expires_at) > julianday(?)
+      AND b.is_owner = 1 AND b.moderation_status = 'active'
+  `).get(parsedParams.data.requestId, now) as {
+    id: number;
+    buyerId: number;
+    title: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    frequency: string;
+    city: string;
+    businessName: string | null;
+    businessType: string;
+    categoryName: string;
+  } | undefined;
+
+  if (!request) {
+    res.status(404).json({ error: "الطلب غير متاح للتواصل." });
+    return;
+  }
+
+  const supplierName = text(session.supplier.name);
+  const supplierCity = text(session.supplier.city);
+  const supplierContact = toSaudiWhatsAppNumber(text(session.supplier.whatsapp))
+    || toSaudiWhatsAppNumber(text(session.supplier.phone));
+  if (!supplierContact) {
+    res.status(409).json({ error: "حدّث رقم التواصل في ملف المورد قبل إرسال الطلب." });
+    return;
+  }
+
+  const formattedQuantity = new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 2 }).format(request.quantity);
+  const formattedSupplierContact = `\u2066+${supplierContact}\u2069`;
+  const message = [
+    "السلام عليكم ورحمة الله وبركاته",
+    "",
+    "📢 طلب عرض سعر عبر دليل موردي المخابز والحلويات",
+    "",
+    `👤 المورد: ${supplierName || "مورد معتمد"}`,
+    `📞 رقم التواصل: ${formattedSupplierContact}`,
+    `📍 مدينة المورد: ${supplierCity || "غير محددة"}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    `🏢 اسم النشاط: ${request.businessName || request.businessType || "صاحب عمل"}`,
+    `📦 الاحتياج: ${request.title}`,
+    `🗂️ التصنيف: ${request.categoryName}`,
+    `⚖️ الكمية: ${formattedQuantity} ${request.unit}`,
+    `🔁 التكرار: ${request.frequency}`,
+    `📍 مدينة الطلب: ${request.city}`,
+    ...(request.description ? [`📝 التفاصيل: ${request.description}`] : []),
+    "━━━━━━━━━━━━━━━━━━━━",
+    "",
+    "نأمل تزويدنا بسعركم والتوفر المتوقع لهذا الاحتياج.",
+  ].join("\n");
+
+  if (isTestModeRequest(req, "supplier", session.supplierId)) {
+    res.json(CreateSupplierRequestContactResponse.parse({
+      success: true,
+      message,
+      simulated: true,
+      whatsappUrl: null,
+    }));
+    return;
+  }
+
+  const owner = directoryDb.prepare(`
+    SELECT phone FROM buyer_users
+    WHERE id = ? AND is_owner = 1 AND moderation_status = 'active'
+  `).get(request.buyerId) as { phone: string } | undefined;
+  const ownerNumber = owner ? toSaudiWhatsAppNumber(owner.phone) : "";
+  if (!ownerNumber) {
+    res.status(409).json({ error: "لا يتوفر رقم واتساب صالح لصاحب هذا الطلب." });
+    return;
+  }
+
+  directoryDb.prepare(`
+    INSERT INTO supplier_request_contact_logs (request_id, supplier_id, message, sent_at)
+    VALUES (?, ?, ?, ?)
+  `).run(request.id, session.supplierId, message, now);
+
+  res.json(CreateSupplierRequestContactResponse.parse({
+    success: true,
+    message,
+    simulated: false,
+    whatsappUrl: `https://wa.me/${ownerNumber}?text=${encodeURIComponent(message)}`,
   }));
 });
 

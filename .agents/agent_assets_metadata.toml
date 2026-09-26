@@ -546,3 +546,31 @@ mtime_ms = 1790446906264
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/09ec5b25-f022-4241-9911-d22e6b2539c2/fa826b76-fdaf-406f-905b-18c23ac80f02"
 storage_version_token = "1790446928979390"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "1XTnP46tdnkGoUaZ9rcZU"
+uri = "file://artifacts/bakery-suppliers/screenshots/market-requests.jpg"
+type = "image"
+title = "صورة صفحة طلبات السوق"
+description = "لقطة معاينة للواجهة مع بيانات تجريبية غير حقيقية."
+logical_id = "13e23b4c-bf43-4979-a73c-35df2bca8dc0"
+content_hash = "sha256:545b447468ad26b36d4a3b28d8ab075170e1e942b9f6cf940b834fa39f5b7a33"
+size = 132938
+mtime_ms = 1790453490036
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/13e23b4c-bf43-4979-a73c-35df2bca8dc0/e485843d-1e47-4833-a60d-ec651565e465"
+storage_version_token = "1790453529146611"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "_9ZWKTzL9-QZHE0TDw6nm"
+uri = "file://artifacts/bakery-suppliers/screenshots/whatsapp-message-preview.jpg"
+type = "image"
+title = "صورة رسالة واتساب الجاهزة"
+description = "لقطة معاينة لنص التواصل المقترح باستخدام بيانات تجريبية غير حقيقية."
+logical_id = "537ba289-0043-4391-8409-140b040a5822"
+content_hash = "sha256:013d2b938860b0028d0fc0ea83b6a3cad5ebc9e91bdf04d92cc725562b70bcd1"
+size = 71817
+mtime_ms = 1790453492667
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/537ba289-0043-4391-8409-140b040a5822/083a8c92-239a-4daf-90bd-540f4069fc74"
+storage_version_token = "1790453530517153"
+content_type = "image/jpeg"
