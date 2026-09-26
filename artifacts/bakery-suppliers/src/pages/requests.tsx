@@ -171,14 +171,18 @@ function RequestCard({
   item,
   supplierView,
   contacting,
+  preparingOffer,
   contactError,
   onContact,
+  onOffer,
 }: {
   item: Request;
   supplierView: boolean;
   contacting: boolean;
+  preparingOffer: boolean;
   contactError?: string;
   onContact: () => void;
+  onOffer: () => void;
 }) {
   return (
     <article
@@ -223,16 +227,28 @@ function RequestCard({
 
       {supplierView && (
         <div className="mt-5 border-t border-border/70 pt-4">
-          <button
-            type="button"
-            onClick={onContact}
-            disabled={contacting}
-            data-testid={`button-contact-request-${item.id}`}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-warm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-52"
-          >
-            <MessageCircle className="h-4 w-4" />
-            {contacting ? "جارٍ تجهيز الرسالة..." : "تواصل مع صاحب الطلب"}
-          </button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onContact}
+              disabled={contacting}
+              data-testid={`button-contact-request-${item.id}`}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-warm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {contacting ? "جارٍ تجهيز الرسالة..." : "تواصل مع صاحب الطلب"}
+            </button>
+            <button
+              type="button"
+              onClick={onOffer}
+              disabled={preparingOffer}
+              data-testid={`button-offer-request-${item.id}`}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background px-4 py-2.5 text-sm font-extrabold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Send className="h-4 w-4" />
+              {preparingOffer ? "جارٍ تجهيز العرض..." : "إرسال عرض سعر"}
+            </button>
+          </div>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">يفتح واتساب برسالة جاهزة للمراجعة؛ لا تُرسل تلقائياً.</p>
           {contactError && <p className="mt-2 text-sm font-bold text-destructive" role="alert">{contactError}</p>}
         </div>
@@ -275,6 +291,9 @@ export default function RequestsPage() {
   const [messagePreview, setMessagePreview] = useState("");
   const [contactError, setContactError] = useState<{ requestId: number; message: string } | null>(null);
   const [contactingId, setContactingId] = useState<number | null>(null);
+  const [offerRequest, setOfferRequest] = useState<Request | null>(null);
+  const [offerText, setOfferText] = useState("");
+  const [offerError, setOfferError] = useState("");
   const isLoadingAuth = buyerLoading || supplierLoading;
   const previewKind = import.meta.env.DEV && typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("preview")
@@ -302,6 +321,7 @@ export default function RequestsPage() {
     query: { queryKey: getGetRequestOptionsQueryKey(), enabled: !!view || previewMode },
   });
   const contactMutation = useCreateSupplierRequestContact();
+  const offerMutation = useCreateSupplierRequestOfferContact();
 
   const categoryOptions = categoriesQuery.data?.length
     ? categoriesQuery.data
@@ -367,6 +387,67 @@ export default function RequestsPage() {
         setContactingId(null);
         popup.close();
         setContactError({ requestId, message: "تعذر تجهيز الرسالة. حاول مرة أخرى." });
+      },
+    });
+  };
+
+  const openOfferDialog = (item: Request) => {
+    setOfferRequest(item);
+    setOfferText("");
+    setOfferError("");
+  };
+
+  const closeOfferDialog = () => {
+    if (offerMutation.isPending) return;
+    setOfferRequest(null);
+    setOfferText("");
+    setOfferError("");
+  };
+
+  const submitOffer = () => {
+    if (!offerRequest) return;
+    const offer = offerText.trim();
+    if (!offer) {
+      setOfferError("اكتب تفاصيل العرض قبل المتابعة.");
+      return;
+    }
+    setOfferError("");
+
+    if (previewMode) {
+      setMessagePreview(buildPreviewOfferMessage(offerRequest, offer));
+      setOfferRequest(null);
+      setOfferText("");
+      return;
+    }
+
+    const popup = window.open("about:blank", "_blank");
+    if (!popup) {
+      setOfferError("اسمح بالنوافذ المنبثقة لفتح واتساب.");
+      return;
+    }
+
+    offerMutation.mutate({ requestId: offerRequest.id, data: { offer } }, {
+      onSuccess: (result) => {
+        if (result.simulated) {
+          popup.close();
+          setMessagePreview(result.message);
+          setOfferRequest(null);
+          setOfferText("");
+          return;
+        }
+        if (!result.whatsappUrl) {
+          popup.close();
+          setOfferError("تعذر تجهيز رابط واتساب لهذا الطلب.");
+          return;
+        }
+        popup.opener = null;
+        popup.location.href = result.whatsappUrl;
+        setOfferRequest(null);
+        setOfferText("");
+      },
+      onError: () => {
+        popup.close();
+        setOfferError("تعذر تجهيز العرض. حاول مرة أخرى.");
       },
     });
   };
