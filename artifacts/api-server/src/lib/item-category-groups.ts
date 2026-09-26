@@ -13,7 +13,6 @@ export type GroupRecord = {
 
 export type DeleteEmptyGroupResult =
   | { status: "deleted" }
-  | { status: "missing-mirror" }
   | { status: "has-primary-categories"; count: number }
   | {
       status: "has-linked-data";
@@ -53,15 +52,15 @@ export function deleteEmptyGroup(id: number): DeleteEmptyGroupResult {
       displayOrder: number;
       isActive: number;
     } | undefined;
-    if (!mirror) {
-      directoryDb.exec("ROLLBACK");
-      return { status: "missing-mirror" };
-    }
-
-    const primaryCategories = (directoryDb.prepare(`
+    // An imported legacy group can have no root mirror while its ID belongs to
+    // an unrelated leaf category. Never treat that leaf as the group's mirror.
+    const primaryCategories = (directoryDb.prepare(mirror ? `
       SELECT COUNT(*) AS count FROM item_categories
       WHERE primary_group_id = ? OR parent_id = ?
-    `).get(id, id) as { count: number }).count;
+    ` : `
+      SELECT COUNT(*) AS count FROM item_categories
+      WHERE primary_group_id = ?
+    `).get(...(mirror ? [id, id] : [id])) as { count: number }).count;
     const childGroups = (directoryDb.prepare(`
       SELECT COUNT(*) AS count FROM groups WHERE parent_id = ?
     `).get(id) as { count: number }).count;
@@ -70,15 +69,15 @@ export function deleteEmptyGroup(id: number): DeleteEmptyGroupResult {
       return { status: "has-primary-categories", count: primaryCategories + childGroups };
     }
 
-    const supplierCategoryCount = (directoryDb.prepare(`
+    const supplierCategoryCount = mirror ? (directoryDb.prepare(`
       SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?
-    `).get(id) as { count: number }).count;
-    const productCount = (directoryDb.prepare(`
+    `).get(id) as { count: number }).count : 0;
+    const productCount = mirror ? (directoryDb.prepare(`
       SELECT COUNT(*) AS count FROM products WHERE category_id = ?
-    `).get(id) as { count: number }).count;
-    const aliasCount = (directoryDb.prepare(`
+    `).get(id) as { count: number }).count : 0;
+    const aliasCount = mirror ? (directoryDb.prepare(`
       SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?
-    `).get(id) as { count: number }).count;
+    `).get(id) as { count: number }).count : 0;
     if (supplierCategoryCount || productCount || aliasCount) {
       directoryDb.exec("ROLLBACK");
       return {
@@ -104,14 +103,14 @@ export function deleteEmptyGroup(id: number): DeleteEmptyGroupResult {
         new Date().toISOString(),
       );
     }
-    directoryDb.prepare(`
-      DELETE FROM category_tags WHERE group_id = ? OR category_id = ?
-    `).run(id, id);
-    const deletedMirror = directoryDb.prepare(`
-      DELETE FROM item_categories WHERE id = ? AND parent_id IS NULL
-    `).run(id);
-    if (Number(deletedMirror.changes) !== 1) {
-      throw new Error("Could not delete the mirrored category group root.");
+    directoryDb.prepare("DELETE FROM category_tags WHERE group_id = ?").run(id);
+    if (mirror) {
+      const deletedMirror = directoryDb.prepare(`
+        DELETE FROM item_categories WHERE id = ? AND parent_id IS NULL
+      `).run(id);
+      if (Number(deletedMirror.changes) !== 1) {
+        throw new Error("Could not delete the mirrored category group root.");
+      }
     }
     const deletedGroup = directoryDb.prepare("DELETE FROM groups WHERE id = ?").run(id);
     if (Number(deletedGroup.changes) !== 1) {

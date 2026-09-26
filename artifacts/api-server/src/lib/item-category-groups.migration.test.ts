@@ -204,7 +204,11 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
         .map(({ id, name, slug }: any) => ({ id, name, slug })),
       previousRoots.map((root: any) => ({
         ...root,
-        name: root.slug === "cake-mixes" ? "خلطات الكيك القديمة" : root.name,
+        name: ({
+          "cake-mixes": "خلطات الكيك القديمة",
+          dairy: "الحليب ومشتقاته",
+          dough: "العجائن والمخبوزات",
+        } as Record<string, string>)[root.slug] ?? root.name,
       })),
     );
     assert.equal(mirroredRoots.length, 11);
@@ -451,7 +455,29 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
       VALUES (1, 'test-only-hash', ?)
     `).run(deleteNow);
 
+    // A legacy group may be missing its root mirror while another, valid leaf
+    // category owns the same numeric ID. Deleting the group must preserve it.
+    insertGroup.run(idBase + 2, "Orphan delete test group", "orphan-delete-test-group");
+    groupDeleteDb.prepare(`
+      INSERT INTO item_categories
+        (id, name, icon, group_name, parent_id, slug, display_order,
+         is_active, created_at, updated_at, primary_group_id)
+      VALUES (?, 'Unrelated preserved leaf', '🧪', ?, ?,
+        'unrelated-preserved-leaf', 1, 1, ?, ?, ?)
+    `).run(idBase + 2, primaryGroup.name, primaryGroup.id, deleteNow, deleteNow, primaryGroup.id);
+    groupDeleteDb.prepare(`
+      INSERT INTO item_category_aliases (alias, item_category_id)
+      VALUES ('Unrelated preserved alias', ?)
+    `).run(idBase + 2);
+    groupDeleteDb.prepare(`
+      INSERT INTO supplier_categories (supplier_id, item_category_id) VALUES (?, ?)
+    `).run(supplierId, idBase + 2);
+    groupDeleteDb.prepare(`
+      INSERT INTO category_tags (category_id, group_id, created_at) VALUES (?, ?, ?)
+    `).run(idBase + 2, primaryGroup.id, deleteNow);
+
     assert.deepEqual(deleteEmptyGroup(idBase), { status: "deleted" });
+    assert.deepEqual(deleteEmptyGroup(idBase + 2), { status: "deleted" });
     assert.deepEqual(deleteEmptyGroup(idBase + 1), {
       status: "has-linked-data",
       supplierCategoryCount: 1,
@@ -478,6 +504,11 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
     assert.ok(deletionVerificationDb.prepare(
       "SELECT id FROM item_categories WHERE id = ?",
     ).get(idBase + 1));
+    assert.equal(deletionVerificationDb.prepare("SELECT id FROM groups WHERE id = ?").get(idBase + 2), undefined);
+    assert.ok(deletionVerificationDb.prepare("SELECT id FROM item_categories WHERE id = ?").get(idBase + 2));
+    assert.equal((deletionVerificationDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(idBase + 2) as { count: number }).count, 1);
+    assert.equal((deletionVerificationDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(idBase + 2) as { count: number }).count, 1);
+    assert.equal((deletionVerificationDb.prepare("SELECT COUNT(*) AS count FROM category_tags WHERE category_id = ?").get(idBase + 2) as { count: number }).count, 1);
     assert.ok(deletionVerificationDb.prepare(
       "SELECT supplier_id FROM supplier_categories WHERE item_category_id = ?",
     ).get(idBase + 1));

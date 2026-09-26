@@ -286,10 +286,6 @@ router.delete("/admin/groups/:id", (req, res): void => {
     res.status(500).json({ error: "تعذر حذف المجموعة." });
     return;
   }
-  if (deletion.status === "missing-mirror") {
-    res.status(404).json({ error: "سجل المجموعة المقابل غير موجود." });
-    return;
-  }
   if (deletion.status === "has-primary-categories") {
     res.status(409).json({ error: "انقل جميع التصنيفات الأساسية، بما فيها غير النشطة، قبل حذف المجموعة." });
     return;
