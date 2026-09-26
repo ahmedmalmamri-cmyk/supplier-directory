@@ -68,14 +68,14 @@ export default function Home() {
   return (
     <MainLayout>
       <section className="relative isolate overflow-hidden bg-secondary dark:bg-background">
-        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="lazy" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-55" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,hsl(var(--background)/.48)_0%,hsl(var(--background)/.68)_55%,hsl(var(--background)/.9)_100%)] dark:bg-[linear-gradient(90deg,hsl(var(--background)/.68)_0%,hsl(var(--background)/.8)_55%,hsl(var(--background)/.94)_100%)]" />
-        <div className="container mx-auto px-4 py-12 md:py-20">
+        <img src={`${import.meta.env.BASE_URL}images/bakery-hero.jpg`} alt="خبز طازج وحبوب القمح" loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-70 dark:opacity-70" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,hsl(var(--background)/.48)_0%,hsl(var(--background)/.68)_55%,hsl(var(--background)/.9)_100%)] dark:bg-[linear-gradient(90deg,hsl(var(--background)/.55)_0%,hsl(var(--background)/.72)_55%,hsl(var(--background)/.86)_100%)]" />
+        <div className="container mx-auto px-4 py-8 md:py-20">
           <div className="max-w-2xl animate-rise-in text-right text-foreground">
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm"><Wheat className="h-4 w-4 text-gold-ink" aria-hidden="true" /> دليل موثوق للمنطقة الشرقية</p>
-            <h1 className="text-balance text-3xl font-extrabold leading-[1.25] sm:text-4xl md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
-            <p className="mt-3 text-xl font-semibold text-primary md:text-2xl">في المنطقة الشرقية</p>
-            <form onSubmit={handleSearch} className="relative mt-6 max-w-xl" data-testid="form-home-search">
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-3 py-1.5 text-xs font-semibold text-primary shadow-sm sm:px-4 sm:py-2 sm:text-sm"><Wheat className="h-4 w-4 text-gold-ink" aria-hidden="true" /> دليل موثوق للمنطقة الشرقية</p>
+            <h1 className="text-balance text-[1.7rem] font-extrabold leading-[1.35] sm:text-4xl md:text-6xl">ابحث عن أفضل موردي المواد الأولية للمخابز والحلويات</h1>
+            <p className="mt-2 text-base font-semibold text-primary sm:text-xl md:text-2xl">في المنطقة الشرقية</p>
+            <form onSubmit={handleSearch} className="relative mt-5 max-w-xl" data-testid="form-home-search">
               <label htmlFor="home-search" className="sr-only">ابحث عن مورد أو منتج</label>
               <input id="home-search" data-testid="input-home-search" type="search" placeholder="ابحث باسم المورد أو المنتج..." className="h-14 w-full rounded-2xl border border-border bg-card px-5 pl-16 text-base text-foreground shadow-warm-lg outline-none placeholder:text-muted-foreground md:h-16" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
               <button data-testid="button-home-search" type="submit" aria-label="بحث" className="absolute left-2 top-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground transition-transform hover:-translate-y-0.5 md:h-12 md:w-12"><Search className="h-5 w-5" aria-hidden="true" /></button>
@@ -85,7 +85,7 @@ export default function Home() {
       </section>
 
       <section className="border-y border-border bg-muted/20" aria-labelledby="home-category-heading">
-        <div className="container mx-auto max-w-7xl px-4 py-8 md:py-11">
+        <div className="container mx-auto max-w-7xl px-4 py-6 md:py-11">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="mb-1 text-xs font-bold text-primary">ابدأ من احتياجك</p>

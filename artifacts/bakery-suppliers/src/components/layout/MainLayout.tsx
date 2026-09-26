@@ -4,16 +4,14 @@ import { Menu, Search, X, Package, Users, Mail, FileText, UserPlus, Rocket, Moon
 import { useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useSupplierAuth } from "@/lib/supplier-auth";
+import { chooseTheme } from "@/lib/theme";
 
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const toggleTheme = () => {
     const nextTheme = isDark ? "light" : "dark";
-    document.documentElement.classList.toggle("dark", nextTheme === "dark");
-    document.documentElement.dataset.theme = nextTheme;
-    document.documentElement.style.colorScheme = nextTheme === "dark" ? "only dark" : "only light";
-    localStorage.setItem("bakery-theme", nextTheme);
+    chooseTheme(nextTheme);
     setIsDark(nextTheme === "dark");
   };
 
@@ -33,13 +31,13 @@ export function MainLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-[100dvh] flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4 md:h-16">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-              <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
+        <div className="container mx-auto flex h-16 items-center justify-between gap-2 px-4">
+          <div className="flex min-w-0 items-center gap-6">
+            <Link href="/" className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-xl font-bold text-primary-foreground">
                 د
               </div>
-              <span className="max-w-[135px] truncate text-xs font-bold sm:max-w-none sm:text-lg">دليل موردي المخابز والحلويات</span>
+              <span className="min-w-0 text-[11px] font-bold leading-4 sm:text-base md:text-lg">دليل موردي<br className="sm:hidden" /> المخابز والحلويات</span>
             </Link>
              <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
@@ -49,8 +47,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link href="/search" aria-label="البحث عن منتج أو مورد" title="البحث" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <Link href="/search" aria-label="البحث عن منتج أو مورد" title="البحث" className="hidden h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted sm:flex">
               <Search className="h-5 w-5" />
             </Link>
             <ThemeToggle />
@@ -70,6 +68,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           <nav className="flex flex-col gap-1 p-3 text-sm font-medium">
             <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Package className="h-4 w-4"/> الرئيسية</Link>
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Users className="h-4 w-4"/> الموردون</Link>
+            <Link href="/search" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Search className="h-4 w-4"/> البحث</Link>
              {authLoading ? <span role="status" className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-muted-foreground"><span className="h-4 w-24 animate-pulse rounded bg-muted" /> جاري التحقق من الحساب</span> : <Link data-testid="link-account-mobile" href={accountHref} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><UserRound className="h-4 w-4"/><span className="truncate">{accountLabel}</span></Link>}
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="mt-1 flex min-h-11 items-center gap-3 rounded-xl bg-primary px-3 py-2 font-extrabold text-primary-foreground hover:bg-primary/90"><UserPlus className="h-4 w-4"/> انضم للدليل</Link>
             <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="mt-2 flex min-h-11 items-center gap-3 border-t border-border px-3 pt-3 text-xs font-bold text-muted-foreground hover:text-foreground"><ShieldCheck className="h-4 w-4"/> دخول الإدارة</Link>

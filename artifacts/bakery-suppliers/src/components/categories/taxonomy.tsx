@@ -100,9 +100,9 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
 }
 export function RootCard({ category }: { category: Group; categories?: TaxonomyCategory[] }) {
   const Icon = getItemCategoryIcon(category.icon);
-  return <Link href={`/category/${category.slug}`} data-testid={`card-home-category-${category.id}`} className="group flex min-h-48 flex-col items-center justify-center rounded-2xl border border-border bg-card px-3 py-6 text-center text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-accent/50 hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-    <Icon className="mb-4 h-16 w-16 text-primary" strokeWidth={1.5} aria-hidden="true" />
-    <strong className="text-lg font-bold leading-7">{category.name}</strong>
-    <span className="mt-2 text-sm text-muted-foreground">{category.categoryCount.toLocaleString("ar-SA")} أصناف · {category.supplierCount.toLocaleString("ar-SA")} مورد</span>
+  return <Link href={`/category/${category.slug}`} data-testid={`card-home-category-${category.id}`} className="group flex min-h-40 flex-col items-center justify-center rounded-2xl border border-border bg-card px-3 py-4 text-center text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-accent/50 hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-48 sm:py-6">
+    <Icon className="mb-3 h-12 w-12 text-primary sm:mb-4 sm:h-16 sm:w-16" strokeWidth={1.5} aria-hidden="true" />
+    <strong className="text-base font-bold leading-6 sm:text-lg sm:leading-7">{category.name}</strong>
+    <span className="mt-2 text-xs text-muted-foreground sm:text-sm">{category.categoryCount.toLocaleString("ar-SA")} أصناف · {category.supplierCount.toLocaleString("ar-SA")} مورد</span>
   </Link>;
 }
