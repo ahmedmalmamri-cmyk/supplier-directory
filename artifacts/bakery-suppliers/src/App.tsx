@@ -41,11 +41,29 @@ import NewRequestPage from '@/pages/request-new';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 import { SupplierAuthProvider } from '@/lib/supplier-auth';
 
+function shouldRetryQuery(failureCount: number, error: unknown) {
+  if (failureCount >= 2) return false;
+  if (error instanceof TypeError) return true;
+  if (!(error instanceof Error)) return false;
+
+  const responseError = error as Error & {
+    status?: number;
+    headers?: { get?: (name: string) => string | null };
+  };
+  const status = responseError.status;
+  if (status === 408 || status === 429 || (status !== undefined && status >= 500)) return true;
+  if (status !== 404) return false;
+
+  // The workspace proxy can briefly return an HTML 404 while the API starts.
+  return responseError.headers?.get?.('content-type')?.toLowerCase().includes('text/html') ?? false;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      retry: false,
+      refetchOnWindowFocus: true,
+      retry: shouldRetryQuery,
+      retryDelay: (failureCount) => Math.min(1000 * 2 ** failureCount, 5000),
     },
   },
 });
