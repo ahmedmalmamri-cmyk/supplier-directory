@@ -5,6 +5,8 @@ import {
   CompleteSupplierActivationResponse,
   CreateSupplierRequestContactParams,
   CreateSupplierRequestContactResponse,
+  CreateSupplierRequestOfferContactBody,
+  CreateSupplierRequestOfferContactParams,
   GetSupplierActivationQueryParams,
   GetSupplierActivationResponse,
 } from "@workspace/api-zod";
@@ -438,14 +440,30 @@ router.get("/supplier/contacts", (req, res): void => {
   }));
 });
 
-router.post("/supplier/requests/:requestId/contact", (req, res): void => {
+function handleSupplierRequestContact(req: Request, res: Response, mode: "contact" | "offer"): void {
   const session = requireSupplier(req, res);
   if (!session) return;
 
-  const parsedParams = CreateSupplierRequestContactParams.safeParse(req.params);
+  const parsedParams = mode === "offer"
+    ? CreateSupplierRequestOfferContactParams.safeParse(req.params)
+    : CreateSupplierRequestContactParams.safeParse(req.params);
   if (!parsedParams.success) {
     res.status(400).json({ error: "معرّف الطلب غير صالح." });
     return;
+  }
+
+  let offerText = "";
+  if (mode === "offer") {
+    const parsedBody = CreateSupplierRequestOfferContactBody.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "اكتب تفاصيل العرض قبل المتابعة." });
+      return;
+    }
+    offerText = text(parsedBody.data.offer);
+    if (!offerText) {
+      res.status(400).json({ error: "اكتب تفاصيل العرض قبل المتابعة." });
+      return;
+    }
   }
 
   const now = new Date().toISOString();
@@ -489,27 +507,65 @@ router.post("/supplier/requests/:requestId/contact", (req, res): void => {
 
   const formattedQuantity = new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 2 }).format(request.quantity);
   const formattedSupplierContact = `\u2066+${supplierContact}\u2069`;
-  const message = [
-    "السلام عليكم ورحمة الله وبركاته",
-    "",
-    "📢 طلب عرض سعر عبر دليل موردي المخابز والحلويات",
-    "",
-    `👤 المورد: ${supplierName || "مورد معتمد"}`,
-    `📞 رقم التواصل: ${formattedSupplierContact}`,
-    `📍 مدينة المورد: ${supplierCity || "غير محددة"}`,
-    "",
-    "━━━━━━━━━━━━━━━━━━━━",
-    `🏢 اسم النشاط: ${request.businessName || request.businessType || "صاحب عمل"}`,
-    `📦 الاحتياج: ${request.title}`,
-    `🗂️ التصنيف: ${request.categoryName}`,
-    `⚖️ الكمية: ${formattedQuantity} ${request.unit}`,
-    `🔁 التكرار: ${request.frequency}`,
-    `📍 مدينة الطلب: ${request.city}`,
-    ...(request.description ? [`📝 التفاصيل: ${request.description}`] : []),
-    "━━━━━━━━━━━━━━━━━━━━",
-    "",
-    "نأمل تزويدنا بسعركم والتوفر المتوقع لهذا الاحتياج.",
-  ].join("\n");
+  let message: string;
+  if (mode === "offer") {
+    const activityRow = directoryDb.prepare(`
+      SELECT google_category AS activity FROM suppliers WHERE id = ?
+    `).get(session.supplierId) as { activity: string | null } | undefined;
+    const supplierActivity = text(activityRow?.activity) || "غير محدد";
+    message = [
+      "السلام عليكم ورحمة الله وبركاته",
+      "",
+      "📢 رد على احتياجك في دليل موردي المخابز والحلويات",
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "👤 معلومات المورد:",
+      "━━━━━━━━━━━━━━━━━━━━",
+      `• الاسم: ${supplierName || "مورد معتمد"}`,
+      `• النشاط: ${supplierActivity}`,
+      `• المدينة: ${supplierCity || "غير محددة"}`,
+      `• الجوال: ${formattedSupplierContact}`,
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "📋 بخصوص طلبك:",
+      "━━━━━━━━━━━━━━━━━━━━",
+      `• الصنف: ${request.title}`,
+      `• الكمية: ${formattedQuantity} ${request.unit}`,
+      `• التكرار: ${request.frequency}`,
+      `• مدينتك: ${request.city}`,
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "💬 العرض:",
+      "━━━━━━━━━━━━━━━━━━━━",
+      offerText,
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "",
+      "🌾 دليل موردي المخابز والحلويات",
+    ].join("\n");
+  } else {
+    message = [
+      "السلام عليكم ورحمة الله وبركاته",
+      "",
+      "📢 طلب عرض سعر عبر دليل موردي المخابز والحلويات",
+      "",
+      `👤 المورد: ${supplierName || "مورد معتمد"}`,
+      `📞 رقم التواصل: ${formattedSupplierContact}`,
+      `📍 مدينة المورد: ${supplierCity || "غير محددة"}`,
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      `🏢 اسم النشاط: ${request.businessName || request.businessType || "صاحب عمل"}`,
+      `📦 الاحتياج: ${request.title}`,
+      `🗂️ التصنيف: ${request.categoryName}`,
+      `⚖️ الكمية: ${formattedQuantity} ${request.unit}`,
+      `🔁 التكرار: ${request.frequency}`,
+      `📍 مدينة الطلب: ${request.city}`,
+      ...(request.description ? [`📝 التفاصيل: ${request.description}`] : []),
+      "━━━━━━━━━━━━━━━━━━━━",
+      "",
+      "نأمل تزويدنا بسعركم والتوفر المتوقع لهذا الاحتياج.",
+    ].join("\n");
+  }
 
   if (isTestModeRequest(req, "supplier", session.supplierId)) {
     res.json(CreateSupplierRequestContactResponse.parse({
@@ -542,6 +598,14 @@ router.post("/supplier/requests/:requestId/contact", (req, res): void => {
     simulated: false,
     whatsappUrl: `https://wa.me/${ownerNumber}?text=${encodeURIComponent(message)}`,
   }));
+}
+
+router.post("/supplier/requests/:requestId/contact", (req, res): void => {
+  handleSupplierRequestContact(req, res, "contact");
+});
+
+router.post("/supplier/requests/:requestId/offer", (req, res): void => {
+  handleSupplierRequestContact(req, res, "offer");
 });
 
 router.post("/supplier/reports", (req, res): void => {

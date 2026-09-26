@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Package,
   RefreshCw,
+  Send,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -20,6 +21,7 @@ import {
   getGetRequestOptionsQueryKey,
   getListItemCategoriesQueryKey,
   getListRequestsQueryKey,
+  useCreateSupplierRequestOfferContact,
   useCreateSupplierRequestContact,
   useGetRequestOptions,
   useListItemCategories,
@@ -99,6 +101,39 @@ const previewContactMessage = [
   "",
   "نأمل تزويدنا بسعركم والتوفر المتوقع لهذا الاحتياج.",
 ].join("\n");
+
+function buildPreviewOfferMessage(item: Request, offer: string) {
+  return [
+    "السلام عليكم ورحمة الله وبركاته",
+    "",
+    "📢 رد على احتياجك في دليل موردي المخابز والحلويات",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "👤 معلومات المورد:",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "• الاسم: مؤسسة مذاق الشرقية",
+    "• النشاط: مورد مواد المخابز والحلويات",
+    "• المدينة: الدمام",
+    "• الجوال: \u2066+966 55 000 0000\u2069",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "📋 بخصوص طلبك:",
+    "━━━━━━━━━━━━━━━━━━━━",
+    `• الصنف: ${item.title}`,
+    `• الكمية: ${formatQuantity(item.quantity, item.unit)}`,
+    `• التكرار: ${item.frequency}`,
+    `• مدينتك: ${item.city}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "💬 العرض:",
+    "━━━━━━━━━━━━━━━━━━━━",
+    offer,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━",
+    "",
+    "🌾 دليل موردي المخابز والحلويات",
+  ].join("\n");
+}
 
 function useDebouncedValue<T>(value: T, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
