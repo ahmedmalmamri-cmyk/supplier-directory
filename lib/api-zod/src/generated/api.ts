@@ -184,6 +184,29 @@ export const CreateSupplierRequestContactResponse = zod.object({
 })
 
 
+
+
+
+export const CreateSupplierRequestOfferContactParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const createSupplierRequestOfferContactBodyOfferMax = 1000;
+
+
+
+export const CreateSupplierRequestOfferContactBody = zod.object({
+  "offer": zod.string().min(1).max(createSupplierRequestOfferContactBodyOfferMax)
+})
+
+export const CreateSupplierRequestOfferContactResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "simulated": zod.boolean(),
+  "whatsappUrl": zod.string().url().nullable()
+})
+
+
 export const ListAdminItemCategoriesResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),

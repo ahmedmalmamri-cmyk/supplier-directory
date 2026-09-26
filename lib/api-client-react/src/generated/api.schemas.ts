@@ -165,6 +165,14 @@ export interface SupplierRequestContactResponse {
   whatsappUrl: string | null;
 }
 
+export interface SupplierRequestOfferInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  offer: string;
+}
+
 export type RequestInputUnit = typeof RequestInputUnit[keyof typeof RequestInputUnit];
 
 

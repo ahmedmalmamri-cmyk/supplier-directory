@@ -96,6 +96,7 @@ import type {
   SupplierInviteInput,
   SupplierLoginInput,
   SupplierRequestContactResponse,
+  SupplierRequestOfferInput,
   SupplierSourceStats
 } from './api.schemas';
 
@@ -707,6 +708,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateSupplierRequestContactMutationOptions(options));
+    }
+
+export const getCreateSupplierRequestOfferContactUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/supplier/requests/${requestId}/offer`
+}
+
+export const createSupplierRequestOfferContact = async (requestId: number,
+    supplierRequestOfferInput: SupplierRequestOfferInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierRequestContactResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierRequestContactResponse>(getCreateSupplierRequestOfferContactUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierRequestOfferInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSupplierRequestOfferContactMutationKey = () => ['createSupplierRequestOfferContact'] as const;
+
+export const getCreateSupplierRequestOfferContactMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestOfferContact>>, TError,CreateSupplierRequestOfferContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestOfferContact>>, TError,CreateSupplierRequestOfferContactMutationVariables, TContext> => {
+
+const mutationKey = getCreateSupplierRequestOfferContactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSupplierRequestOfferContact>>, CreateSupplierRequestOfferContactMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  createSupplierRequestOfferContact(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSupplierRequestOfferContactMutationResult = NonNullable<Awaited<ReturnType<typeof createSupplierRequestOfferContact>>>
+    export type CreateSupplierRequestOfferContactMutationBody = BodyType<SupplierRequestOfferInput>
+    export type CreateSupplierRequestOfferContactMutationError = ErrorType<void>
+    export type CreateSupplierRequestOfferContactMutationVariables = {requestId: number;data: BodyType<SupplierRequestOfferInput>}
+
+    export const useCreateSupplierRequestOfferContact = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestOfferContact>>, TError,CreateSupplierRequestOfferContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSupplierRequestOfferContact>>,
+        TError,
+        CreateSupplierRequestOfferContactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSupplierRequestOfferContactMutationOptions(options));
     }
 
 export const getListAdminItemCategoriesUrl = () => {
