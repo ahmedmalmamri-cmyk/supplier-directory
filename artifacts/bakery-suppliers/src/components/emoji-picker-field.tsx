@@ -104,7 +104,7 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
         data-testid={`${prefix}-dialog`}
         className="flex h-[min(90dvh,740px)] w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-popover text-popover-foreground shadow-warm-lg sm:h-[min(82dvh,740px)] sm:max-w-2xl sm:rounded-3xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div><h2 id={titleId} className="text-lg font-extrabold">اختر أيقونة</h2><p className="text-xs text-muted-foreground">ابحث عن رمز يناسب {name.trim() || "تصنيفك"}</p></div>
+          <div><h2 id={titleId} className="text-lg font-extrabold">اختر أيقونة</h2><p className="text-xs text-muted-foreground">{sections.reduce((total, section) => total + section.emojis.length, 0)} خيار · ابحث عن رمز يناسب {name.trim() || "تصنيفك"}</p></div>
           <button type="button" data-testid={`${prefix}-close`} aria-label="إغلاق اختيار الأيقونة" onClick={closePicker}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><X className="h-5 w-5" /></button>
         </header>
@@ -118,7 +118,7 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
         </div>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5">
           {sections.length ? sections.map((section) => <section key={section.name} aria-label={section.name} data-testid={`${prefix}-section-${section.name}`}>
-            <h3 className="mb-2.5 text-sm font-extrabold text-foreground">{section.name}</h3>
+             <h3 className="mb-2.5 text-sm font-extrabold text-foreground">{section.name} <span className="font-normal text-muted-foreground">({section.emojis.length})</span></h3>
             <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10">
               {section.emojis.map((emoji) => <button key={emoji} type="button" data-testid={`${prefix}-option-${section.name}-${emoji}`}
                 aria-label={emojiKeywords[emoji]?.split(" ")[0] ?? emoji} aria-pressed={draft === emoji}
