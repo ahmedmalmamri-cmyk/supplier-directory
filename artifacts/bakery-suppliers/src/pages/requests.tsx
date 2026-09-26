@@ -599,8 +599,10 @@ export default function RequestsPage() {
                       item={item}
                       supplierView={view === "supplier"}
                       contacting={contactingId === item.id && contactMutation.isPending}
+                      preparingOffer={offerMutation.isPending && offerRequest?.id === item.id}
                       contactError={contactError?.requestId === item.id ? contactError.message : undefined}
                       onContact={() => contactRequest(item.id)}
+                      onOffer={() => openOfferDialog(item)}
                     />
                   ))}
                 </div>
@@ -610,6 +612,17 @@ export default function RequestsPage() {
         )}
       </div>
 
+      {offerRequest && (
+        <OfferComposeDialog
+          request={offerRequest}
+          value={offerText}
+          error={offerError}
+          isSubmitting={offerMutation.isPending}
+          onChange={setOfferText}
+          onClose={closeOfferDialog}
+          onSubmit={submitOffer}
+        />
+      )}
       {messagePreview && <MessageDialog message={messagePreview} onClose={() => setMessagePreview("")} />}
     </MainLayout>
   );
@@ -683,6 +696,96 @@ function EmptyState({
         </Link>
       )}
       {!hasFilters && !supplierView && !owner && <p className="mt-5 text-xs font-bold text-warning">النشر متاح لحسابات أصحاب الأعمال فقط.</p>}
+    </div>
+  );
+}
+
+function OfferComposeDialog({
+  request,
+  value,
+  error,
+  isSubmitting,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  request: Request;
+  value: string;
+  error: string;
+  isSubmitting: boolean;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 p-4"
+      role="presentation"
+      onMouseDown={(event) => !isSubmitting && event.target === event.currentTarget && onClose()}
+    >
+      <section role="dialog" aria-modal="true" aria-labelledby="offer-compose-title" className="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <header className="border-b border-border/70 p-5">
+          <h2 id="offer-compose-title" className="font-extrabold">إعداد رد على الاحتياج</h2>
+          <p className="mt-1 text-xs leading-6 text-muted-foreground">
+            ستُضاف معلومات المورد والطلب تلقائياً. اكتب السعر والتوفر وشروط التوريد في خانة العرض.
+          </p>
+        </header>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
+        >
+          <div className="space-y-4 p-5">
+            <div className="rounded-xl bg-muted/55 p-3">
+              <p className="text-xs font-bold text-muted-foreground">الطلب</p>
+              <p className="mt-1 text-sm font-extrabold">{request.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatQuantity(request.quantity, request.unit)} · {request.frequency} · {request.city}
+              </p>
+            </div>
+            <label htmlFor="supplier-offer-text" className="block text-sm font-extrabold">
+              تفاصيل العرض
+            </label>
+            <textarea
+              id="supplier-offer-text"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              maxLength={1000}
+              rows={5}
+              required
+              autoFocus
+              placeholder="مثال: السعر ١٢ ريالاً للكيلو، متوفر للتوريد هذا الأسبوع، والتوصيل إلى المدينة خلال يومين."
+              data-testid="textarea-supplier-offer"
+              className="w-full resize-y rounded-xl border border-input bg-background p-3 text-sm leading-7 outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>اكتب العرض الذي سيظهر في رسالة واتساب.</span>
+              <span dir="ltr">{value.length}/1000</span>
+            </div>
+            {error && <p className="text-sm font-bold text-destructive" role="alert">{error}</p>}
+          </div>
+          <footer className="flex flex-col-reverse gap-2 border-t border-border/70 p-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="min-h-10 rounded-xl border border-border px-5 py-2 text-sm font-extrabold hover:bg-muted disabled:opacity-60"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !value.trim()}
+              data-testid="button-submit-supplier-offer"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-extrabold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Send className="h-4 w-4" />
+              {isSubmitting ? "جارٍ تجهيز الرسالة..." : "فتح واتساب بالعرض"}
+            </button>
+          </footer>
+        </form>
+      </section>
     </div>
   );
 }
