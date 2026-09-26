@@ -259,8 +259,7 @@ export interface Supplier {
   city: string;
   region: string;
   description: string;
-  phone: string;
-  whatsapp: string;
+  hasWhatsApp: boolean;
   address: string | null;
   website: string | null;
   googleCategory: string | null;
@@ -285,8 +284,6 @@ export interface Product {
   unit: string;
   countryOfOrigin: string;
   minOrder: number;
-  /** @nullable */
-  price?: number | null;
   /** @nullable */
   imageUrl?: string | null;
   createdAt: string;

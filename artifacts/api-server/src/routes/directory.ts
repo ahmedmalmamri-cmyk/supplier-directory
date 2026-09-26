@@ -25,12 +25,16 @@ import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
 import { itemCategorySubtreeIds } from "../lib/item-category-aliases";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 import { categoryTagGroupIdsMap } from "../lib/item-category-groups";
+import { getBuyerIdFromRequest } from "../lib/buyer-auth";
+import { getSupplierIdFromRequest } from "../lib/supplier-auth";
+import { recordSupplierStat } from "../lib/supplier-stats";
 
 const router: IRouter = Router();
 
 const supplierSelect = `
-  SELECT s.id, s.name, s.city, s.region, s.description, s.phone, s.whatsapp,
-    s.address, s.website, s.google_category AS googleCategory,
+  SELECT s.id, s.name, s.city, s.region, s.description,
+    CASE WHEN length(trim(s.whatsapp)) > 0 THEN 1 ELSE 0 END AS hasWhatsApp,
+    NULL AS address, NULL AS website, s.google_category AS googleCategory,
     s.google_rating AS googleRating, s.google_review_count AS googleReviewCount,
     s.hours_note AS hoursNote,
     CAST(s.is_verified AS INTEGER) AS isVerified, s.average_rating AS averageRating,
@@ -42,14 +46,14 @@ const supplierSelect = `
 const productSelect = `
   SELECT p.id, p.supplier_id AS supplierId, s.name AS supplierName,
     p.category_id AS categoryId, c.name AS categoryName, p.name, p.weight, p.unit,
-    p.country_of_origin AS countryOfOrigin, p.min_order AS minOrder, p.price,
+    p.country_of_origin AS countryOfOrigin, p.min_order AS minOrder,
      p.image_url AS imageUrl, p.sort_order AS sortOrder, p.created_at AS createdAt
   FROM products p
   JOIN suppliers s ON s.id = p.supplier_id AND s.is_active = 1
   JOIN categories c ON c.id = p.category_id
 `;
 const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
-  rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified), isFeatured: Boolean(row.isFeatured) }));
+  rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified), isFeatured: Boolean(row.isFeatured), hasWhatsApp: Boolean(row.hasWhatsApp) }));
 
 const normalizePlans = (rows: Record<string, unknown>[]) =>
   rows.map((row) => ({
@@ -165,10 +169,11 @@ router.get("/search", (req, res): void => {
     return;
   }
   const searchTerm = (parsed.data.q ?? "").trim().slice(0, 120);
-  if (searchTerm) {
+  const buyerId = getSupplierIdFromRequest(req) ? null : getBuyerIdFromRequest(req);
+  if (searchTerm && buyerId) {
     directoryDb.prepare(`
-      INSERT INTO buyer_search_logs (search_term, searched_at) VALUES (?, ?)
-    `).run(searchTerm, new Date().toISOString());
+      INSERT INTO buyer_search_logs (search_term, searched_at, buyer_id) VALUES (?, ?, ?)
+    `).run(searchTerm, new Date().toISOString(), buyerId);
   }
   const term = `%${parsed.data.q ?? ""}%`;
   const suppliers = normalizeSuppliers(directoryDb.prepare(`
@@ -429,9 +434,11 @@ router.get("/suppliers/:id", (req, res): void => {
     res.status(404).json({ error: "المورد غير موجود" });
     return;
   }
+  const viewedAt = new Date().toISOString();
   directoryDb.prepare(
     "INSERT INTO supplier_page_views (supplier_id, viewed_at) VALUES (?, ?)",
-  ).run(parsed.data.id, new Date().toISOString());
+  ).run(parsed.data.id, viewedAt);
+  recordSupplierStat(parsed.data.id, "view", viewedAt);
   const products = directoryDb.prepare(`
     ${productSelect} WHERE p.supplier_id = ? ORDER BY p.sort_order ASC, p.created_at DESC, p.id DESC
    `).all(parsed.data.id);
@@ -444,6 +451,21 @@ router.get("/suppliers/:id", (req, res): void => {
 });
 
 router.post("/suppliers/:id/reviews", (req, res): void => {
+  if (getSupplierIdFromRequest(req)) {
+    res.status(403).json({ error: "لا يمكن للمورد تقييم مورد آخر أو التعليق عليه." });
+    return;
+  }
+  const buyerId = getBuyerIdFromRequest(req);
+  if (!buyerId) {
+    res.status(401).json({ error: "سجّل الدخول كصاحب عمل لإضافة تقييم." });
+    return;
+  }
+  const buyer = directoryDb.prepare("SELECT full_name AS name, moderation_status AS status FROM buyer_users WHERE id = ?")
+    .get(buyerId) as { name: string; status: string } | undefined;
+  if (!buyer || buyer.status !== "active") {
+    res.status(403).json({ error: "حساب صاحب العمل غير مفعل للتقييم." });
+    return;
+  }
   const params = AddReviewParams.safeParse(req.params);
   const body = AddReviewBody.safeParse(req.body);
   if (!params.success || !body.success) {
@@ -459,12 +481,13 @@ router.post("/suppliers/:id/reviews", (req, res): void => {
   const result = directoryDb.prepare(`
     INSERT INTO reviews (supplier_id, reviewer_name, rating, comment, created_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(params.data.id, body.data.reviewerName, body.data.rating, body.data.comment, createdAt);
+  `).run(params.data.id, buyer.name, body.data.rating, body.data.comment, createdAt);
   refreshSupplierRatings(params.data.id);
+  recordSupplierStat(params.data.id, "review", createdAt);
   const review = {
     id: Number(result.lastInsertRowid),
     supplierId: params.data.id,
-    reviewerName: body.data.reviewerName,
+    reviewerName: buyer.name,
     rating: body.data.rating,
     comment: body.data.comment,
     createdAt,
@@ -484,7 +507,7 @@ router.get("/products/:id", (req, res): void => {
       p.country_of_origin AS countryOfOrigin, p.ingredients,
       p.technical_data AS technicalData, p.recommended_use AS recommendedUse,
       p.shelf_life AS shelfLife, p.storage_conditions AS storageConditions,
-      p.min_order AS minOrder, p.price, p.image_url AS imageUrl, p.created_at AS createdAt
+      p.min_order AS minOrder, p.image_url AS imageUrl, p.created_at AS createdAt
     FROM products p JOIN suppliers s ON s.id = p.supplier_id
     JOIN categories c ON c.id = p.category_id WHERE p.id = ?
   `).get(parsed.data.id) as Record<string, unknown> | undefined;

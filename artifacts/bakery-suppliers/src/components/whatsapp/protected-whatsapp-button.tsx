@@ -2,6 +2,7 @@ import { Building2, CheckCircle2, LockKeyhole, MapPin, MessageCircle, Phone, Use
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
+import { useSupplierAuth } from "@/lib/supplier-auth";
 
 type DialogMode = "gate" | "compose" | null;
 
@@ -16,6 +17,7 @@ type ProtectedWhatsAppButtonProps = {
 
 export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp, className, label, initialMessage }: ProtectedWhatsAppButtonProps) {
   const { user, isLoading, refresh } = useBuyerAuth();
+  const { supplier } = useSupplierAuth();
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [customMessage, setCustomMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -67,6 +69,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
     }
   };
 
+  if (supplier) return null;
   return (
     <>
       <button type="button" onClick={() => void openContact()} disabled={!hasWhatsApp || isLoading} className={className}>

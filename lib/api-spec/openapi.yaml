@@ -1227,15 +1227,14 @@ components:
         createdAt: { type: string }
     Supplier:
       type: object
-      required: [id, name, city, region, description, phone, whatsapp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]
+      required: [id, name, city, region, description, hasWhatsApp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
         city: { type: string }
         region: { type: string }
         description: { type: string }
-        phone: { type: string }
-        whatsapp: { type: string }
+        hasWhatsApp: { type: boolean }
         address: { type: string, nullable: true }
         website: { type: string, nullable: true }
         googleCategory: { type: string, nullable: true }
@@ -1261,7 +1260,6 @@ components:
         unit: { type: string }
         countryOfOrigin: { type: string }
         minOrder: { type: integer }
-        price: { type: [number, "null"] }
         imageUrl: { type: [string, "null"] }
         createdAt: { type: string }
     ProductDetail:

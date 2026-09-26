@@ -3,6 +3,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { directoryDb } from "../lib/directory-db";
 import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } from "../lib/supplier-auth";
 import { clearBuyerSession } from "../lib/buyer-auth";
+import { getSupplierMarket } from "../lib/supplier-market";
 
 const router: IRouter = Router();
 const reportReasons = ["إساءة أو إزعاج", "بيانات غير صحيحة", "طلب مخالف", "احتيال أو انتحال", "أخرى"];
@@ -162,6 +163,114 @@ router.get("/supplier/analytics", (req, res): void => {
       return { month: item.month, contactRequests: Number(item.contactRequests), uniqueBuyers: Number(item.uniqueBuyers) };
     }),
   });
+});
+
+router.get("/supplier/market", (req, res): void => {
+  const session = requireSupplier(req, res);
+  if (!session) return;
+  const { topDemand, lowSupply, underservedCities, averageRating, supplierCount } = getSupplierMarket(session.supplierId);
+  res.json({ topDemand, lowSupply, underservedCities, averageRating, supplierCount });
+});
+
+router.get("/supplier/dashboard", (req, res): void => {
+  const session = requireSupplier(req, res);
+  if (!session) return;
+  const supplierId = session.supplierId;
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString();
+  const previousWeekStart = new Date(now.getTime() - 14 * 86400000).toISOString();
+  const count = (table: "supplier_page_views" | "contact_logs" | "reviews", dateColumn: string, since: string, until?: string) => {
+    const query = `SELECT COUNT(*) AS total FROM ${table} WHERE supplier_id = ? AND ${dateColumn} >= ?${until ? ` AND ${dateColumn} < ?` : ""}`;
+    const row = directoryDb.prepare(query).get(...(until ? [supplierId, since, until] : [supplierId, since])) as { total: number };
+    return Number(row.total);
+  };
+  const views = count("supplier_page_views", "viewed_at", weekStart);
+  const contacts = count("contact_logs", "sent_at", weekStart);
+  const previousViews = count("supplier_page_views", "viewed_at", previousWeekStart, weekStart);
+  const previousContacts = count("contact_logs", "sent_at", previousWeekStart, weekStart);
+  const change = (current: number, previous: number) => previous > 0
+    ? Math.round(((current - previous) / previous) * 100) : null;
+  const market = getSupplierMarket(supplierId);
+  const productSummary = directoryDb.prepare(`
+    SELECT COUNT(*) AS total, SUM(CASE WHEN image_url IS NOT NULL AND image_url <> '' THEN 1 ELSE 0 END) AS withImages
+    FROM products WHERE supplier_id = ?
+  `).get(supplierId) as { total: number; withImages: number | null };
+  const description = directoryDb.prepare("SELECT description FROM suppliers WHERE id = ?")
+    .get(supplierId) as { description: string } | undefined;
+  const fresh: Array<{ type: "opportunity" | "warning" | "tip"; title: string; description: string }> = [];
+  if (market.ownDemand > 0) fresh.push({
+    type: "opportunity", title: "بحث المشترين عن أصنافك",
+    description: `${market.ownDemand} بحثاً من أصحاب أعمال مسجلين عن أصنافك خلال آخر 7 أيام (قد يبحث الشخص عن أكثر من صنف).`,
+  });
+  if (market.underservedCities.length) fresh.push({
+    type: "opportunity", title: "مدن تحتاج موردي أصنافك",
+    description: `${market.underservedCities.length} مدن متاحة لا تضم مورداً نشطاً لأصنافك: ${market.underservedCities.slice(0, 3).join("، ")}.`,
+  });
+  if (Number(productSummary.total) === 0 || Number(productSummary.withImages) < Number(productSummary.total)) fresh.push({
+    type: "tip", title: "أضف صوراً لمنتجاتك",
+    description: "تساعد الصور أصحاب الأعمال على فهم أصنافك. تواصل مع الإدارة لإضافة أو تحديث صور منتجاتك.",
+  });
+  if (!description?.description || description.description.trim().length < 60) fresh.push({
+    type: "tip", title: "حدّث نبذة نشاطك",
+    description: "أضف وصفاً يوضح منتجاتك ومناطق خدمتك. تواصل مع الإدارة لتحديث بيانات ملفك.",
+  });
+  const dynamicTitles = ["بحث المشترين عن أصنافك", "مدن تحتاج موردي أصنافك", "أضف صوراً لمنتجاتك", "حدّث نبذة نشاطك"];
+  const upsert = directoryDb.prepare(`
+    INSERT INTO supplier_opportunities (supplier_id, type, title, description, created_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(supplier_id, type, title) DO UPDATE SET description = excluded.description
+  `);
+  for (const item of fresh) upsert.run(supplierId, item.type, item.title, item.description, now.toISOString());
+  const remove = directoryDb.prepare("DELETE FROM supplier_opportunities WHERE supplier_id = ? AND title = ?");
+  for (const title of dynamicTitles) if (!fresh.some((item) => item.title === title)) remove.run(supplierId, title);
+  const opportunities = directoryDb.prepare(`
+    SELECT id, type, title, description, is_read AS isRead
+    FROM supplier_opportunities WHERE supplier_id = ?
+    ORDER BY is_read, created_at DESC LIMIT 20
+  `).all(supplierId).map((row) => {
+    const item = row as { id: number; type: string; title: string; description: string; isRead: number };
+    return { ...item, isRead: Boolean(item.isRead) };
+  });
+  const rating = Number((directoryDb.prepare("SELECT average_rating AS rating FROM suppliers WHERE id = ?")
+    .get(supplierId) as { rating: number }).rating);
+  const totalReviews = count("reviews", "created_at", "1970-01-01");
+  res.json({
+    supplier: publicSupplier(session.supplier),
+    month: {
+      views: count("supplier_page_views", "viewed_at", monthStart),
+      contacts: count("contact_logs", "sent_at", monthStart),
+      rating: totalReviews ? rating : null,
+      reviewsCount: count("reviews", "created_at", monthStart),
+      totalReviews,
+    },
+    position: market.position,
+    marketAverageRating: market.averageRating,
+    ratingPercentile: market.ratingPercentile,
+    opportunities,
+    weekly: {
+      views, viewsChangePercent: change(views, previousViews),
+      contacts, contactsChangePercent: change(contacts, previousContacts),
+      newReviews: count("reviews", "created_at", weekStart),
+    },
+  });
+});
+
+router.post("/supplier/opportunities/:id/read", (req, res): void => {
+  const session = requireSupplier(req, res);
+  if (!session) return;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    res.status(400).json({ error: "معرّف الفرصة غير صالح." });
+    return;
+  }
+  const result = directoryDb.prepare("UPDATE supplier_opportunities SET is_read = 1 WHERE id = ? AND supplier_id = ?")
+    .run(id, session.supplierId);
+  if (!result.changes) {
+    res.status(404).json({ error: "الفرصة غير موجودة." });
+    return;
+  }
+  res.json({ success: true });
 });
 
 router.get("/supplier/contacts", (req, res): void => {

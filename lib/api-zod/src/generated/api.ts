@@ -27,8 +27,7 @@ export const GetHomeResponse = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -52,7 +51,6 @@ export const GetHomeResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })),
@@ -441,8 +439,7 @@ export const SearchDirectoryResponse = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -466,7 +463,6 @@ export const SearchDirectoryResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 }))
@@ -498,8 +494,7 @@ export const FetchCategoryResponse = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -523,7 +518,6 @@ export const FetchCategoryResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })),
@@ -552,8 +546,7 @@ export const ListSuppliersResponseItem = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -579,8 +572,7 @@ export const GetSupplierResponse = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -604,7 +596,6 @@ export const GetSupplierResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })),
@@ -664,7 +655,6 @@ export const GetProductResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 }).and(zod.object({
@@ -679,8 +669,7 @@ export const GetProductResponse = zod.object({
   "city": zod.string(),
   "region": zod.string(),
   "description": zod.string(),
-  "phone": zod.string(),
-  "whatsapp": zod.string(),
+  "hasWhatsApp": zod.boolean(),
   "address": zod.string().nullable(),
   "website": zod.string().nullable(),
   "googleCategory": zod.string().nullable(),
@@ -704,7 +693,6 @@ export const GetProductResponse = zod.object({
   "unit": zod.string(),
   "countryOfOrigin": zod.string(),
   "minOrder": zod.number().int(),
-  "price": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "createdAt": zod.string()
 }))

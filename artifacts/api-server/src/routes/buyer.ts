@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { directoryDb } from "../lib/directory-db";
 import { clearBuyerSession, getBuyerIdFromRequest, setBuyerSession } from "../lib/buyer-auth";
+import { getSupplierIdFromRequest } from "../lib/supplier-auth";
+import { recordSupplierStat } from "../lib/supplier-stats";
 import { clearSupplierSession } from "../lib/supplier-auth";
 import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 
@@ -254,6 +256,10 @@ router.get("/buyer/me", (req, res): void => {
 });
 
 router.post("/buyer/contact", (req, res): void => {
+  if (getSupplierIdFromRequest(req)) {
+    res.status(403).json({ error: "لا يمكن للمورد التواصل مع مورد آخر عبر المنصة." });
+    return;
+  }
   const buyer = requireBuyer(req, res);
   if (!buyer) return;
   if (!requireActiveBuyer(buyer, res)) return;
@@ -280,6 +286,7 @@ router.post("/buyer/contact", (req, res): void => {
     INSERT INTO contact_logs (buyer_id, supplier_id, message, message_id, sent_at, status)
     VALUES (?, ?, '', ?, ?, 'sent')
   `).run(buyer.id, supplier.id, placeholderId, now);
+  recordSupplierStat(supplier.id, "contact", now);
   const logId = Number(result.lastInsertRowid);
   const messageId = `MSG-${new Date().getFullYear()}-${String(logId).padStart(4, "0")}`;
   const activity = buyer.businessType === "آخر"

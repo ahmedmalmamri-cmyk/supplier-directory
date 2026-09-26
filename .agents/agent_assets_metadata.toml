@@ -448,3 +448,45 @@ mtime_ms = 1790360735656
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/28dda852-d27d-48c4-80c9-9629a3945bff/963b17e1-e533-42cb-b424-6fd092a2d62f"
 storage_version_token = "1790360974022974"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "8MKbqD4wNHzIEEOiY3ICS"
+uri = "file://screenshots/supplier-dashboard.png"
+type = "image"
+title = "لوحة تحكم المورد"
+description = "الإحصائيات الشهرية والتقرير الأسبوعي والفرص من منظور مورد مسجل"
+logical_id = "985aa0c7-c1b6-41c7-89f0-ef3870aeb0eb"
+content_hash = "sha256:c7c6a523748dd3042fb9c71ed1e1c73c7a06a1d88891de69fb68bf8db75d8d77"
+size = 447525
+mtime_ms = 1790440770153
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/985aa0c7-c1b6-41c7-89f0-ef3870aeb0eb/02a04ae0-fde7-445f-bc12-e7689ac82db0"
+storage_version_token = "1790440932606184"
+content_type = "image/png"
+
+[[outputs]]
+id = "sxevsG_W6fvv3Loo-LBg7"
+uri = "file://screenshots/supplier-market.png"
+type = "image"
+title = "تحليل السوق للمورد"
+description = "الطلب المجمع والأصناف قليلة التغطية والمدن بدون مورد لأصناف الحساب"
+logical_id = "3ffa94e2-682e-47f6-8d72-d275105cac9b"
+content_hash = "sha256:f552f3de95853067a25e3ae06bf5985090407e1cd4204c15bb2df2bed2ae8a34"
+size = 462035
+mtime_ms = 1790440771457
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/3ffa94e2-682e-47f6-8d72-d275105cac9b/03e8e7a5-9297-4396-b42a-01749e7f6755"
+storage_version_token = "1790440933946721"
+content_type = "image/png"
+
+[[outputs]]
+id = "Sj17TIK2srLuKF3YfiVbj"
+uri = "file://screenshots/supplier-as-other-supplier.png"
+type = "image"
+title = "صفحة مورد آخر من منظور المورد"
+description = "صفحة المنافس مع إخفاء أرقام التواصل وزر واتساب والتقييم"
+logical_id = "cb2f5642-15ea-4e62-ad88-95e6edf36265"
+content_hash = "sha256:26624f3fc67ea0800251dd78845020453f632d13789539ea77a5383154b64c35"
+size = 427985
+mtime_ms = 1790440772661
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/cb2f5642-15ea-4e62-ad88-95e6edf36265/2a2dfa04-1c77-46f1-a5cc-17f17039df80"
+storage_version_token = "1790440935304330"
+content_type = "image/png"

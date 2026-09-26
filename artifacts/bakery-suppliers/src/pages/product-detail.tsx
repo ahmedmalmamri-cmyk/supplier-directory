@@ -3,10 +3,11 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getGetProductQueryKey, useGetProduct } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
 import { Package, MapPin, ChevronLeft, Info, FileText, Calendar, Box, Droplets, ThermometerSnowflake, ShieldCheck } from "lucide-react";
-import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
+import { useSupplierAuth } from "@/lib/supplier-auth";
 
 export default function ProductDetailPage() {
+  const { supplier: viewingSupplier } = useSupplierAuth();
   const [, params] = useRoute("/product/:id");
   const productId = params?.id ? parseInt(params.id) : null;
 
@@ -61,7 +62,7 @@ export default function ProductDetailPage() {
               {product.supplier.isVerified && <ShieldCheck className="w-4 h-4 text-success" />}
             </Link>
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="bg-card border rounded-xl p-4 flex flex-col gap-1">
                 <span className="text-muted-foreground text-xs font-medium flex items-center gap-1.5"><Box className="w-3.5 h-3.5"/> الوزن / الحجم</span>
                 <span className="font-bold text-lg">{product.weight} {product.unit}</span>
@@ -74,18 +75,10 @@ export default function ProductDetailPage() {
                 <span className="text-muted-foreground text-xs font-medium flex items-center gap-1.5"><Package className="w-3.5 h-3.5"/> الحد الأدنى للطلب</span>
                 <span className="font-bold text-lg">{product.minOrder} {product.unit}</span>
               </div>
-              <div className="bg-card border rounded-xl p-4 flex flex-col gap-1">
-                <span className="text-muted-foreground text-xs font-medium flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> السعر التقريبي</span>
-                <span className="font-bold text-lg text-primary">{product.price ? `${product.price} ريال` : "عند الطلب"}</span>
-              </div>
             </div>
 
-            <div className="flex gap-4">
-              <ProtectedWhatsAppButton supplierId={product.supplierId} supplierName={product.supplierName} hasWhatsApp={Boolean(buildWhatsAppUrl(product.supplier.whatsapp))} initialMessage={`السلام عليكم، هل يتوفر لديكم ${product.name}؟ أرجو إرسال الأنواع المتاحة والأسعار والحد الأدنى للطلب. بلد المنشأ المسجل: ${product.countryOfOrigin}.`} className="flex-1 rounded-xl bg-primary py-3.5 text-center font-bold text-primary-foreground shadow-md shadow-primary/20 transition-colors hover:bg-primary/90" label="استفسر عن المنتج (واتساب)" />
-              <a href={`tel:${product.supplier.phone}`} className="flex-1 bg-card border-2 text-center py-3.5 rounded-xl font-bold hover:bg-muted transition-colors">
-                اتصال بالمورد
-              </a>
-            </div>
+            {viewingSupplier ? <p className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">أنت مورد. يمكنك تصفح معلومات منتجات الموردين الآخرين فقط؛ التواصل عبر المنصة مخصص لأصحاب الأعمال.</p> :
+              <ProtectedWhatsAppButton supplierId={product.supplierId} supplierName={product.supplierName} hasWhatsApp={product.supplier.hasWhatsApp} initialMessage={`السلام عليكم، هل يتوفر لديكم ${product.name}؟ أرجو إرسال الأنواع المتاحة والأسعار والحد الأدنى للطلب. بلد المنشأ المسجل: ${product.countryOfOrigin}.`} className="rounded-xl bg-primary px-6 py-3.5 text-center font-bold text-primary-foreground" label="استفسر عن المنتج (واتساب)" />}
           </div>
         </div>
 

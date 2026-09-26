@@ -118,7 +118,7 @@ export default function SearchPage() {
                           <ProtectedWhatsAppButton
                             supplierId={supplier.id}
                             supplierName={supplier.name}
-                            hasWhatsApp={Boolean(supplier.whatsapp)}
+                            hasWhatsApp={supplier.hasWhatsApp}
                             label="اسأل عبر واتساب"
                             initialMessage={initialMessage}
                             className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-whatsapp px-3 py-3 text-sm font-extrabold text-whatsapp-foreground hover:bg-whatsapp/90 disabled:opacity-60"

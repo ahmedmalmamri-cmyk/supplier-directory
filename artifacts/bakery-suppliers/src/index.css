@@ -173,3 +173,28 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-rise-in { animation: rise-in 0.65s ease-out both; }
+
+/* Supplier workspace: quiet editorial surfaces within the existing warm palette. */
+.supplier-workspace {
+  background: linear-gradient(135deg, hsl(var(--secondary) / .52), hsl(var(--background)) 42%);
+}
+.supplier-hero {
+  background: linear-gradient(125deg, hsl(var(--primary) / .12), hsl(var(--secondary) / .65) 60%, hsl(var(--background)));
+}
+.supplier-panel {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  border-radius: 1.5rem;
+  box-shadow: 0 12px 32px hsl(var(--foreground) / .035);
+}
+.supplier-bar {
+  transform-origin: right center;
+  animation: supplier-grow .65s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes supplier-grow {
+  from { transform: scaleX(0); opacity: .45; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .supplier-bar { animation: none; }
+}

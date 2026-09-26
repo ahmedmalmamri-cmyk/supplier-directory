@@ -31,6 +31,8 @@ import BuyerLoginPage from '@/pages/buyer-login';
 import BuyerProfilePage from '@/pages/buyer-profile';
 import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
+import SupplierDashboardPage from '@/pages/supplier-dashboard';
+import SupplierMarketPage from '@/pages/supplier-market';
 import LoginChoicePage from '@/pages/login-choice';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 import { SupplierAuthProvider } from '@/lib/supplier-auth';
@@ -57,9 +59,11 @@ function Router() {
         </Route>
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/login" component={() => <LoginChoicePage />} />
-         <Route path="/supplier/login" component={SupplierLoginPage} />
-         <Route path="/supplier/portal" component={SupplierPortalPage} />
-         <Route path="/supplier/:id" component={SupplierProfilePage} />
+          <Route path="/supplier/login" component={SupplierLoginPage} />
+          <Route path="/supplier/dashboard" component={SupplierDashboardPage} />
+          <Route path="/supplier/market" component={SupplierMarketPage} />
+          <Route path="/supplier/portal" component={SupplierPortalPage} />
+          <Route path="/supplier/:id" component={SupplierProfilePage} />
         <Route path="/product/:id" component={ProductDetailPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />

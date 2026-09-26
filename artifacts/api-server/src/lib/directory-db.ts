@@ -573,7 +573,33 @@ directoryDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_buyer_search_logs_term_date
     ON buyer_search_logs (search_term, searched_at);
+  CREATE TABLE IF NOT EXISTS supplier_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    views INTEGER NOT NULL DEFAULT 0,
+    whatsapp_clicks INTEGER NOT NULL DEFAULT 0,
+    profile_views INTEGER NOT NULL DEFAULT 0,
+    reviews_count INTEGER NOT NULL DEFAULT 0,
+    average_rating REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    UNIQUE(supplier_id, date)
+  );
+  CREATE TABLE IF NOT EXISTS supplier_opportunities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('opportunity', 'warning', 'tip')),
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE(supplier_id, type, title)
+  );
 `);
+const searchLogColumns = directoryDb.prepare("PRAGMA table_info(buyer_search_logs)").all() as Array<{ name: string }>;
+if (!searchLogColumns.some((column) => column.name === "buyer_id")) {
+  directoryDb.exec("ALTER TABLE buyer_search_logs ADD COLUMN buyer_id INTEGER REFERENCES buyer_users(id)");
+}
 const productColumns = directoryDb
   .prepare("PRAGMA table_info(products)")
   .all() as Array<{ name: string }>;
