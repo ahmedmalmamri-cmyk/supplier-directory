@@ -5,7 +5,7 @@ import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent, useGetAdminCategoryStats } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock3, Eye, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 
 type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
 type SupplierRequest = {
@@ -161,7 +161,33 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
 function LoginCard({ login }: { login: ReturnType<typeof useAdminLogin> }) {
   const [password, setPassword] = useState("");
-  return <div className="max-w-md mx-auto bg-card border rounded-3xl p-6 md:p-8 shadow-sm"><div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5"><ShieldCheck className="w-7 h-7" /></div><h2 className="text-2xl font-bold mb-2">دخول المدير</h2><p className="text-sm text-muted-foreground mb-6">أدخل كلمة المرور لعرض وإدارة جميع الطلبات.</p><form onSubmit={(event) => { event.preventDefault(); login.mutate({ data: { password } }); }} className="space-y-4"><input type="text" name="username" autoComplete="username" tabIndex={-1} aria-hidden="true" className="hidden" /><label className="block"><span className="text-sm font-bold block mb-2">كلمة المرور</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required className="w-full h-12 px-4 rounded-xl border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></label><button type="submit" disabled={login.isPending || !password} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2"><LogIn className="w-4 h-4" />{login.isPending ? "جاري التحقق..." : "دخول"}</button>{login.isError && <p className="text-sm text-destructive text-center">كلمة المرور غير صحيحة.</p>}</form></div>;
+  const [showPassword, setShowPassword] = useState(false);
+  const status = login.error && typeof login.error === "object" && "status" in login.error
+    ? login.error.status
+    : undefined;
+  const errorMessage = status === 401
+    ? "كلمة المرور لا تطابق كلمة مرور المدير الحالية. تحقق من كلمة المرور المحفوظة في المتصفح ولغة لوحة المفاتيح."
+    : status === 429
+      ? "محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً."
+      : "تعذر إتمام الدخول الآن. تحقق من الاتصال ثم حاول مرة أخرى.";
+
+  return <div className="mx-auto max-w-md rounded-3xl border bg-card p-6 shadow-sm md:p-8">
+    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ShieldCheck className="h-7 w-7" /></div>
+    <h2 className="mb-2 text-2xl font-bold">دخول المدير</h2>
+    <p className="mb-6 text-sm text-muted-foreground">أدخل كلمة المرور لعرض وإدارة جميع الطلبات.</p>
+    <form onSubmit={(event) => { event.preventDefault(); login.mutate({ data: { password } }); }} className="space-y-4">
+      <input type="text" name="username" autoComplete="username" tabIndex={-1} aria-hidden="true" className="hidden" />
+      <label className="block" htmlFor="admin-password"><span className="mb-2 block text-sm font-bold">كلمة المرور</span></label>
+      <div className="relative">
+        <input id="admin-password" data-testid="input-admin-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => { setPassword(event.target.value); if (login.isError) login.reset(); }} autoComplete="current-password" required aria-invalid={login.isError} aria-describedby={login.isError ? "admin-login-error" : undefined} className="h-12 w-full rounded-xl border bg-background px-4 pl-14 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+        <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} className="absolute inset-y-0 left-2 flex w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground">
+          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      </div>
+      <button type="submit" disabled={login.isPending || !password} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-primary-foreground disabled:opacity-60"><LogIn className="h-4 w-4" />{login.isPending ? "جاري التحقق..." : "دخول"}</button>
+      {login.isError && <p id="admin-login-error" role="alert" className="text-center text-sm text-destructive">{errorMessage}</p>}
+    </form>
+  </div>;
 }
 
 function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { requests: SupplierRequest[]; selected: SupplierRequest | null; onSelect: (item: SupplierRequest | null) => void; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
