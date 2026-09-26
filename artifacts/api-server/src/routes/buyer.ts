@@ -1,5 +1,11 @@
 import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  CreateRequestBody,
+  CreateRequestResponse,
+  GetRequestOptionsResponse,
+  ListRequestsResponse,
+} from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
 import { clearBuyerSession, getBuyerIdFromRequest, setBuyerSession } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest } from "../lib/supplier-auth";
@@ -258,6 +264,184 @@ router.get("/buyer/me", (req, res): void => {
   const buyer = requireBuyer(req, res);
   if (!buyer) return;
   res.json({ user: publicBuyer(buyer) });
+});
+
+router.get("/requests/options", (_req, res): void => {
+  const row = directoryDb.prepare(
+    "SELECT value FROM directory_settings WHERE key = 'available_cities'",
+  ).get() as { value: string } | undefined;
+  if (!row) {
+    res.status(500).json({ error: "قائمة المدن غير متاحة حالياً." });
+    return;
+  }
+
+  let parsedCities: unknown;
+  try {
+    parsedCities = JSON.parse(row.value);
+  } catch {
+    res.status(500).json({ error: "تعذر قراءة قائمة المدن." });
+    return;
+  }
+  if (!Array.isArray(parsedCities) || parsedCities.some((city) => typeof city !== "string")) {
+    res.status(500).json({ error: "قائمة المدن غير صالحة." });
+    return;
+  }
+
+  const cities = [...new Set(parsedCities.map((city: string) => city.trim()).filter(Boolean))];
+  res.json(GetRequestOptionsResponse.parse({ cities }));
+});
+
+router.get("/requests", (req, res): void => {
+  const now = new Date().toISOString();
+
+  if (!getBuyerIdFromRequest(req)) {
+    const supplierId = getSupplierIdFromRequest(req);
+    if (supplierId) {
+      const supplier = directoryDb.prepare(`
+        SELECT s.id
+        FROM suppliers s
+        JOIN supplier_users su ON su.supplier_id = s.id
+        WHERE s.id = ? AND su.status = 'active'
+          AND (s.is_active = 1 OR ? = 1)
+      `).get(supplierId, isTestModeRequest(req, "supplier", supplierId) ? 1 : 0) as { id: number } | undefined;
+      if (!supplier) {
+        res.status(403).json({ error: "حساب المورد غير نشط." });
+        return;
+      }
+
+      directoryDb.prepare(`
+        UPDATE requests
+        SET status = 'expired'
+        WHERE status = 'active' AND julianday(expires_at) <= julianday(?)
+      `).run(now);
+      const requests = directoryDb.prepare(`
+        SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+          r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+          r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
+        FROM requests r
+        JOIN item_categories c ON c.id = r.category_id
+        JOIN buyer_users b ON b.id = r.buyer_id
+        WHERE r.status = 'active' AND julianday(r.expires_at) > julianday(?)
+          AND b.is_owner = 1 AND b.moderation_status = 'active'
+        ORDER BY r.created_at DESC, r.id DESC
+      `).all(now);
+      res.json(ListRequestsResponse.parse(requests));
+      return;
+    }
+  }
+
+  const buyer = requireBuyer(req, res);
+  if (!buyer) return;
+  if (!requireActiveBuyer(buyer, res)) return;
+
+  directoryDb.prepare(`
+    UPDATE requests
+    SET status = 'expired'
+    WHERE status = 'active' AND julianday(expires_at) <= julianday(?)
+  `).run(now);
+  const requests = directoryDb.prepare(`
+    SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+      r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+      r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
+    FROM requests r
+    JOIN item_categories c ON c.id = r.category_id
+    WHERE r.buyer_id = ?
+    ORDER BY r.created_at DESC, r.id DESC
+  `).all(buyer.id);
+  res.json(ListRequestsResponse.parse(requests));
+});
+
+router.post("/requests", (req, res): void => {
+  if (getSupplierIdFromRequest(req)) {
+    res.status(403).json({ error: "نشر احتياجات التوريد متاح لأصحاب الأعمال فقط." });
+    return;
+  }
+
+  const buyer = requireBuyer(req, res);
+  if (!buyer) return;
+  if (!requireActiveBuyer(buyer, res)) return;
+  if (buyer.isOwner !== 1) {
+    res.status(403).json({ error: "يجب أن تكون مسجلاً كصاحب عمل لنشر احتياج." });
+    return;
+  }
+  if (isTestModeRequest(req, "buyer", buyer.id)) {
+    res.status(403).json({ error: "لا يمكن نشر طلب حقيقي من وضع المعاينة. سجّل الدخول إلى حساب صاحب العمل أولاً." });
+    return;
+  }
+
+  const parsed = CreateRequestBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const input = parsed.data;
+  const category = directoryDb.prepare(`
+    WITH RECURSIVE active_category_tree(id) AS (
+      SELECT c.id
+      FROM item_categories c
+      JOIN groups g ON g.id = c.id AND g.is_active = 1
+      WHERE c.parent_id IS NULL AND c.is_active = 1
+      UNION ALL
+      SELECT child.id
+      FROM item_categories child
+      JOIN active_category_tree parent ON child.parent_id = parent.id
+      JOIN groups g ON g.id = child.primary_group_id AND g.is_active = 1
+      WHERE child.is_active = 1 AND child.primary_group_id = parent.id
+    )
+    SELECT id, name
+    FROM item_categories
+    WHERE id = ? AND id IN (SELECT id FROM active_category_tree)
+  `).get(input.categoryId) as { id: number; name: string } | undefined;
+  if (!category) {
+    res.status(404).json({ error: "الصنف المحدد غير متاح." });
+    return;
+  }
+
+  const citiesRow = directoryDb.prepare(
+    "SELECT value FROM directory_settings WHERE key = 'available_cities'",
+  ).get() as { value: string } | undefined;
+  let cities: unknown;
+  try {
+    cities = citiesRow ? JSON.parse(citiesRow.value) : null;
+  } catch {
+    res.status(500).json({ error: "تعذر قراءة قائمة المدن." });
+    return;
+  }
+  if (!Array.isArray(cities) || !cities.includes(input.city)) {
+    res.status(400).json({ error: "المدينة المحددة غير متاحة." });
+    return;
+  }
+
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const title = `احتياج: ${category.name} — ${input.quantity} ${input.unit}`;
+  const result = directoryDb.prepare(`
+    INSERT INTO requests
+      (buyer_id, category_id, title, description, quantity, unit, frequency, city, status, created_at, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+  `).run(
+    buyer.id,
+    category.id,
+    title,
+    input.description.trim(),
+    input.quantity,
+    input.unit,
+    input.frequency,
+    input.city,
+    createdAt,
+    expiresAt,
+  );
+
+  const request = directoryDb.prepare(`
+    SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+      r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
+      r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
+    FROM requests r
+    JOIN item_categories c ON c.id = r.category_id
+    WHERE r.id = ?
+  `).get(Number(result.lastInsertRowid));
+  res.status(201).json(CreateRequestResponse.parse(request));
 });
 
 router.post("/buyer/contact", (req, res): void => {

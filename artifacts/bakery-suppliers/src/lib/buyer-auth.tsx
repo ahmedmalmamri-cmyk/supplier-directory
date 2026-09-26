@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getListRequestsQueryKey } from "@workspace/api-client-react";
 
 export type BuyerUser = {
   id: number;
@@ -25,9 +27,11 @@ type BuyerAuthContextValue = {
 const BuyerAuthContext = createContext<BuyerAuthContextValue | null>(null);
 
 export function BuyerAuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<BuyerUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const requestId = useRef(0);
+  const currentBuyer = useRef<{ id: number; isOwner: boolean } | null>(null);
 
   const refresh = async () => {
     const id = ++requestId.current;
@@ -35,14 +39,28 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/buyer/me", { credentials: "same-origin" });
       if (!response.ok) {
-        if (id === requestId.current) setUser(null);
+        if (id === requestId.current) {
+          if (currentBuyer.current) queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+          currentBuyer.current = null;
+          setUser(null);
+        }
         return null;
       }
       const result = await response.json() as { user: BuyerUser };
-      if (id === requestId.current) setUser(result.user);
+      if (id === requestId.current) {
+        if (currentBuyer.current?.id !== result.user.id || currentBuyer.current?.isOwner !== result.user.isOwner) {
+          queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+        }
+        currentBuyer.current = { id: result.user.id, isOwner: result.user.isOwner };
+        setUser(result.user);
+      }
       return result.user;
     } catch {
-      if (id === requestId.current) setUser(null);
+      if (id === requestId.current) {
+        if (currentBuyer.current) queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+        currentBuyer.current = null;
+        setUser(null);
+      }
       return null;
     } finally {
       if (id === requestId.current) setIsLoading(false);
@@ -53,6 +71,8 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
     const response = await fetch("/api/buyer/logout", { method: "POST", credentials: "same-origin" });
     if (!response.ok) throw new Error("تعذر تسجيل الخروج. حاول مرة أخرى.");
     requestId.current++;
+    currentBuyer.current = null;
+    queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
     setUser(null);
     setIsLoading(false);
   };

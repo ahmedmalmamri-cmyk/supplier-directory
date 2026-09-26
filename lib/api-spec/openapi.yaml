@@ -95,10 +95,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Request" }
-        "400": { description: Invalid request data }
+        "400": { description: Invalid request data or city is unavailable }
         "401": { description: Buyer login required }
         "403": { description: Only active business owners may publish requests }
-        "404": { description: Category or city is unavailable }
+        "404": { description: Category is unavailable }
   /admin/item-categories:
     get:
       operationId: listAdminItemCategories

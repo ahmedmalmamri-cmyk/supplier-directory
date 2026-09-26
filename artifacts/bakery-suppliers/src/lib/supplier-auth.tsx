@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { getListRequestsQueryKey } from "@workspace/api-client-react";
 
 export type SupplierUser = {
   id: number;
@@ -34,7 +35,10 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
       const result = response.ok ? await response.json() as { supplier?: SupplierUser } : null;
       const next = result?.supplier ?? null;
       if (id === requestId.current) {
-        if (currentSupplierId.current !== next?.id) queryClient.removeQueries({ queryKey: ["supplier"] });
+        if (currentSupplierId.current !== next?.id) {
+          queryClient.removeQueries({ queryKey: ["supplier"] });
+          queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+        }
         currentSupplierId.current = next?.id ?? null;
         setSupplier(next);
       }
@@ -43,6 +47,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
       if (id === requestId.current) {
         currentSupplierId.current = null;
         queryClient.removeQueries({ queryKey: ["supplier"] });
+        queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
         setSupplier(null);
       }
       return null;
@@ -57,6 +62,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     requestId.current++;
     currentSupplierId.current = null;
     queryClient.removeQueries({ queryKey: ["supplier"] });
+    queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
     setSupplier(null);
     setIsLoading(false);
   };

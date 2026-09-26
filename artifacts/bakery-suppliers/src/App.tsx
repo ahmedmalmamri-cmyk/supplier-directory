@@ -36,6 +36,8 @@ import SupplierPortalPage from '@/pages/supplier-portal';
 import SupplierDashboardPage from '@/pages/supplier-dashboard';
 import SupplierMarketPage from '@/pages/supplier-market';
 import LoginChoicePage from '@/pages/login-choice';
+import RequestsPage from '@/pages/requests';
+import NewRequestPage from '@/pages/request-new';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 import { SupplierAuthProvider } from '@/lib/supplier-auth';
 
@@ -77,6 +79,8 @@ function Router() {
          <Route path="/register" component={() => <RegisterPage />} />
          <Route path="/buyer/login" component={BuyerLoginPage} />
           <Route path="/buyer/profile" component={BuyerProfilePage} />
+         <Route path="/requests/new" component={NewRequestPage} />
+         <Route path="/requests" component={RequestsPage} />
         <Route path="/test-mode" component={() => <TestModePage />} />
         <Route path="/test-mode/report" component={() => <TestModePage view="report" />} />
         <Route path="/expansion" component={ExpansionPage} />

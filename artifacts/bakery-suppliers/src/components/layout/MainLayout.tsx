@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, Search, X, Package, Users, Mail, FileText, UserPlus, Moon, Sun, UserRound, ShieldCheck, LayoutDashboard, MapPinned } from "lucide-react";
+import { Menu, Search, X, Package, Users, Mail, FileText, UserPlus, Moon, Sun, UserRound, ShieldCheck, LayoutDashboard, MapPinned, ClipboardList, Megaphone } from "lucide-react";
 import { useState } from "react";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useSupplierAuth } from "@/lib/supplier-auth";
@@ -44,6 +44,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
              <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-muted-foreground">
               <Link href="/suppliers" className="hover:text-foreground transition-colors">الموردين</Link>
               <Link href="/register" className="hover:text-foreground transition-colors">انضم للدليل</Link>
+               {user && <><Link href="/requests" data-testid="link-header-requests" className="hover:text-foreground transition-colors">احتياجاتي</Link>{user.isOwner && <Link href="/requests/new" data-testid="link-header-new-request" className="hover:text-foreground transition-colors">انشر احتياجاً</Link>}</>}
+               {supplier && !user && !authLoading && <Link href="/requests" data-testid="link-header-request-market" className="hover:text-foreground transition-colors">احتياجات السوق</Link>}
                {supplier && !authLoading && <><Link href="/supplier/dashboard" data-testid="link-header-supplier-dashboard" className="hover:text-foreground transition-colors">لوحة المورد</Link><Link href="/supplier/market" data-testid="link-header-supplier-market" className="hover:text-foreground transition-colors">السوق</Link></>}
                {authLoading ? <span role="status" className="inline-flex items-center gap-2 text-muted-foreground"><span className="h-4 w-20 animate-pulse rounded bg-muted" /><span className="sr-only">جاري التحقق من الحساب</span></span> : <Link data-testid="link-account-desktop" href={accountHref} className="inline-flex max-w-48 items-center gap-1 hover:text-foreground transition-colors"><UserRound className="h-4 w-4 shrink-0" /><span className="truncate" data-testid="text-account-name">{accountLabel}</span></Link>}
               <Link href="/admin" aria-label="دخول لوحة الإدارة" title="لوحة الإدارة" className="inline-flex items-center gap-1 rounded-lg border border-border/70 px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ShieldCheck className="h-4 w-4" /> الإدارة</Link>
@@ -72,6 +74,8 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Package className="h-4 w-4"/> الرئيسية</Link>
             <Link href="/suppliers" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Users className="h-4 w-4"/> الموردون</Link>
             <Link href="/search" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Search className="h-4 w-4"/> البحث</Link>
+              {user && <><Link href="/requests" data-testid="link-mobile-requests" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><ClipboardList className="h-4 w-4"/> احتياجاتي</Link>{user.isOwner && <Link href="/requests/new" data-testid="link-mobile-new-request" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><Megaphone className="h-4 w-4"/> انشر احتياجاً</Link>}</>}
+              {supplier && !user && !authLoading && <Link href="/requests" data-testid="link-mobile-request-market" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><ClipboardList className="h-4 w-4"/> احتياجات السوق</Link>}
              {supplier && !authLoading && <><Link href="/supplier/dashboard" data-testid="link-mobile-supplier-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><LayoutDashboard className="h-4 w-4"/> لوحة المورد</Link><Link href="/supplier/market" data-testid="link-mobile-supplier-market" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><MapPinned className="h-4 w-4"/> السوق</Link><Link href="/supplier/portal" data-testid="link-mobile-supplier-portal" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><FileText className="h-4 w-4"/> التواصل والبلاغات</Link></>}
              {authLoading ? <span role="status" className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-muted-foreground"><span className="h-4 w-24 animate-pulse rounded bg-muted" /> جاري التحقق من الحساب</span> : <Link data-testid="link-account-mobile" href={accountHref} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted"><UserRound className="h-4 w-4"/><span className="truncate">{accountLabel}</span></Link>}
             <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="mt-1 flex min-h-11 items-center gap-3 rounded-xl bg-primary px-3 py-2 font-extrabold text-primary-foreground hover:bg-primary/90"><UserPlus className="h-4 w-4"/> انضم للدليل</Link>
@@ -102,6 +106,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/suppliers" className="hover:text-foreground">تصفح الموردين</Link></li>
               <li><Link href="/search" className="hover:text-foreground">البحث عن منتج أو مورد</Link></li>
+               <li><Link href="/requests" data-testid="link-footer-requests" className="hover:text-foreground">احتياجات التوريد</Link></li>
               <li><Link href="/about" className="hover:text-foreground">من نحن</Link></li>
               <li><Link href="/expansion" className="hover:text-foreground">خطة التوسع</Link></li>
             </ul>
