@@ -22,7 +22,7 @@ const activationFormSchema = z.object({
 type ActivationFormValues = z.infer<typeof activationFormSchema>;
 
 export default function SupplierActivatePage() {
-  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const token = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
   const activation = useGetSupplierActivation({ token }, {
     query: {
       enabled: Boolean(token),
@@ -53,12 +53,14 @@ export default function SupplierActivatePage() {
     });
   };
 
-  const errorMessage = completeActivation.error instanceof Error
-    ? completeActivation.error.message
-    : "تعذر تفعيل الحساب. اطلب رابطاً جديداً من الإدارة إذا استمرت المشكلة.";
-  const activationError = activation.error instanceof Error
-    ? activation.error.message
-    : "رابط التفعيل غير صالح أو انتهت صلاحيته.";
+  const errorMessage = getApiErrorMessage(
+    completeActivation.error,
+    "تعذر تفعيل الحساب. اطلب رابطاً جديداً من الإدارة إذا استمرت المشكلة.",
+  );
+  const activationError = getApiErrorMessage(
+    activation.error,
+    "رابط التفعيل غير صالح أو انتهت صلاحيته. اطلب من الإدارة رابطاً جديداً.",
+  );
 
   return <MainLayout>
     <main className="min-h-[calc(100dvh-5rem)] px-4 py-8 md:py-14" dir="rtl">
@@ -174,4 +176,11 @@ function ActivationState({ title, body }: { title: string; body: string }) {
       <Link href="/supplier/login">الانتقال إلى تسجيل دخول المورد</Link>
     </Button>
   </div>;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (!error || typeof error !== "object" || !("data" in error)) return fallback;
+  const data = error.data;
+  if (!data || typeof data !== "object" || !("error" in data) || typeof data.error !== "string") return fallback;
+  return data.error;
 }

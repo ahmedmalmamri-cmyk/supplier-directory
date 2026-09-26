@@ -131,6 +131,7 @@ router.post("/supplier/logout", (_req, res): void => {
 });
 
 router.get("/supplier/activation", (req, res): void => {
+  res.set("Cache-Control", "no-store");
   const parsed = GetSupplierActivationQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "رابط التفعيل غير صالح." });
@@ -160,7 +161,6 @@ router.get("/supplier/activation", (req, res): void => {
     res.status(409).json({ error: "تم تفعيل حساب هذا المورد مسبقاً." });
     return;
   }
-  res.set("Cache-Control", "no-store");
   res.json(GetSupplierActivationResponse.parse({
     supplierName: activation.supplierName,
     phone: activation.phone,
@@ -169,6 +169,7 @@ router.get("/supplier/activation", (req, res): void => {
 });
 
 router.post("/supplier/activation/complete", (req, res): void => {
+  res.set("Cache-Control", "no-store");
   const parsed = CompleteSupplierActivationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "أدخل كلمة مرور من 8 أحرف على الأقل وأعد كتابتها للتأكيد." });
@@ -240,7 +241,6 @@ router.post("/supplier/activation/complete", (req, res): void => {
   }
   clearBuyerSession(res);
   setSupplierSession(res, supplierId);
-  res.set("Cache-Control", "no-store");
   res.json(CompleteSupplierActivationResponse.parse({
     success: true,
     message: "تم إنشاء كلمة المرور وتفعيل حسابك. يمكنك الآن متابعة إدارة ملفك.",

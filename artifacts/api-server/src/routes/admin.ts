@@ -491,6 +491,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
 
 router.post("/admin/supplier-requests/:id/activation-link", (req, res): void => {
   if (!requireAdmin(req, res)) return;
+  res.set("Cache-Control", "no-store");
   const parsed = CreateSupplierActivationLinkParams.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "رقم طلب المورد غير صالح." });
@@ -541,7 +542,7 @@ router.post("/admin/supplier-requests/:id/activation-link", (req, res): void => 
             INSERT INTO supplier_activation_tokens (supplier_id, token_hash, expires_at, created_at)
             VALUES (?, ?, ?, ?)
           `).run(supplier.id, tokenHash, expiresAt, now);
-          activationPath = `/supplier/activate?token=${token}`;
+          activationPath = `/supplier/activate#token=${token}`;
         }
       }
     }

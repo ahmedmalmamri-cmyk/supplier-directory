@@ -4,10 +4,10 @@ import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { buildWhatsAppMessageUrl, invalidSaudiPhoneMessage, normalizeSaudiMobile } from "@/lib/saudi-phone";
 import { isDevelopmentPreview, publishedPageUrl } from "@/lib/public-site-url";
-import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent, useGetAdminCategoryStats } from "@workspace/api-client-react";
+import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useCreateSupplierActivationLink, useGenerateSupplierInvitation, useMarkSupplierInvitationSent, useGetAdminCategoryStats } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock3, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Copy, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LoaderCircle, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 import { Link } from "wouter";
 
 type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
@@ -199,10 +199,46 @@ function LoginCard({ login }: { login: ReturnType<typeof useAdminLogin> }) {
 function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { requests: SupplierRequest[]; selected: SupplierRequest | null; onSelect: (item: SupplierRequest | null) => void; onAction: (path: string, init?: RequestInit, message?: string) => Promise<boolean> }) {
   const [rejectReason, setRejectReason] = useState("");
   const [note, setNote] = useState("");
+  const [activationLinks, setActivationLinks] = useState<Record<number, { url: string; expiresAt: string }>>({});
+  const [activationErrors, setActivationErrors] = useState<Record<number, string>>({});
+  const [activationRequestId, setActivationRequestId] = useState<number | null>(null);
+  const [copiedRequestId, setCopiedRequestId] = useState<number | null>(null);
+  const createActivationLink = useCreateSupplierActivationLink();
+
+  const generateActivationLink = (requestId: number) => {
+    setActivationRequestId(requestId);
+    setActivationErrors((current) => ({ ...current, [requestId]: "" }));
+    createActivationLink.mutate({ id: requestId }, {
+      onSuccess: (result) => {
+        setActivationLinks((current) => ({ ...current, [requestId]: { url: publishedPageUrl(result.path), expiresAt: result.expiresAt } }));
+        setActivationRequestId(null);
+      },
+      onError: (error) => {
+        setActivationErrors((current) => ({ ...current, [requestId]: error instanceof Error ? error.message : "تعذر إنشاء رابط التفعيل." }));
+        setActivationRequestId(null);
+      },
+    });
+  };
+
+  const copyActivationLink = async (requestId: number, url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedRequestId(requestId);
+      setActivationErrors((current) => ({ ...current, [requestId]: "" }));
+    } catch {
+      setActivationErrors((current) => ({ ...current, [requestId]: "تعذر نسخ الرابط. افتحه عبر واتساب أو انسخه يدوياً." }));
+    }
+  };
+
   return (
     <div className="space-y-5">
       {requests.length === 0 ? <Empty title="لا توجد طلبات موردين" description="ستظهر طلبات التسجيل الجديدة هنا." /> : requests.map((request) => {
         const pending = request.status === "pending" || request.status === "pending_review";
+        const activation = activationLinks[request.id];
+        const activationMessage = activation
+          ? `مرحباً ${request.contactPerson}، تمت الموافقة على ملف ${request.businessName} في دليل موردي المخابز والحلويات. أنشئ كلمة مرور حسابك من الرابط التالي خلال 48 ساعة. الرابط يعمل مرة واحدة فقط:\n${activation.url}`
+          : "";
+        const activationWhatsAppUrl = activation ? buildWhatsAppMessageUrl(request.whatsapp, activationMessage) : null;
         return (
           <article key={request.id} className="rounded-2xl border bg-card p-5">
             <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
@@ -223,8 +259,27 @@ function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { reque
                   <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-success px-3 py-2 text-sm font-bold text-success-foreground hover:bg-success/90"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
                   <button data-testid={`button-reject-supplier-request-${request.id}`} type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-destructive/25 px-3 py-2 text-sm font-bold text-destructive hover:bg-destructive/10"><XCircle className="ml-1 inline h-4 w-4" /> رفض</button>
                 </>}
+                {request.status === "approved" && <button data-testid={`button-create-supplier-activation-link-${request.id}`} type="button" disabled={createActivationLink.isPending} onClick={() => generateActivationLink(request.id)} className="rounded-xl border border-primary/25 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/5 disabled:opacity-50">
+                  {activationRequestId === request.id ? <><LoaderCircle className="ml-1 inline h-4 w-4 animate-spin" /> جارٍ الإنشاء...</> : "إنشاء رابط تفعيل الدخول"}
+                </button>}
               </div>
             </div>
+            {activationErrors[request.id] && <p data-testid={`status-supplier-activation-link-error-${request.id}`} role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{activationErrors[request.id]}</p>}
+            {activation && <div data-testid={`card-supplier-activation-link-${request.id}`} className="mt-4 space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
+                <div>
+                  <p className="text-sm font-bold">رابط تفعيل لمرة واحدة — ينتهي {formatDate(activation.expiresAt)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">إنشاء رابط جديد يلغي الرابط السابق. لا تشارك هذا الرابط إلا مع المورد المعتمد.</p>
+                </div>
+                <a data-testid={`link-supplier-activation-${request.id}`} href={activation.url} dir="ltr" className="block break-all rounded-lg bg-background p-3 text-left text-xs text-primary underline" target="_blank" rel="noopener noreferrer">{activation.url}</a>
+                <div className="flex flex-wrap gap-2">
+                  <button data-testid={`button-copy-supplier-activation-link-${request.id}`} type="button" onClick={() => void copyActivationLink(request.id, activation.url)} className="rounded-lg border bg-background px-3 py-2 text-sm font-bold hover:bg-muted">
+                    <Copy className="ml-1 inline h-4 w-4" /> {copiedRequestId === request.id ? "تم النسخ" : "نسخ الرابط"}
+                  </button>
+                  {activationWhatsAppUrl && <a data-testid={`link-whatsapp-supplier-activation-${request.id}`} href={activationWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-success px-3 py-2 text-sm font-bold text-success-foreground hover:bg-success/90">
+                    <MessageCircle className="ml-1 inline h-4 w-4" /> فتح واتساب
+                  </a>}
+                </div>
+              </div>}
             {pending && rejectReason !== "" && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={rejectReason.trim() ? rejectReason : ""} onChange={(event) => setRejectReason(event.target.value)} placeholder="سبب الرفض (اختياري)" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/reject`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: rejectReason }) }, "تم رفض الطلب وحفظ السبب.")} className="rounded-lg bg-destructive px-4 font-bold text-destructive-foreground">تأكيد الرفض</button></div>}
             {selected?.id === request.id && <div className="mt-5 space-y-4 border-t pt-5"><DetailGrid request={request} /><div><label className="mb-2 block text-sm font-bold">طلب معلومات إضافية</label><div className="flex gap-2"><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="ما المعلومات المطلوبة؟" className="h-10 flex-1 rounded-lg border bg-background px-3" /><button type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/request-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) }, "تم حفظ طلب المعلومات.")} className="rounded-lg border px-4 font-bold">حفظ</button></div></div></div>}
           </article>
