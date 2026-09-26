@@ -232,7 +232,7 @@ directoryDb.exec(`
     title TEXT NOT NULL CHECK (length(trim(title)) > 0),
     description TEXT NOT NULL,
     quantity REAL NOT NULL CHECK (typeof(quantity) IN ('integer', 'real') AND quantity > 0),
-    unit TEXT NOT NULL CHECK (unit IN ('كيلو', 'كرتون', 'كيس')),
+    unit TEXT NOT NULL CHECK (unit IN ('كيلو', 'كرتون', 'كيس', 'علبة')),
     frequency TEXT NOT NULL CHECK (frequency IN ('مرة واحدة', 'أسبوعي', 'شهري')),
     city TEXT NOT NULL CHECK (length(trim(city)) > 0),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'expired')),
@@ -328,6 +328,78 @@ directoryDb.exec(`
     applied_at TEXT NOT NULL
   );
 `);
+
+const requestUnitMigrationName = "requests-unit-box-v1";
+const requestUnitMigration = directoryDb
+  .prepare("SELECT name FROM directory_migrations WHERE name = ?")
+  .get(requestUnitMigrationName);
+if (!requestUnitMigration) {
+  const requestTable = directoryDb
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'requests'")
+    .get() as { sql: string } | undefined;
+
+  if (requestTable && !requestTable.sql.includes("'علبة'")) {
+    const childTables = directoryDb.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type = 'table' AND lower(sql) LIKE '%references requests%'
+    `).all() as Array<{ name: string }>;
+    if (childTables.length > 0) {
+      throw new Error(`Cannot safely update requests.unit; dependent tables exist: ${childTables.map((table) => table.name).join(", ")}`);
+    }
+
+    directoryDb.exec("BEGIN IMMEDIATE");
+    try {
+      const before = directoryDb.prepare("SELECT COUNT(*) AS count FROM requests").get() as { count: number };
+      directoryDb.exec(`
+        ALTER TABLE requests RENAME TO requests_units_legacy;
+        CREATE TABLE requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
+          category_id INTEGER NOT NULL REFERENCES item_categories(id),
+          title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+          description TEXT NOT NULL,
+          quantity REAL NOT NULL CHECK (typeof(quantity) IN ('integer', 'real') AND quantity > 0),
+          unit TEXT NOT NULL CHECK (unit IN ('كيلو', 'كرتون', 'كيس', 'علبة')),
+          frequency TEXT NOT NULL CHECK (frequency IN ('مرة واحدة', 'أسبوعي', 'شهري')),
+          city TEXT NOT NULL CHECK (length(trim(city)) > 0),
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'expired')),
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        );
+        INSERT INTO requests
+          (id, buyer_id, category_id, title, description, quantity, unit, frequency, city, status, created_at, expires_at)
+        SELECT id, buyer_id, category_id, title, description, quantity, unit, frequency, city, status, created_at, expires_at
+        FROM requests_units_legacy;
+        DROP TABLE requests_units_legacy;
+        CREATE INDEX idx_requests_buyer_status_created
+          ON requests (buyer_id, status, created_at DESC);
+        CREATE INDEX idx_requests_category_city_status_expires
+          ON requests (category_id, city, status, expires_at);
+      `);
+      const after = directoryDb.prepare("SELECT COUNT(*) AS count FROM requests").get() as { count: number };
+      if (before.count !== after.count) {
+        throw new Error(`Requests migration lost rows: expected ${before.count}, found ${after.count}`);
+      }
+      const foreignKeyErrors = directoryDb.prepare("PRAGMA foreign_key_check").all();
+      if (foreignKeyErrors.length > 0) {
+        throw new Error("Requests migration failed foreign-key validation");
+      }
+      directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)").run(
+        requestUnitMigrationName,
+        new Date().toISOString(),
+      );
+      directoryDb.exec("COMMIT");
+    } catch (error) {
+      directoryDb.exec("ROLLBACK");
+      throw error;
+    }
+  } else {
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)").run(
+      requestUnitMigrationName,
+      new Date().toISOString(),
+    );
+  }
+}
 
 const itemCategoryColumns = directoryDb
   .prepare("PRAGMA table_info(item_categories)")

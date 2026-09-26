@@ -8,6 +8,7 @@ servers:
 tags:
   - name: health
   - name: directory
+  - name: requests
 paths:
   /healthz:
     get:
@@ -55,6 +56,50 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/ItemCategory" }
+  /requests/options:
+    get:
+      operationId: getRequestOptions
+      tags: [requests]
+      responses:
+        "200":
+          description: Allowed cities for request publication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestOptions"
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [requests]
+      responses:
+        "200":
+          description: Requests visible to the authenticated buyer or supplier
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Request" }
+        "401": { description: Login required }
+        "403": { description: Account is not allowed to view requests }
+    post:
+      operationId: createRequest
+      tags: [requests]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestInput" }
+      responses:
+        "201":
+          description: Request published
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Request" }
+        "400": { description: Invalid request data }
+        "401": { description: Buyer login required }
+        "403": { description: Only active business owners may publish requests }
+        "404": { description: Category or city is unavailable }
+  /admin/item-categories:
   /admin/item-categories:
     get:
       operationId: listAdminItemCategories
@@ -1186,6 +1231,39 @@ components:
         createdAt: { type: string }
         updatedAt: { type: string }
         supplierCount: { type: integer }
+    Request:
+      type: object
+      required: [id, categoryId, categoryName, title, description, quantity, unit, frequency, city, status, createdAt, expiresAt]
+      properties:
+        id: { type: integer }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        title: { type: string }
+        description: { type: string }
+        quantity: { type: number }
+        unit: { type: string, enum: ["كيلو", "كرتون", "كيس", "علبة"] }
+        frequency: { type: string, enum: ["مرة واحدة", "أسبوعي", "شهري"] }
+        city: { type: string }
+        status: { type: string, enum: ["active", "closed", "expired"] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    RequestInput:
+      type: object
+      required: [categoryId, quantity, unit, frequency, city, description]
+      properties:
+        categoryId: { type: integer, minimum: 1 }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit: { type: string, enum: ["كيلو", "كرتون", "كيس", "علبة"] }
+        frequency: { type: string, enum: ["مرة واحدة", "أسبوعي", "شهري"] }
+        city: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 1000 }
+    RequestOptions:
+      type: object
+      required: [cities]
+      properties:
+        cities:
+          type: array
+          items: { type: string }
     AdminItemCategory:
       allOf:
         - $ref: "#/components/schemas/ItemCategory"
