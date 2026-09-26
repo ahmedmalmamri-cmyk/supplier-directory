@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { getBuyerIdFromRequest } from "../lib/buyer-auth";
-import { getSupplierIdFromRequest, setSupplierSession, clearSupplierSession } from "../lib/supplier-auth";
+import { getSupplierIdFromRequest } from "../lib/supplier-auth";
 import { requireAdmin } from "../lib/admin-auth";
 import { directoryDb } from "../lib/directory-db";
 import {
@@ -8,7 +8,6 @@ import {
   clearTestModeSession,
   ensureTestModeAccounts,
   getTestModeSession,
-  isTestModeAccount,
   isTestModeRequest,
   listTestModeAccounts,
   setTestModeSession,
@@ -85,11 +84,7 @@ router.post("/admin/test-mode/start", (req, res): void => {
   }
   try {
     const accounts = ensureTestModeAccounts();
-    const previousMode = getTestModeSession(req);
-    const supplierId = getSupplierIdFromRequest(req);
     const buyerId = getBuyerIdFromRequest(req);
-    if (supplierId && isTestModeAccount("supplier", supplierId) &&
-        (previousMode?.role === "supplier" || role === "buyer")) clearSupplierSession(res);
 
     let account: { id: number; route: string } | undefined;
     if (role === "supplier") {
@@ -108,7 +103,6 @@ router.post("/admin/test-mode/start", (req, res): void => {
       });
       return;
     }
-    if (role === "supplier") setSupplierSession(res, account.id);
     setTestModeSession(res, role as TestModeRole, account.id);
     res.json({
       success: true,
@@ -122,11 +116,6 @@ router.post("/admin/test-mode/start", (req, res): void => {
 
 router.post("/admin/test-mode/exit", (req, res): void => {
   if (!requireAdmin(req, res)) return;
-  const session = getTestModeSession(req);
-  const supplierId = getSupplierIdFromRequest(req);
-  const buyerId = getBuyerIdFromRequest(req);
-    if ((session?.role === "supplier" && supplierId === session.id) ||
-        (supplierId && isTestModeAccount("supplier", supplierId))) clearSupplierSession(res);
   clearTestModeSession(res);
   res.json({ success: true });
 });

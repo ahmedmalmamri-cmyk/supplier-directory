@@ -453,14 +453,14 @@ content_type = "image/jpeg"
 id = "8MKbqD4wNHzIEEOiY3ICS"
 uri = "file://screenshots/supplier-dashboard.png"
 type = "image"
-title = "لوحة تحكم المورد"
-description = "الإحصائيات الشهرية والتقرير الأسبوعي والفرص من منظور مورد مسجل"
+title = "واجهة المورد التجريبي"
+description = "لوحة المورد في وضع معاينة آمن مع شريط الحالة والخروج."
 logical_id = "985aa0c7-c1b6-41c7-89f0-ef3870aeb0eb"
-content_hash = "sha256:c7c6a523748dd3042fb9c71ed1e1c73c7a06a1d88891de69fb68bf8db75d8d77"
-size = 447525
-mtime_ms = 1790440770153
-storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/985aa0c7-c1b6-41c7-89f0-ef3870aeb0eb/02a04ae0-fde7-445f-bc12-e7689ac82db0"
-storage_version_token = "1790440932606184"
+content_hash = "sha256:fd4da7e26591fddea45b4c403fd9e11f836e4de2ef9be2fd605a465515b98558"
+size = 524792
+mtime_ms = 1790445729661
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/985aa0c7-c1b6-41c7-89f0-ef3870aeb0eb/6dc0a936-9a64-4a68-9517-0f71f0c8fc04"
+storage_version_token = "1790445790809274"
 content_type = "image/png"
 
 [[outputs]]
@@ -489,4 +489,32 @@ size = 427985
 mtime_ms = 1790440772661
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/cb2f5642-15ea-4e62-ad88-95e6edf36265/2a2dfa04-1c77-46f1-a5cc-17f17039df80"
 storage_version_token = "1790440935304330"
+content_type = "image/png"
+
+[[outputs]]
+id = "oHoMKKtlnzo3wt_poYUIP"
+uri = "file://screenshots/test-mode-page.png"
+type = "image"
+title = "صفحة وضع المعاينة"
+description = "لقطة شاشة للوحة المعاينة بعد تسجيل دخول المدير، وتعرض مورد الاختبار الوحيد."
+logical_id = "c8cbe5f6-71e9-4ddb-b29a-6bfbf502f9f3"
+content_hash = "sha256:d29e682a3efbcc4d10d563ca062a68aa608839fa14494c46996eec46f61e09d9"
+size = 274643
+mtime_ms = 1790445731837
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/c8cbe5f6-71e9-4ddb-b29a-6bfbf502f9f3/4e796eb3-0b39-4311-bfd5-78cf34e7d7db"
+storage_version_token = "1790445789490072"
+content_type = "image/png"
+
+[[outputs]]
+id = "eP_BQUDcAZ14Uk8RYbJiQ"
+uri = "file://screenshots/test-mode-report.png"
+type = "image"
+title = "تقرير الفحص"
+description = "نتائج الفحوص المحسوبة مباشرة من قاعدة البيانات."
+logical_id = "d0559159-c8f4-4ef9-937c-587bf2641a1a"
+content_hash = "sha256:f0dd9f3105dc27c50dc3f47c2bdc598b32f72ff3e64ffe1215028bc3081dd663"
+size = 235701
+mtime_ms = 1790445733073
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/d0559159-c8f4-4ef9-937c-587bf2641a1a/a46b75ca-e184-4148-9da5-bc9ce28d5856"
+storage_version_token = "1790445792149351"
 content_type = "image/png"

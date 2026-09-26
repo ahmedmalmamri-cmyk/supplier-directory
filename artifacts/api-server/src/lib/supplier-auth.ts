@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
+import { getTestModeSession } from "./test-mode";
 
 const supplierCookieName = "bakery_supplier_session";
 const sessionDurationSeconds = 60 * 60 * 12;
@@ -40,6 +41,8 @@ export function clearSupplierSession(res: Response) {
 }
 
 export function getSupplierIdFromRequest(req: Request) {
+  const testModeSession = getTestModeSession(req);
+  if (testModeSession?.role === "supplier") return testModeSession.id;
   const token = req.cookies?.[supplierCookieName];
   if (!token) return null;
   const [payload, signature] = token.split(/(?=\.[^.]+$)/);

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, FileText, LockKeyhole, LogIn, RefreshCw, ShieldCheck, ShoppingCart, Store, XCircle } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useBuyerAuth } from "@/lib/buyer-auth";
+import { useSupplierAuth } from "@/lib/supplier-auth";
 
 type TestRole = "supplier" | "buyer";
 type TestModeView = "home" | "report";
@@ -48,6 +50,8 @@ function formatArabicDate(value: string) {
 
 export default function TestModePage({ view = "home" }: { view?: TestModeView }) {
   const [, navigate] = useLocation();
+  const buyerAuth = useBuyerAuth();
+  const supplierAuth = useSupplierAuth();
   const [authState, setAuthState] = useState<"checking" | "unauthenticated" | "authenticated">("checking");
   const [password, setPassword] = useState("");
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -77,6 +81,7 @@ export default function TestModePage({ view = "home" }: { view?: TestModeView })
         setOverview(null);
         setReport(null);
       } else {
+        setAuthState("authenticated");
         setError(requestError instanceof Error ? requestError.message : "تعذر تحميل بيانات وضع المعاينة.");
       }
     } finally {
@@ -123,11 +128,10 @@ export default function TestModePage({ view = "home" }: { view?: TestModeView })
         method: "POST",
         body: JSON.stringify({ role }),
       });
+      await Promise.all([buyerAuth.refresh(), supplierAuth.refresh()]);
       navigate(result.redirectPath);
     } catch (startError) {
-      if (startError instanceof AdminRequestError && startError.status === 409) {
-        setError("يوجد وضع معاينة نشط بالفعل في جلسة المتصفح. أنهِ الوضع الحالي من الشريط العلوي ثم اختر حساباً آخر.");
-      } else if (startError instanceof AdminRequestError && startError.status === 401) {
+      if (startError instanceof AdminRequestError && startError.status === 401) {
         setAuthState("unauthenticated");
         setError("انتهت جلسة المدير. سجّل الدخول مجدداً للمتابعة.");
       } else {
@@ -152,8 +156,8 @@ export default function TestModePage({ view = "home" }: { view?: TestModeView })
                 اختبر تجربة الدليل
                 <span className="block text-primary">من دون أثر تجاري</span>
               </h1>
-              <p className="mt-4 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
-                ادخل إلى شاشات المورد وصاحب العمل كما يراها المستخدم، مع إبقاء الرسائل والنشاط داخل بيئة اختبار آمنة.
+        <p className="mt-4 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
+                ادخل إلى شاشة المورد بحساب تجريبي معزول، أو استخدم حساب صاحب العمل الموجود لديك لمعاينة واجهته دون إنشاء حساب إضافي.
               </p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-sm shadow-warm">
@@ -243,7 +247,7 @@ function HomeView({ overview, error, startingRole, onStart, onRetry }: { overvie
     <div className="space-y-7">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">الحسابات المجهزة</p><h2 className="mt-2 text-2xl font-extrabold md:text-3xl">اختر واجهة لفحصها</h2></div>
-        <p className="max-w-md text-sm leading-7 text-muted-foreground">كل حساب يبدأ جلسة منفصلة حتى تتأكد من الرحلة كاملة قبل إتاحتها للمستخدمين.</p>
+         <p className="max-w-md text-sm leading-7 text-muted-foreground">حساب المورد معزول عن الدليل، ومعاينة صاحب العمل تستخدم حسابك الحالي فقط.</p>
       </div>
       {error && <ErrorNotice message={error} onRetry={onRetry} />}
       <div className="grid gap-5 md:grid-cols-2">

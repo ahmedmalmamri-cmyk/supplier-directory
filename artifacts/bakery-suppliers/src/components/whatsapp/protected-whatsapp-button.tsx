@@ -24,6 +24,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
   const [simulationComplete, setSimulationComplete] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     if (!dialog) return;
@@ -37,6 +38,13 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
     setError("");
     setSimulationComplete(false);
     const currentUser = isLoading ? await refresh() : user;
+    try {
+      const response = await fetch("/api/test-mode/status", { credentials: "same-origin" });
+      const mode = response.ok ? await response.json() as { active?: boolean; role?: string } : null;
+      setIsTestMode(mode?.active === true && mode.role === "buyer");
+    } catch {
+      setIsTestMode(false);
+    }
     setCustomMessage(initialMessage ?? "");
     setDialog(currentUser ? "compose" : "gate");
   };
@@ -114,7 +122,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 <h2 id="whatsapp-dialog-title" className="text-2xl font-extrabold">التواصل مع {supplierName}</h2>
                 <div className="mt-5 rounded-2xl bg-primary/5 p-4">
                   <p className="flex items-center gap-2 font-extrabold text-primary"><CheckCircle2 className="h-5 w-5" /> مرحباً {user?.fullName}</p>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">سيتم إرسال رسالة رسمية تحتوي على بيانات التواصل التالية:</p>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{isTestMode ? "ستُحاكى الرسالة بهذه البيانات، ولن تُرسل إلى واتساب أو تُسجل كتواصل حقيقي:" : "سيتم تجهيز رسالة رسمية تحتوي على بيانات التواصل التالية:"}</p>
                   <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                     <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> النشاط: {user?.businessType}</span>
                     <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> اسم النشاط: {user?.businessName || "غير محدد"}</span>
@@ -129,7 +137,7 @@ export function ProtectedWhatsAppButton({ supplierId, supplierName, hasWhatsApp,
                 {error && <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">{error}</p>}
                 <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
                   <button type="button" onClick={() => setDialog(null)} className="flex-1 rounded-xl border border-border px-5 py-3 font-bold hover:bg-muted">إلغاء</button>
-                  <button type="button" onClick={() => void sendMessage()} disabled={isSending} className="flex-1 rounded-xl bg-whatsapp px-5 py-3 font-extrabold text-whatsapp-foreground hover:bg-whatsapp/90 disabled:opacity-60"><MessageCircle className="ml-1 inline h-4 w-4" /> {isSending ? "جاري التجهيز..." : "إرسال عبر واتساب"}</button>
+                  <button type="button" onClick={() => void sendMessage()} disabled={isSending} className="flex-1 rounded-xl bg-whatsapp px-5 py-3 font-extrabold text-whatsapp-foreground hover:bg-whatsapp/90 disabled:opacity-60"><MessageCircle className="ml-1 inline h-4 w-4" /> {isSending ? "جاري التجهيز..." : isTestMode ? "محاكاة التواصل" : "إرسال عبر واتساب"}</button>
                 </div>
               </div>
             )}

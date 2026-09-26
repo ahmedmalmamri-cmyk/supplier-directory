@@ -8,6 +8,7 @@ import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryK
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Clock3, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
+import { Link } from "wouter";
 
 type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
 type SupplierRequest = {
@@ -137,7 +138,10 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
         <main className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div><h2 className="text-2xl font-bold">{tabs.find((item) => item.id === tab)?.label}</h2><p className="text-sm text-muted-foreground mt-1">إدارة دليل موردي المخابز والحلويات</p></div>
-            <button type="button" onClick={() => void refresh()} className="text-sm text-primary font-bold hover:underline">{loading ? "جاري التحديث..." : "تحديث البيانات"}</button>
+            <div className="flex items-center gap-4">
+              <Link href="/test-mode" data-testid="link-admin-test-mode" className="inline-flex items-center gap-2 rounded-xl border border-primary/20 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/5"><ShieldCheck className="h-4 w-4" /> وضع المعاينة</Link>
+              <button type="button" onClick={() => void refresh()} className="text-sm text-primary font-bold hover:underline">{loading ? "جاري التحديث..." : "تحديث البيانات"}</button>
+            </div>
           </div>
           {notice && <div className="mb-5 rounded-xl bg-success/10 border border-success/25 text-success p-3 text-sm">{notice}</div>}
           {error && <div className="mb-5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive p-3 text-sm">{error}</div>}
