@@ -39,7 +39,7 @@ import {
   invalidSaudiPhoneMessage,
   normalizeSaudiMobile,
 } from "@/lib/saudi-phone";
-import { publishedPageUrl } from "@/lib/public-site-url";
+import { isDevelopmentPreview, publishedPageUrl } from "@/lib/public-site-url";
 
 type InvitationStatus = "unsent" | "sent" | "completed";
 type Draft = { name: string; whatsapp: string; city: string };
@@ -140,6 +140,10 @@ export function SupplierInvitationsPanel() {
   const makeLink = (supplierId: number, openWhatsApp = false, recipientWhatsApp?: string) => {
     setError("");
     setNotice("");
+    if (isDevelopmentPreview()) {
+      setError("رابط الدعوة الخاص من معاينة Replit لا يفتح للموردين. افتح لوحة الموقع المنشور بعد نقل بيانات الموردين، ثم أنشئ الدعوة من هناك.");
+      return;
+    }
     if (openWhatsApp && !buildWhatsAppChatUrl(recipientWhatsApp ?? "")) {
       setError(invalidSaudiPhoneMessage);
       return;
@@ -277,6 +281,7 @@ export function SupplierInvitationsPanel() {
             <div className="rounded-xl border bg-muted/30 p-3 text-sm leading-6">
               <p>سيفتح واتساب لاختيار المستلم، وستحتاج إلى الضغط على إرسال داخل واتساب.</p>
               <p className="mt-2 text-muted-foreground">على المورد إدخال بياناته بنفسه في نموذج التسجيل. يبقى الطلب بانتظار مراجعة الإدارة قبل اعتماده ونشره.</p>
+              {isDevelopmentPreview() && <p className="mt-2 font-bold text-destructive">هذا رابط تسجيل عام في الموقع المنشور، وليس تحديثاً للموردين المحفوظين في المعاينة.</p>}
               <p className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -318,7 +323,7 @@ export function SupplierInvitationsPanel() {
         </div>
       </section>
 
-      {(notice || error) && <div role="status" data-testid={error ? "status-invitation-error" : "status-invitation-notice"} className={`rounded-xl border p-3 text-sm ${error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-success/25 bg-success/10 text-success"}`}>{error || notice}</div>}
+        {(notice || error) && <div role="status" data-testid={error ? "status-invitation-error" : "status-invitation-notice"} className={`rounded-xl border p-3 text-sm ${error ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-success/25 bg-success/10 text-success"}`}>{error || notice} {error && isDevelopmentPreview() && <a href={publishedPageUrl("/admin")} target="_blank" rel="noopener noreferrer" className="font-bold underline">فتح لوحة الموقع المنشور</a>}</div>}
 
       <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="flex flex-col gap-3 border-b bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">

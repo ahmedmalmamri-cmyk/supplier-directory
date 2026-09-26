@@ -3,6 +3,7 @@ import AdminItemCategoriesTab from "@/components/admin-item-categories-tab";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { buildWhatsAppMessageUrl, invalidSaudiPhoneMessage, normalizeSaudiMobile } from "@/lib/saudi-phone";
+import { isDevelopmentPreview, publishedPageUrl } from "@/lib/public-site-url";
 import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent, useGetAdminCategoryStats } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -321,8 +322,14 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   const generateInvitation = useGenerateSupplierInvitation();
   const markInvitationSentMutation = useMarkSupplierInvitationSent();
   const [invitationFallbacks, setInvitationFallbacks] = useState<Record<number, string>>({});
+  const [invitationError, setInvitationError] = useState("");
 
   const sendInvitation = (supplier: Supplier) => {
+    if (isDevelopmentPreview()) {
+      setInvitationError("لا يمكن إرسال دعوة خاصة من معاينة Replit: رابطها يطلب من المورد تسجيل الدخول إلى Replit. أنشئ الدعوة من الموقع المنشور بعد نقل بيانات الموردين إليه.");
+      return;
+    }
+    setInvitationError("");
     if (!normalizeSaudiMobile(supplier.whatsapp)) {
       window.alert(invalidSaudiPhoneMessage);
       return;
@@ -423,6 +430,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   };
 
   return <div className="space-y-4">
+    {invitationError && <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{invitationError} <a href={publishedPageUrl("/admin")} target="_blank" rel="noopener noreferrer" className="font-bold underline">فتح لوحة الموقع المنشور</a></div>}
     {suppliers.map((supplier) => <article key={supplier.id} className="rounded-2xl border bg-card p-5">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
