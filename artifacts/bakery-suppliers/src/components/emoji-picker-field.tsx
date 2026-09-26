@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { emojiKeywords, getEmojiSuggestions, searchEmojiCatalog } from "../lib/emoji-catalog";
+import { CategoryIconValue } from "./category-special-icons";
 
 export type EmojiPickerFieldProps = {
   value: string;
@@ -20,7 +21,7 @@ export function EmojiSuggestions({ name, onSelect }: { name: string; onSelect: (
       aria-label={`اختر ${emojiKeywords[emoji]?.split(" ")[0] ?? emoji}`}
       title={emojiKeywords[emoji]} onClick={() => onSelect(emoji)}
       className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/30 text-xl transition-colors hover:border-accent hover:bg-secondary/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >{emoji}</button>)}
+    ><CategoryIconValue icon={emoji} /></button>)}
   </div>;
 }
 
@@ -88,7 +89,7 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
       <button ref={opener} id={fieldId} type="button" data-testid={inputTestId} aria-label={`اختر أيقونة ${name || "التصنيف"}`} aria-haspopup="dialog" aria-expanded={open}
         onClick={openPicker}
         className="group flex h-14 min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-background px-2 text-right transition-colors hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-        <span data-testid={`${prefix}-preview`} aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-[40px] leading-none">{value || "❓"}</span>
+         <span data-testid={`${prefix}-preview`} aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-[40px] leading-none"><CategoryIconValue icon={value || "❓"} /></span>
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-muted-foreground">{value ? "تغيير الأيقونة" : "اختر أيقونة"}</span>
         <span className="text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true">‹</span>
       </button>
@@ -123,14 +124,14 @@ export function EmojiPickerField({ value, onChange, name, inputTestId, idPrefix 
                 aria-label={emojiKeywords[emoji]?.split(" ")[0] ?? emoji} aria-pressed={draft === emoji}
                 title={emojiKeywords[emoji]} onClick={() => setDraft(emoji)}
                 className={`flex aspect-square min-h-10 items-center justify-center rounded-xl border-2 text-[27px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${draft === emoji ? "border-accent bg-secondary/70" : "border-transparent bg-secondary/30 hover:border-accent/40 hover:bg-secondary/60"}`}
-              >{emoji}</button>)}
+               ><CategoryIconValue icon={emoji} /></button>)}
             </div>
           </section>) : <div role="status" data-testid={`${prefix}-no-results`} className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-10 text-center">
             <p className="font-bold">لا توجد أيقونات مطابقة</p><p className="mt-1 text-sm text-muted-foreground">جرّب البحث باسم المكوّن أو باسم مجموعة مثل «الألبان».</p>
           </div>}
         </div>
         <footer className="flex shrink-0 flex-wrap items-center gap-3 border-t border-border bg-card px-5 py-4">
-          <span data-testid={`${prefix}-selected`} className="ml-auto text-sm font-bold">المختار: <span className="text-2xl align-middle">{draft || "❓"}</span></span>
+           <span data-testid={`${prefix}-selected`} className="ml-auto text-sm font-bold">المختار: <span className="text-2xl align-middle"><CategoryIconValue icon={draft || "❓"} /></span></span>
           <button type="button" data-testid={`${prefix}-cancel`} onClick={closePicker} className="min-h-10 rounded-xl border border-border px-4 text-sm font-bold hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary">إلغاء</button>
           <button type="button" data-testid={`${prefix}-confirm`} onClick={confirm} disabled={!draft}
             className="min-h-10 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">تأكيد</button>

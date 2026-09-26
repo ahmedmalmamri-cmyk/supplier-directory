@@ -1,16 +1,17 @@
 /** Curated icon choices for the bakery directory. Entries are unique within each section. */
 const sections = [
-  ["المخابز", "🥖 🍞 🥐 🥯 🥨 🫓 🍩 🧇 🥞 🍥 🥧 🍕 🌮 🌯 🫔"],
+  ["الدقيق والحبوب", "icon:flour-powder 🌾 🥣 🛍️ 🌽 🍚 🌰 🫘 🧂"],
+  ["المخابز", "icon:round-bread 🥖 🍞 🥐 🥯 🥨 🫓 🍩 🧇 🥞 🍥 🥧 🍕 🌮 🌯 🫔 🥟"],
   ["الحلويات", "🎂 🍰 🧁 🍮 🍭 🍬 🍫 🍪 🍩 🥮 🍡 🍧 🍨 🍦 🥧"],
-  ["الألبان", "🥛 🧀 🍶 🍦 🧈 🥚"],
-  ["المكسرات والبذور", "🥜 🌰 🥥 🍯 🌻 🎃"],
+  ["الألبان", "🥛 🧀 🍶 🍦 🧈 🥚 🥣"],
+  ["المكسرات والبذور", "🥜 🌰 🥥 🍯 🌻 🎃 🫘 🌱"],
   ["الفواكه", "🍓 🍒 🍑 🍇 🥭 🍋 🍊 🍎 🍏 🍐 🍌 🍉 🍈 🍋‍🟩 🫐 🍅 🥝"],
   ["الخضروات", "🥬 🥒 🍅 🌶️ 🧄 🧅 🥕 🌽 🥔 🍠 🫒 🥦"],
-  ["المشروبات", "💧 🥤 ☕ 🍵 🧃 🍶 🥛 🍷 🥂"],
-  ["الأدوات", "⚙️ 🔧 🔨 🥄 🍴 🔪 🧪 🧂 🥣 🍽️ 🧊 🔥 💡"],
-  ["التغليف", "📦 🛍️ 🎁 📄 📋 🗂️ 🏷️ 📌 🔖 🎀 🎗️"],
+  ["المشروبات", "💧 🥤 ☕ 🍵 🧃 🍶 🥛 🍷 🥂 🫖 🧋"],
+  ["الأدوات", "⚙️ 🔧 🔨 🥄 🍴 🔪 🧪 🧂 🥣 🍽️ 🧊 🔥 💡 🍳 🫙 🫗 🧽"],
+  ["التغليف", "📦 🛍️ 🎁 📄 📋 🗂️ 🏷️ 📌 🔖 🎀 🎗️ 🫙 🧴 🥫"],
   ["رموز وإشارات", "⭐ ✨ 🔥 ❄️ 💡 ✅ ❌ ⚠️ ❗ ❓ 💯 🎯 🏆 🥇 🥈 🥉"],
-  ["النكهات والتوابل", "🌿 🍃 🌸 🌺 🍯 🧂 🌶️ 🧄 🧅 🍋 🌰 🌱"],
+  ["النكهات والتوابل", "🌿 🍃 🌸 🌺 🍯 🧂 🌶️ 🧄 🧅 🍋 🌰 🌱 🫘 🫚 🥬"],
 ] as const;
 
 export type EmojiSection = { name: string; emojis: string[] };
@@ -21,6 +22,8 @@ export const emojiCatalog: EmojiSection[] = sections.map(([name, choices]) => ({
 
 /** Arabic labels and alternate ingredient terms, indexed by grapheme sequence (not code point). */
 export const emojiKeywords: Record<string, string> = {
+  "icon:flour-powder": "طحين بودرة بودرا دقيق مسحوق ناعم كومة طحين قمح",
+  "icon:round-bread": "خبز دائري رغيف مستدير خبز عربي مخبوزات",
   "🥖": "رغيف فرنسي باغيت خبز دقيق قمح مخبوزات", "🍞": "خبز توست رغيف دقيق مخبوزات",
   "🥐": "كرواسون معجنات فطائر زبدة", "🥯": "بيغل خبز دائري", "🥨": "بريتزل مخبوزات",
   "🫓": "خبز مسطح صاج", "🍩": "دونات حلويات", "🧇": "وافل", "🥞": "بان كيك فطائر",
@@ -56,6 +59,10 @@ export const emojiKeywords: Record<string, string> = {
   "🌸": "زهرة", "🌺": "كركديه زهرة", "🌱": "نبتة براعم",
   "🌾": "قمح دقيق حبوب", "🐝": "نحلة عسل", "🍳": "بيض مقلي",
   "🛢️": "زيت برميل",
+  "🫘": "فاصوليا حبوب بقوليات بذور", "🍚": "أرز حبوب دقيق",
+  "🫖": "إبريق شاي", "🧋": "مشروب حليب", "🫙": "مرطبان عبوة حفظ",
+  "🫗": "سكب سائل زيت", "🧽": "اسفنجة تنظيف", "🥫": "علبة محفوظات",
+  "🧴": "عبوة زجاجة", "🫚": "زنجبيل بهارات توابل",
 };
 
 function normalize(value: string): string {
@@ -66,10 +73,11 @@ function normalize(value: string): string {
 }
 
 const ingredientRules: { terms: string[]; emojis: string[] }[] = [
+  { terms: ["طحين", "دقيق", "بودرة", "بودرا", "مسحوق"], emojis: ["icon:flour-powder", "🌾", "🥣"] },
+  { terms: ["خبز دائري", "خبز عربي", "رغيف دائري", "رغيف مستدير"], emojis: ["icon:round-bread", "🫓", "🥯"] },
   { terms: ["شوكولاتة", "شوكولاته", "كاكاو"], emojis: ["🍫", "🍪"] },
   { terms: ["مكسرات", "مكسر"], emojis: ["🥜", "🌰"] },
   { terms: ["بسكويت", "كوكيز"], emojis: ["🍪", "🍫"] },
-  { terms: ["دقيق", "طحين"], emojis: ["🥖", "🌾", "🍞"] },
   { terms: ["زبدة", "زبده", "سمن"], emojis: ["🧈", "🥛"] },
   { terms: ["حليب", "لبن"], emojis: ["🥛", "🍶"] },
   { terms: ["جبنة", "جبن"], emojis: ["🧀", "🍶"] },
@@ -78,11 +86,12 @@ const ingredientRules: { terms: string[]; emojis: string[] }[] = [
   { terms: ["زيت"], emojis: ["🛢️", "🫒"] },
   { terms: ["سكر"], emojis: ["🍰", "🍬", "🧁"] },
   { terms: ["ملح"], emojis: ["🧂"] },
-  { terms: ["خبز"], emojis: ["🍞", "🥖"] },
+  { terms: ["خبز"], emojis: ["icon:round-bread", "🍞", "🥖", "🫓"] },
   { terms: ["كيك", "تورتة"], emojis: ["🎂", "🍰"] },
 ];
 
 const groupRules: { terms: string[]; section: string }[] = [
+  { terms: ["دقيق", "طحين", "حبوب", "مسحوق", "بودرة"], section: "الدقيق والحبوب" },
   { terms: ["مخبوز", "مخابز", "معجن", "فطائر", "خبز"], section: "المخابز" },
   { terms: ["حلويات", "حلوى", "سكر", "كيك", "بسكويت", "شوكولات"], section: "الحلويات" },
   { terms: ["ألبان", "البان", "حليب", "لبن", "جبن", "زبد", "سمن", "بيض"], section: "الألبان" },
@@ -97,6 +106,7 @@ const groupRules: { terms: string[]; section: string }[] = [
 ];
 
 const ingredientSection: Record<string, string> = {
+  "icon:flour-powder": "الدقيق والحبوب", "icon:round-bread": "المخابز",
   "🍫": "الحلويات", "🥜": "المكسرات والبذور", "🍪": "الحلويات",
   "🥖": "المخابز", "🧈": "الألبان", "🥛": "الألبان",
   "🧀": "الألبان", "🍯": "المكسرات والبذور", "🥚": "الألبان",
@@ -140,10 +150,11 @@ export function getEmojiSuggestions(name: string, limit = 5): string[] {
 export function searchEmojiCatalog(query: string): EmojiSection[] {
   const term = normalize(query);
   if (!term) return emojiCatalog;
+  const words = term.split(/\s+/);
   return emojiCatalog.map((section) => ({
     name: section.name,
     emojis: normalize(section.name).includes(term) ? section.emojis : section.emojis.filter((emoji) =>
-      normalize(emojiKeywords[emoji] ?? "").includes(term) || emoji === query.trim()
+      words.every((word) => normalize(emojiKeywords[emoji] ?? "").includes(word)) || emoji === query.trim()
     ),
   })).filter((section) => section.emojis.length > 0);
 }

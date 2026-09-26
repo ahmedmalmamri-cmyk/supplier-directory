@@ -1,4 +1,5 @@
 import { MainLayout } from "@/components/layout/MainLayout";
+import { CategoryIconValue } from "@/components/category-special-icons";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useListItemCategories } from "@workspace/api-client-react";
@@ -396,7 +397,7 @@ function RegistrationCategoryOption({
           onChange={(event) => onToggle(category.value, event.target.checked)}
           className="h-4 w-4 accent-primary"
         />
-        <span aria-hidden="true" className="text-xl">{category.icon}</span>
+        <span aria-hidden="true" className="text-xl"><CategoryIconValue icon={category.icon} /></span>
         <span className="min-w-0">
           <span className="block">{category.label}</span>
           {category.description && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{category.description}</span>}
@@ -515,7 +516,7 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
                       onChange={(event) => toggleCategory(option.value, event.target.checked)}
                       className="h-4 w-4 accent-primary"
                     />
-                    <span aria-hidden="true" className="text-lg">{option.icon}</span>
+                    <span aria-hidden="true" className="text-lg"><CategoryIconValue icon={option.icon} /></span>
                     <span>{option.label}</span>
                   </label>
                   {isSelected && option.flavors.length > 0 && (

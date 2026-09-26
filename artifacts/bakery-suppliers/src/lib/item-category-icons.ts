@@ -28,6 +28,8 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
+import { specialIcons } from "../components/category-special-icons";
 
 const categoryIcons: Record<string, LucideIcon> = {
   "🥖": Wheat,
@@ -80,6 +82,6 @@ const categoryIcons: Record<string, LucideIcon> = {
   "🌶️": Flame,
 };
 
-export function getItemCategoryIcon(icon: string): LucideIcon {
-  return categoryIcons[icon] ?? Package;
+export function getItemCategoryIcon(icon: string): ComponentType<SVGProps<SVGSVGElement>> {
+  return specialIcons[icon as keyof typeof specialIcons] ?? categoryIcons[icon] ?? Package;
 }
