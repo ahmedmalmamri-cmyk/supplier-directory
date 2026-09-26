@@ -9,9 +9,11 @@ type TestModeStatus = { active: false } | { active: true; role: TestRole; accoun
 
 class TestModeRequestError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  contentType: string;
+  constructor(status: number, message: string, contentType: string) {
     super(message);
     this.status = status;
+    this.contentType = contentType;
   }
 }
 
@@ -28,9 +30,29 @@ async function requestTestMode<T>(path: string, init?: RequestInit): Promise<T> 
       : body && typeof body.message === "string"
         ? body.message
         : "تعذر تحديث حالة وضع المعاينة.";
-    throw new TestModeRequestError(response.status, message);
+    throw new TestModeRequestError(response.status, message, response.headers.get("content-type") ?? "");
   }
   return body as T;
+}
+
+function isTransientTestModeError(error: unknown) {
+  if (error instanceof TypeError) return true;
+  if (!(error instanceof TestModeRequestError)) return false;
+  return error.status === 408
+    || error.status === 429
+    || error.status >= 500
+    || (error.status === 404 && error.contentType.toLowerCase().includes("text/html"));
+}
+
+async function requestTestModeStatus() {
+  for (let failureCount = 0; ; failureCount += 1) {
+    try {
+      return await requestTestMode<TestModeStatus>("/api/test-mode/status");
+    } catch (error) {
+      if (failureCount >= 2 || !isTransientTestModeError(error)) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 1000 * 2 ** failureCount));
+    }
+  }
 }
 
 export function TestModeBanner() {
@@ -45,7 +67,7 @@ export function TestModeBanner() {
     let mounted = true;
     const loadStatus = async () => {
       try {
-        const nextStatus = await requestTestMode<TestModeStatus>("/api/test-mode/status");
+        const nextStatus = await requestTestModeStatus();
         if (mounted) {
           setStatus(nextStatus);
           setError("");
