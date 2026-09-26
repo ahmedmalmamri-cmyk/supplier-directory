@@ -116,7 +116,7 @@ export const specialIcons = {
 
 export function CategoryIconValue({ icon, className = "inline-block h-[1em] w-[1em] align-middle" }: { icon: string; className?: string }) {
   const Icon = specialIcons[(icon || "icon:package") as keyof typeof specialIcons];
-  return Icon ? <Icon className={`${className} text-[#9A6537] dark:text-[#D4A373]`} aria-hidden="true" /> : <>{icon}</>;
+  return Icon ? <Icon className={`${className} text-[#9A6537] dark:text-accent`} aria-hidden="true" /> : <>{icon}</>;
 }
 
 export function categoryIconText(icon: string): string {
