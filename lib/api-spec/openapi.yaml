@@ -1041,6 +1041,60 @@ paths:
         "400": { description: Invalid supplier submission }
         "404": { description: Invitation not found }
         "409": { description: Invitation already completed }
+  /supplier/activation:
+    get:
+      operationId: getSupplierActivation
+      tags: [suppliers]
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Approved supplier details for initial account activation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationInfo" }
+        "400": { description: Invalid activation token }
+        "404": { description: Activation link is invalid, expired, or revoked }
+        "409": { description: Supplier account is already active }
+  /supplier/activation/complete:
+    post:
+      operationId: completeSupplierActivation
+      tags: [suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierActivationInput" }
+      responses:
+        "200":
+          description: Password set and supplier signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationResult" }
+        "400": { description: Password is invalid or confirmation does not match }
+        "404": { description: Activation link is invalid, expired, or revoked }
+        "409": { description: Link already used or account already active }
+  /admin/supplier-requests/{id}/activation-link:
+    post:
+      operationId: createSupplierActivationLink
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Single-use password setup link for an approved supplier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Approved supplier request not found }
+        "409": { description: Request is not approved or supplier already has active access }
 components:
   schemas:
     HealthStatus:
@@ -1700,3 +1754,30 @@ components:
         status: { type: string, enum: [pending_review] }
         requestCode: { type: string }
         message: { type: string }
+    SupplierActivationInfo:
+      type: object
+      required: [supplierName, phone, expiresAt]
+      properties:
+        supplierName: { type: string }
+        phone: { type: string }
+        expiresAt: { type: string, format: date-time }
+    SupplierActivationInput:
+      type: object
+      required: [token, password, confirmPassword]
+      properties:
+        token: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        confirmPassword: { type: string, minLength: 8, maxLength: 128 }
+    SupplierActivationResult:
+      type: object
+      required: [success, message, supplier]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        supplier: { $ref: "#/components/schemas/SupplierSummary" }
+    SupplierActivationLink:
+      type: object
+      required: [path, expiresAt]
+      properties:
+        path: { type: string }
+        expiresAt: { type: string, format: date-time }
