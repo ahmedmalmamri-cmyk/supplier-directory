@@ -2,6 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import AdminItemCategoriesTab from "@/components/admin-item-categories-tab";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
+import { buildWhatsAppMessageUrl, invalidSaudiPhoneMessage, normalizeSaudiMobile } from "@/lib/saudi-phone";
 import { getGetSupplierInvitationStatsQueryKey, getListSupplierInvitationsQueryKey, useAdminLogin, useAdminLogout, useGenerateSupplierInvitation, useMarkSupplierInvitationSent, useGetAdminCategoryStats } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -318,29 +319,51 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   const [orderLoading, setOrderLoading] = useState<number | null>(null);
   const [accessEditing, setAccessEditing] = useState<{ supplierId: number; password: string } | null>(null);
   const generateInvitation = useGenerateSupplierInvitation();
-  const markInvitationSent = useMarkSupplierInvitationSent();
+  const markInvitationSentMutation = useMarkSupplierInvitationSent();
+  const [invitationFallbacks, setInvitationFallbacks] = useState<Record<number, string>>({});
 
   const sendInvitation = (supplier: Supplier) => {
+    if (!normalizeSaudiMobile(supplier.whatsapp)) {
+      window.alert(invalidSaudiPhoneMessage);
+      return;
+    }
+    setInvitationFallbacks((current) => {
+      const next = { ...current };
+      delete next[supplier.id];
+      return next;
+    });
     const popup = window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
     generateInvitation.mutate({ id: supplier.id }, {
       onSuccess: (result) => {
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
         const link = `${window.location.origin}${basePath}/invite/${result.token}`;
         const message = `مرحباً ${result.supplierName}،\nيسر دليل موردي المخابز والحلويات دعوتكم لاستكمال ملف منشأتكم عبر الرابط:\n${link}\nنراجع المعلومات قبل نشرها لضمان دقة الدليل.`;
-        void navigator.clipboard?.writeText(link);
-        const whatsappUrl = `https://wa.me/${result.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
-        if (popup) popup.location.href = whatsappUrl;
-        else window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-        markInvitationSent.mutate({ id: supplier.id }, {
-          onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: getListSupplierInvitationsQueryKey() });
-            void queryClient.invalidateQueries({ queryKey: getGetSupplierInvitationStatsQueryKey() });
-          },
-        });
+        const whatsappUrl = buildWhatsAppMessageUrl(result.whatsapp, message);
+        if (!whatsappUrl) {
+          popup?.close();
+          window.alert(invalidSaudiPhoneMessage);
+          return;
+        }
+        if (popup && !popup.closed) {
+          popup.location.href = whatsappUrl;
+          markInvitationSent(supplier.id);
+        } else {
+          setInvitationFallbacks((current) => ({ ...current, [supplier.id]: whatsappUrl }));
+        }
       },
       onError: (error) => {
         popup?.close();
         window.alert(error instanceof Error ? error.message : "تعذر إنشاء الدعوة.");
+      },
+    });
+  };
+
+  const markInvitationSent = (supplierId: number) => {
+    markInvitationSentMutation.mutate({ id: supplierId }, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListSupplierInvitationsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetSupplierInvitationStatsQueryKey() });
       },
     });
   };
@@ -408,7 +431,8 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
            {(supplier.googleCategory || supplier.googleRating) && <p className="mt-2 text-xs font-bold text-primary">{supplier.googleCategory || "مورد"}{supplier.googleRating ? ` · تقييم Google: ${supplier.googleRating.toFixed(1)}${supplier.googleReviewCount ? ` (${supplier.googleReviewCount})` : ""}` : ""}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button data-testid={`button-send-invitation-${supplier.id}`} type="button" disabled={generateInvitation.isPending || markInvitationSent.isPending} onClick={() => sendInvitation(supplier)} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"><Send className="inline h-4 w-4 ml-1" /> {generateInvitation.isPending ? "جاري إنشاء الرابط..." : "إرسال دعوة"}</button>
+          <button data-testid={`button-send-invitation-${supplier.id}`} type="button" disabled={generateInvitation.isPending || markInvitationSentMutation.isPending} onClick={() => sendInvitation(supplier)} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"><Send className="inline h-4 w-4 ml-1" /> {generateInvitation.isPending ? "جاري إنشاء الرابط..." : "إرسال دعوة"}</button>
+          {invitationFallbacks[supplier.id] && <a href={invitationFallbacks[supplier.id]} target="_blank" rel="noopener noreferrer" onClick={() => markInvitationSent(supplier.id)} className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-bold text-primary">فتح رسالة الدعوة في واتساب</a>}
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
            <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "", imageDataUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>

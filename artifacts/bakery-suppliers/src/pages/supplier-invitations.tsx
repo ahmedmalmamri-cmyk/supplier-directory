@@ -165,8 +165,21 @@ export function SupplierInvitationsPanel() {
         const link = `${window.location.origin}${basePath}/invite/${result.token}`;
         setLinks((current) => ({ ...current, [supplierId]: link }));
         const message = `مرحباً ${result.supplierName}،\nيسر دليل موردي المخابز والحلويات دعوتكم لاستكمال ملف منشأتكم عبر الرابط:\n${link}\nنراجع المعلومات قبل نشرها لضمان دقة الدليل.`;
-        void navigator.clipboard?.writeText(link);
-        const whatsappUrl = openWhatsApp ? buildWhatsAppMessageUrl(result.whatsapp, message) : null;
+        if (!openWhatsApp) {
+          if (!navigator.clipboard?.writeText) {
+            setError("النسخ غير متاح في هذا المتصفح.");
+            setBusyId(null);
+            return;
+          }
+          void navigator.clipboard.writeText(link)
+            .then(() => markInvitationSent(supplierId, "تم إنشاء الرابط ونسخه. شاركه مع المورد لإكمال التسجيل."))
+            .catch(() => {
+              setError("تعذر نسخ الرابط تلقائياً. اسمح للمتصفح بالنسخ ثم حاول مجدداً.");
+              setBusyId(null);
+            });
+          return;
+        }
+        const whatsappUrl = buildWhatsAppMessageUrl(result.whatsapp, message);
         if (openWhatsApp) {
           if (!whatsappUrl) {
             popup?.close();
@@ -190,8 +203,6 @@ export function SupplierInvitationsPanel() {
             setNotice("تم إنشاء الدعوة، لكن المتصفح منع فتح واتساب تلقائياً. اضغط «متابعة الإرسال عبر واتساب» في بطاقة المورد.");
             setBusyId(null);
           }
-        } else {
-          markInvitationSent(supplierId, "تم إنشاء الرابط ونسخه. شاركه مع المورد لإكمال التسجيل.");
         }
       },
       onError: (mutationError) => {
@@ -203,9 +214,14 @@ export function SupplierInvitationsPanel() {
   };
 
   const copyExisting = (supplierId: number, link: string) => {
-    void navigator.clipboard?.writeText(link);
-    setNotice("تم نسخ رابط الدعوة.");
-    markSent.mutate({ id: supplierId, }, { onSuccess: refresh, onError: (markError) => setError(markError instanceof Error ? markError.message : "تعذر تسجيل الإرسال.") });
+    if (!navigator.clipboard?.writeText) {
+      setError("النسخ غير متاح في هذا المتصفح.");
+      return;
+    }
+    void navigator.clipboard.writeText(link).then(() => {
+      setNotice("تم نسخ رابط الدعوة.");
+      markSent.mutate({ id: supplierId }, { onSuccess: refresh, onError: (markError) => setError(markError instanceof Error ? markError.message : "تعذر تسجيل الإرسال.") });
+    }).catch(() => setError("تعذر نسخ الرابط. تحقق من أذونات المتصفح وحاول مجدداً."));
   };
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
@@ -268,9 +284,14 @@ export function SupplierInvitationsPanel() {
                 <MessageCircle className="h-4 w-4" /> اختيار مستلم في واتساب
               </a>
               <button data-testid="button-copy-supplier-registration-link" type="button" onClick={() => {
-                void navigator.clipboard?.writeText(registrationUrl);
-                setNotice("تم نسخ رابط التسجيل الرسمي.");
-                setShowWhatsApp(false);
+                if (!navigator.clipboard?.writeText) {
+                  setError("النسخ غير متاح في هذا المتصفح.");
+                  return;
+                }
+                void navigator.clipboard.writeText(registrationUrl).then(() => {
+                  setNotice("تم نسخ رابط التسجيل الرسمي.");
+                  setShowWhatsApp(false);
+                }).catch(() => setError("تعذر نسخ الرابط. تحقق من أذونات المتصفح وحاول مجدداً."));
               }} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold hover:bg-muted">
                 <Clipboard className="h-4 w-4" /> نسخ رابط التسجيل
               </button>

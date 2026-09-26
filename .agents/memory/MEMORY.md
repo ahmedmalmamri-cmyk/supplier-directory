@@ -3,6 +3,7 @@
 - [Supplier engagement measurement](supplier-engagement-measurement.md) — count qualified supplier opportunities per unique buyer over a rolling 30-day window, not confirmed WhatsApp sales.
 - [Supplier invitation review](supplier-invitation-review.md) — keep submitted invite data separate until admin approval publishes supplier profile changes.
 - [Supplier WhatsApp share link](supplier-share-link.md) — share a public registration URL without claiming to know the chosen contact or message delivery.
+- [WhatsApp invitation focus](whatsapp-popup-clipboard.md) — avoid clipboard writes after opening a popup; use an international number and prefilled message instead.
 - [Supplier source attribution](supplier-source-attribution.md) — classify only known creation sources; old records with ambiguous origins remain unattributed.
 - [Item-category group headings](item-category-group-headings.md) — use the latest 11-root/6-cake-subgroup mapping; preserve old records despite illustrative counts.
 - [Supplier category associations](supplier-category-associations.md) — preserve registration choices in JSON; update normalized supplier links transactionally and retain stable alias IDs.
