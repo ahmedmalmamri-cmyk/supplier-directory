@@ -103,6 +103,19 @@ export const GetRequestOptionsResponse = zod.object({
 })
 
 
+
+export const listRequestsQueryCityMax = 80;
+
+export const listRequestsQueryQMax = 100;
+
+
+
+export const ListRequestsQueryParams = zod.object({
+  "categoryId": zod.coerce.number().int().min(1).optional(),
+  "city": zod.coerce.string().max(listRequestsQueryCityMax).optional(),
+  "q": zod.coerce.string().max(listRequestsQueryQMax).optional().describe('Search request title, details, category, business name, or city')
+})
+
 export const ListRequestsResponseItem = zod.object({
   "id": zod.number().int(),
   "categoryId": zod.number().int(),
@@ -113,6 +126,7 @@ export const ListRequestsResponseItem = zod.object({
   "unit": zod.enum(['كيلو', 'كرتون', 'كيس', 'علبة']),
   "frequency": zod.enum(['مرة واحدة', 'أسبوعي', 'شهري']),
   "city": zod.string(),
+  "businessName": zod.string().nullable(),
   "status": zod.enum(['active', 'closed', 'expired']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
@@ -148,9 +162,25 @@ export const CreateRequestResponse = zod.object({
   "unit": zod.enum(['كيلو', 'كرتون', 'كيس', 'علبة']),
   "frequency": zod.enum(['مرة واحدة', 'أسبوعي', 'شهري']),
   "city": zod.string(),
+  "businessName": zod.string().nullable(),
   "status": zod.enum(['active', 'closed', 'expired']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
+})
+
+
+
+
+
+export const CreateSupplierRequestContactParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const CreateSupplierRequestContactResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "simulated": zod.boolean(),
+  "whatsappUrl": zod.string().url().nullable()
 })
 
 

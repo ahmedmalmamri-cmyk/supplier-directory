@@ -150,9 +150,19 @@ export interface Request {
   unit: RequestUnit;
   frequency: RequestFrequency;
   city: string;
+  /** @nullable */
+  businessName: string | null;
   status: RequestStatus;
   createdAt: string;
   expiresAt: string;
+}
+
+export interface SupplierRequestContactResponse {
+  success: boolean;
+  message: string;
+  simulated: boolean;
+  /** @nullable */
+  whatsappUrl: string | null;
 }
 
 export type RequestInputUnit = typeof RequestInputUnit[keyof typeof RequestInputUnit];
@@ -991,6 +1001,22 @@ export interface SupplierActivationLink {
   path: string;
   expiresAt: string;
 }
+
+export type ListRequestsParams = {
+/**
+ * @minimum 1
+ */
+categoryId?: number;
+/**
+ * @maxLength 80
+ */
+city?: string;
+/**
+ * Search request title, details, category, business name, or city
+ * @maxLength 100
+ */
+q?: string;
+};
 
 export type SearchDirectoryParams = {
 q?: string;

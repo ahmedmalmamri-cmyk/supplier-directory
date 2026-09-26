@@ -65,6 +65,7 @@ import type {
   ItemCategoryTransferInput,
   ItemCategoryUpdate,
   ListBuyerInvitationsParams,
+  ListRequestsParams,
   ListSupplierInvitationsParams,
   ListSuppliersParams,
   ProductDetail,
@@ -94,6 +95,7 @@ import type {
   SupplierInviteCompletion,
   SupplierInviteInput,
   SupplierLoginInput,
+  SupplierRequestContactResponse,
   SupplierSourceStats
 } from './api.schemas';
 
@@ -479,17 +481,24 @@ export function useGetRequestOptions<TData = Awaited<ReturnType<typeof getReques
 
 
 
-export const getListRequestsUrl = () => {
+export const getListRequestsUrl = (params?: ListRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/requests`
+  return stringifiedParams.length > 0 ? `/api/requests?${stringifiedParams}` : `/api/requests`
 }
 
-export const listRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<Request[]> => {
+export const listRequests = async (params?: ListRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<Request[]> => {
 
-  return customFetch<Request[]>(getListRequestsUrl(),
+  return customFetch<Request[]>(getListRequestsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -502,23 +511,23 @@ export const listRequests = async ( options?: Parameters<typeof customFetch>[1])
 
 
 
-export const getListRequestsQueryKey = () => {
+export const getListRequestsQueryKey = (params?: ListRequestsParams,) => {
     return [
-    `/api/requests`
+    `/api/requests`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listRequests>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listRequests>>, TError = ErrorType<void>>(params?: ListRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListRequestsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListRequestsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRequests>>> = ({ signal }) => listRequests({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRequests>>> = ({ signal }) => listRequests(params, { signal, ...requestOptions });
 
 
 
@@ -533,11 +542,11 @@ export type ListRequestsQueryError = ErrorType<void>
 
 
 export function useListRequests<TData = Awaited<ReturnType<typeof listRequests>>, TError = ErrorType<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListRequestsQueryOptions(options)
+  const queryOptions = getListRequestsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -630,6 +639,74 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateRequestMutationOptions(options));
+    }
+
+export const getCreateSupplierRequestContactUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/supplier/requests/${requestId}/contact`
+}
+
+export const createSupplierRequestContact = async (requestId: number, options?: Parameters<typeof customFetch>[1]): Promise<SupplierRequestContactResponse> => {
+
+  return customFetch<SupplierRequestContactResponse>(getCreateSupplierRequestContactUrl(requestId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateSupplierRequestContactMutationKey = () => ['createSupplierRequestContact'] as const;
+
+export const getCreateSupplierRequestContactMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestContact>>, TError,CreateSupplierRequestContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestContact>>, TError,CreateSupplierRequestContactMutationVariables, TContext> => {
+
+const mutationKey = getCreateSupplierRequestContactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSupplierRequestContact>>, CreateSupplierRequestContactMutationVariables> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  createSupplierRequestContact(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSupplierRequestContactMutationResult = NonNullable<Awaited<ReturnType<typeof createSupplierRequestContact>>>
+
+    export type CreateSupplierRequestContactMutationError = ErrorType<void>
+    export type CreateSupplierRequestContactMutationVariables = {requestId: number}
+
+    export const useCreateSupplierRequestContact = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupplierRequestContact>>, TError,CreateSupplierRequestContactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSupplierRequestContact>>,
+        TError,
+        CreateSupplierRequestContactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSupplierRequestContactMutationOptions(options));
     }
 
 export const getListAdminItemCategoriesUrl = () => {

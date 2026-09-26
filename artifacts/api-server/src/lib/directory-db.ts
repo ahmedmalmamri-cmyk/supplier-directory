@@ -243,6 +243,17 @@ directoryDb.exec(`
     ON requests (buyer_id, status, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_requests_category_city_status_expires
     ON requests (category_id, city, status, expires_at);
+  CREATE TABLE IF NOT EXISTS supplier_request_contact_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL REFERENCES requests(id),
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    sent_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_request_contacts_supplier_date
+    ON supplier_request_contact_logs (supplier_id, sent_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_supplier_request_contacts_request_date
+    ON supplier_request_contact_logs (request_id, sent_at DESC);
   CREATE TABLE IF NOT EXISTS supplier_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER NOT NULL UNIQUE REFERENCES suppliers(id) ON DELETE CASCADE,
