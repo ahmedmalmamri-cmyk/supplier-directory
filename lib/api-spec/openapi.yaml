@@ -71,6 +71,20 @@ paths:
     get:
       operationId: listRequests
       tags: [requests]
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: city
+          in: query
+          required: false
+          schema: { type: string, maxLength: 80 }
+        - name: q
+          in: query
+          required: false
+          description: Search request title, details, category, business name, or city
+          schema: { type: string, maxLength: 100 }
       responses:
         "200":
           description: Requests visible to the authenticated buyer or supplier
@@ -99,6 +113,25 @@ paths:
         "401": { description: Buyer login required }
         "403": { description: Only active business owners may publish requests }
         "404": { description: Category is unavailable }
+  /supplier/requests/{requestId}/contact:
+    post:
+      operationId: createSupplierRequestContact
+      tags: [requests]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Prepared supplier-to-owner WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierRequestContactResponse" }
+        "400": { description: Invalid request ID }
+        "401": { description: Active supplier login required }
+        "404": { description: Request is unavailable }
+        "409": { description: A valid WhatsApp number is unavailable }
   /admin/item-categories:
     get:
       operationId: listAdminItemCategories
@@ -1232,7 +1265,7 @@ components:
         supplierCount: { type: integer }
     Request:
       type: object
-      required: [id, categoryId, categoryName, title, description, quantity, unit, frequency, city, status, createdAt, expiresAt]
+      required: [id, categoryId, categoryName, title, description, quantity, unit, frequency, city, businessName, status, createdAt, expiresAt]
       properties:
         id: { type: integer }
         categoryId: { type: integer }
@@ -1243,9 +1276,18 @@ components:
         unit: { type: string, enum: ["كيلو", "كرتون", "كيس", "علبة"] }
         frequency: { type: string, enum: ["مرة واحدة", "أسبوعي", "شهري"] }
         city: { type: string }
+        businessName: { type: ["string", "null"] }
         status: { type: string, enum: ["active", "closed", "expired"] }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+    SupplierRequestContactResponse:
+      type: object
+      required: [success, message, simulated, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        simulated: { type: boolean }
+        whatsappUrl: { type: ["string", "null"], format: uri }
     RequestInput:
       type: object
       required: [categoryId, quantity, unit, frequency, city, description]
