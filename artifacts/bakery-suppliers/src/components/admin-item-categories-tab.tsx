@@ -50,6 +50,8 @@ export default function AdminItemCategoriesTab() {
   const [notice, setNotice] = useState<Notice>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
+  const [view, setView] = useState<"all" | "groups">("all");
+  const [groupFilter, setGroupFilter] = useState("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [unassignedOpen, setUnassignedOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(false);
@@ -137,6 +139,12 @@ export default function AdminItemCategoriesTab() {
   };
 
   const term = search.trim().toLocaleLowerCase("ar");
+  const allItems = categories.filter((item) =>
+    (status === "all" || item.isActive === (status === "active")) &&
+    (groupFilter === "all" || (groupFilter === "unassigned" ? item.primaryGroupId === null : item.primaryGroupId === Number(groupFilter))) &&
+    (!term || [item.name, item.notes ?? "", item.groupName, groupById.get(item.subGroupId ?? -1)?.name ?? ""]
+      .some((value) => value.toLocaleLowerCase("ar").includes(term)))
+  ).sort((a, b) => a.name.localeCompare(b.name, "ar") || a.id - b.id);
   const unassigned = categories.filter((item) => item.primaryGroupId === null && (status === "all" || item.isActive === (status === "active")) && (!term || item.name.toLocaleLowerCase("ar").includes(term)));
   const filteredGroups = groups.filter((group) => {
     const members = categories.filter((item) => group.parentId === null ? item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id) : item.subGroupId === group.id);
@@ -177,12 +185,38 @@ export default function AdminItemCategoriesTab() {
 
     {notice && <div role={notice.error ? "alert" : "status"} data-testid="status-category-action" className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${notice.error ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-foreground"}`}><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{notice.message}</span><button type="button" data-testid="button-dismiss-category-notice" aria-label="إغلاق التنبيه" className="mr-auto p-1" onClick={() => setNotice(null)}><X className="h-4 w-4" /></button></div>}
 
+    <div className="flex flex-wrap gap-2" role="group" aria-label="طريقة عرض الأصناف">
+      <button type="button" data-testid="button-view-all-categories" aria-pressed={view === "all"} className={view === "all" ? mainButton : subtleButton} onClick={() => setView("all")}>جميع الأصناف</button>
+      <button type="button" data-testid="button-view-category-groups" aria-pressed={view === "groups"} className={view === "groups" ? mainButton : subtleButton} onClick={() => setView("groups")}>حسب المجموعات</button>
+    </div>
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:flex-row sm:items-center sm:p-4">
-      <label className="relative min-w-0 flex-1"><span className="sr-only">ابحث في المجموعات والتصنيفات</span><Search className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" /><input data-testid="input-category-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث عن مجموعة أو تصنيف..." className={`${field} pr-10`} /></label>
+      <label className="relative min-w-0 flex-1"><span className="sr-only">ابحث في الأصناف والمجموعات</span><Search className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-muted-foreground" /><input data-testid="input-category-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={view === "all" ? "ابحث عن صنف أو مجموعة أو ملاحظة..." : "ابحث عن مجموعة أو تصنيف..."} className={`${field} pr-10`} /></label>
+      {view === "all" && <select data-testid="select-category-group-filter" aria-label="تصفية حسب المجموعة الرئيسية" className={`${field} sm:w-48`} value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}><option value="all">كل المجموعات</option><option value="unassigned">غير موزعة</option>{rootGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>}
       <select data-testid="select-category-status-filter" aria-label="تصفية حسب حالة التصنيف" className={`${field} sm:w-44`} value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">كل الحالات</option><option value="active">النشطة فقط</option><option value="inactive">المعطلة فقط</option></select>
-      <span data-testid="text-group-result-count" className="shrink-0 text-xs text-muted-foreground">{fmt(filteredGroups.length)} من {fmt(groups.length)} مجموعات</span>
+      <span data-testid={view === "all" ? "text-category-result-count" : "text-group-result-count"} className="shrink-0 text-xs text-muted-foreground">{view === "all" ? `${fmt(allItems.length)} من ${fmt(categories.length)} صنف` : `${fmt(filteredGroups.length)} من ${fmt(groups.length)} مجموعات`}</span>
     </div>
 
+    {view === "all" ? (
+      groupsQuery.isLoading || categoriesQuery.isLoading ? <div role="status" aria-label="جاري تحميل الأصناف" className="space-y-3">{[0, 1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-2xl border bg-muted/60" />)}</div>
+      : groupsQuery.isError || categoriesQuery.isError ? <State title="تعذّر تحميل الأصناف" detail="تأكد من الاتصال ثم أعد المحاولة." action={<button type="button" className={mainButton} onClick={() => { void groupsQuery.refetch(); void categoriesQuery.refetch(); }}>إعادة المحاولة</button>} />
+      : <section aria-label="جميع الأصناف" className="overflow-hidden rounded-2xl border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b p-4"><div><h3 className="font-extrabold">جميع الأصناف</h3><p className="mt-1 text-xs text-muted-foreground">ابحث وعدّل وانقل الأصناف الموزعة وغير الموزعة من قائمة واحدة.</p></div><span className="text-xs text-muted-foreground">{fmt(allItems.length)} نتيجة</span></div>
+        {allItems.length === 0 ? <div className="p-6 text-center text-sm text-muted-foreground">لا توجد أصناف تطابق البحث والمرشحات المختارة.</div>
+          : <div className="max-h-[44rem] space-y-2 overflow-y-auto p-3">{allItems.map((item) => <div key={item.id} data-testid={`all-category-row-${item.id}`} className="flex flex-col gap-3 rounded-xl border bg-background p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2"><strong data-testid={`text-all-category-name-${item.id}`} className="text-sm">{item.name}</strong><Pill active={item.isActive} /><span className="text-xs text-muted-foreground">{fmt(item.supplierCount)} مورد</span></div>
+              <p className="mt-1 text-xs text-muted-foreground">{item.primaryGroupId === null ? "غير موزع" : `المجموعة: ${groupById.get(item.primaryGroupId)?.name ?? item.groupName}`}{item.subGroupId && ` · التقسيم: ${groupById.get(item.subGroupId)?.name ?? "غير متاح"}`} · أُضيف: {new Date(item.createdAt).toLocaleDateString("ar-SA")}{item.notes && <> · ملاحظات: {item.notes}</>}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-1.5">
+              <button type="button" data-testid={`button-edit-category-${item.id}`} className={subtleButton} onClick={() => openCategory(item)}><Pencil className="h-3.5 w-3.5" /> تعديل</button>
+              {item.primaryGroupId !== null && <button type="button" data-testid={`button-tags-category-${item.id}`} className={subtleButton} onClick={() => openTags(item)}><Tags className="h-3.5 w-3.5" /> الوسوم</button>}
+              <button type="button" data-testid={`button-move-category-${item.id}`} className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDestinationSubGroupId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-3.5 w-3.5" /> نقل</button>
+              {!item.isActive && <button type="button" data-testid={`button-reactivate-category-${item.id}`} className={subtleButton} disabled={pending} onClick={() => updateCategory.mutate({ id: item.id, data: { isActive: true } })}>إعادة تفعيل</button>}
+              <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDeletionReviewed(false); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> {item.isActive ? "إيقاف الصنف" : "حذف نهائي"}</button>
+            </div>
+          </div>)}</div>}
+      </section>
+    ) : <>
     {groupsQuery.isLoading || categoriesQuery.isLoading ? <div role="status" aria-label="جاري تحميل التصنيفات" className="space-y-3">{[0, 1, 2].map((item) => <div key={item} className="h-28 animate-pulse rounded-2xl border bg-muted/60" />)}</div>
       : groupsQuery.isError || categoriesQuery.isError ? <State title="تعذّر تحميل الفهرس" detail="تأكد من الاتصال ثم أعد المحاولة." action={<button type="button" data-testid="button-retry-categories" className={mainButton} onClick={() => { void groupsQuery.refetch(); void categoriesQuery.refetch(); }}>إعادة المحاولة</button>} />
       : groups.length === 0 ? <State title="لا توجد مجموعات بعد" detail="ابدأ بإضافة مجموعة لتنظيم تصنيفات المكونات." action={<button type="button" className={mainButton} onClick={() => openGroup()}>إضافة مجموعة</button>} />
@@ -236,6 +270,7 @@ export default function AdminItemCategoriesTab() {
         </div>)}
       </div>}
     </section>
+    </>}
 
     <div className="overflow-hidden rounded-2xl border bg-card"><button type="button" data-testid="button-toggle-category-activity" aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)} className="flex w-full items-center justify-between p-4 text-right text-sm font-bold hover:bg-muted/40"><span className="flex items-center gap-2"><History className="h-4 w-4 text-primary" /> سجل نشاط التصنيفات</span>{activityOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
        {activityOpen && <div className="space-y-2 border-t p-4">{activityQuery.isLoading ? <div className="h-14 animate-pulse rounded-lg bg-muted" /> : activityQuery.isError ? <button type="button" className={subtleButton} onClick={() => void activityQuery.refetch()}>تعذّر تحميل السجل · إعادة المحاولة</button> : !activityQuery.data?.length ? <p className="text-sm text-muted-foreground">لا يوجد نشاط مسجل بعد.</p> : activityQuery.data.map((entry) => <div key={entry.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-xs"><span className="font-bold">{entry.actionType === "delete" && entry.newValue?.permanentlyDeleted === true ? "حذف نهائي" : (({ add: "إضافة", edit: "تعديل", transfer: "نقل", delete: "تعطيل" } as Record<string, string>)[entry.actionType] ?? entry.actionType)} · {entry.entityType === "category" ? "تصنيف" : entry.entityType} #{entry.entityId}</span><time className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString("ar-SA")}</time></div>)}</div>}
