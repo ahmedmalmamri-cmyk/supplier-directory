@@ -228,6 +228,20 @@ directoryDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_items_category_active
     ON supplier_taxonomy_items(category_id, is_active, name);
+  -- Associations for the proposed taxonomy. The legacy category_id on the item
+  -- remains a synchronized primary-category pointer for existing consumers.
+  CREATE TABLE IF NOT EXISTS items_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE CASCADE,
+    is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE (item_id, category_id)
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_items_categories_one_primary
+    ON items_categories(item_id) WHERE is_primary = 1;
+  CREATE INDEX IF NOT EXISTS idx_items_categories_category
+    ON items_categories(category_id, item_id);
   CREATE TABLE IF NOT EXISTS supplier_taxonomy_item_suppliers (
     supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
     item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
@@ -2391,8 +2405,13 @@ for (const { root, branch, names } of suppliedTaxonomyItems) {
     `);
     for (const name of names) {
       const result = insert.run(name.trim(), category.id, now, now);
-      if (Number(result.changes) === 1) added++;
-      else skipped++;
+      if (Number(result.changes) === 1) {
+        added++;
+        directoryDb.prepare(`
+          INSERT INTO items_categories (item_id, category_id, is_primary, created_at)
+          VALUES (?, ?, 1, ?)
+        `).run(Number(result.lastInsertRowid), category.id, now);
+      } else skipped++;
     }
     directoryDb.prepare(`
       INSERT INTO supplier_taxonomy_audit_log
@@ -2401,6 +2420,57 @@ for (const { root, branch, names } of suppliedTaxonomyItems) {
     `).run(JSON.stringify({ added, skipped, source: "owner-supplied-list", root, branch }), now);
     directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
       .run(migrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+// Migrate existing single-category records once, after all seed imports.
+// Never repeat: removed associations must not be restored on boot.
+const itemLinksMigration = "supplier-taxonomy-item-category-links-v1";
+if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(itemLinksMigration)) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.prepare(`
+      INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+      SELECT id, category_id, 1, created_at FROM supplier_taxonomy_items
+    `).run();
+    const root = directoryDb.prepare(
+      "SELECT id FROM supplier_taxonomy_nodes WHERE name = ? AND parent_id IS NULL ORDER BY id LIMIT 1",
+    );
+    const cake = root.get("مستلزمات الكيك") as { id: number } | undefined;
+    const packaging = root.get("مستلزمات التغليف") as { id: number } | undefined;
+    const materials = root.get("المواد الأولية") as { id: number } | undefined;
+    if (cake && packaging && materials) {
+      const examples: Array<[string, number, number]> = [
+        ["قواعد الكيك", cake.id, packaging.id],
+        ["أكياس التزيين", cake.id, packaging.id],
+        ["ورق الزبدة", packaging.id, materials.id],
+      ];
+      const insertItem = directoryDb.prepare(`
+        INSERT INTO supplier_taxonomy_items (name, category_id, is_active, notes, created_at, updated_at)
+        VALUES (?, ?, 1, NULL, ?, ?)
+      `);
+      const insertLink = directoryDb.prepare(`
+        INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+        VALUES (?, ?, ?, ?)
+      `);
+      for (const [name, primaryId, secondaryId] of examples) {
+        let item = directoryDb.prepare("SELECT id FROM supplier_taxonomy_items WHERE name = ?")
+          .get(name) as { id: number } | undefined;
+        if (!item) item = { id: Number(insertItem.run(name, primaryId, now, now).lastInsertRowid) };
+        // Existing item placement is an admin decision; do not overwrite it.
+        const currentPrimary = directoryDb.prepare(
+          "SELECT category_id AS categoryId FROM supplier_taxonomy_items WHERE id = ?",
+        ).get(item.id) as { categoryId: number };
+        insertLink.run(item.id, currentPrimary.categoryId, 1, now);
+        if (secondaryId !== currentPrimary.categoryId) insertLink.run(item.id, secondaryId, 0, now);
+      }
+    }
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)").run(itemLinksMigration, now);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");

@@ -450,12 +450,13 @@ export const DeleteAdminSupplierTaxonomyNodeParams = zod.object({
 
 
 
+
 export const DeleteAdminSupplierTaxonomyNodeBody = zod.object({
   "strategy": zod.enum(['cascade', 'transfer']),
   "confirmed": zod.boolean(),
-  "confirmItems": zod.boolean().optional(),
   "confirmSupplierLinks": zod.boolean().optional(),
-  "transferToNodeId": zod.number().int().min(1).optional()
+  "transferToNodeId": zod.number().int().min(1).optional(),
+  "replacementPrimaryCategoryId": zod.number().int().min(1).optional()
 })
 
 export const DeleteAdminSupplierTaxonomyNodeResponse = zod.object({
@@ -480,12 +481,14 @@ export const ReorderAdminSupplierTaxonomyNodesResponse = zod.object({
 
 
 
+export const listAdminSupplierTaxonomyItemsQueryPrimaryOnlyDefault = false;
 export const listAdminSupplierTaxonomyItemsQueryQMax = 100;
 
 export const listAdminSupplierTaxonomyItemsQueryStatusDefault = `all`;
 
 export const ListAdminSupplierTaxonomyItemsQueryParams = zod.object({
   "categoryId": zod.coerce.number().int().min(1).optional(),
+  "primaryOnly": zod.coerce.boolean().default(listAdminSupplierTaxonomyItemsQueryPrimaryOnlyDefault),
   "q": zod.coerce.string().max(listAdminSupplierTaxonomyItemsQueryQMax).optional(),
   "status": zod.enum(['all', 'active', 'inactive']).default(listAdminSupplierTaxonomyItemsQueryStatusDefault)
 })
@@ -495,6 +498,12 @@ export const ListAdminSupplierTaxonomyItemsResponseItem = zod.object({
   "name": zod.string(),
   "categoryId": zod.number().int(),
   "categoryPath": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "path": zod.string(),
+  "isPrimary": zod.boolean()
+})),
   "isActive": zod.boolean(),
   "notes": zod.string().nullable(),
   "supplierCount": zod.number().int(),
@@ -508,13 +517,18 @@ export const ListAdminSupplierTaxonomyItemsResponse = zod.array(ListAdminSupplie
 export const createAdminSupplierTaxonomyItemBodyNameMax = 120;
 
 
+
+
+
 export const createAdminSupplierTaxonomyItemBodyNotesMax = 500;
 
 
 
 export const CreateAdminSupplierTaxonomyItemBody = zod.object({
   "name": zod.string().min(1).max(createAdminSupplierTaxonomyItemBodyNameMax),
-  "categoryId": zod.number().int().min(1),
+  "categoryId": zod.number().int().min(1).optional(),
+  "categoryIds": zod.array(zod.number().int().min(1)).min(1).optional(),
+  "primaryCategoryId": zod.number().int().min(1).optional(),
   "notes": zod.string().max(createAdminSupplierTaxonomyItemBodyNotesMax).nullish(),
   "isActive": zod.boolean().optional()
 })
@@ -524,6 +538,12 @@ export const CreateAdminSupplierTaxonomyItemResponse = zod.object({
   "name": zod.string(),
   "categoryId": zod.number().int(),
   "categoryPath": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "path": zod.string(),
+  "isPrimary": zod.boolean()
+})),
   "isActive": zod.boolean(),
   "notes": zod.string().nullable(),
   "supplierCount": zod.number().int(),
@@ -536,6 +556,9 @@ export const CreateAdminSupplierTaxonomyItemResponse = zod.object({
 export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNameMax = 120;
 
 
+
+
+
 export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNotesMax = 500;
 
 export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsMax = 1000;
@@ -545,7 +568,9 @@ export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsMax = 1000;
 export const BulkCreateAdminSupplierTaxonomyItemsBody = zod.object({
   "items": zod.array(zod.object({
   "name": zod.string().min(1).max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNameMax),
-  "categoryId": zod.number().int().min(1),
+  "categoryId": zod.number().int().min(1).optional(),
+  "categoryIds": zod.array(zod.number().int().min(1)).min(1).optional(),
+  "primaryCategoryId": zod.number().int().min(1).optional(),
   "notes": zod.string().max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNotesMax).nullish(),
   "isActive": zod.boolean().optional()
 })).min(1).max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsMax)
@@ -559,6 +584,12 @@ export const BulkCreateAdminSupplierTaxonomyItemsResponse = zod.object({
   "name": zod.string(),
   "categoryId": zod.number().int(),
   "categoryPath": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "path": zod.string(),
+  "isPrimary": zod.boolean()
+})),
   "isActive": zod.boolean(),
   "notes": zod.string().nullable(),
   "supplierCount": zod.number().int(),
@@ -579,6 +610,9 @@ export const UpdateAdminSupplierTaxonomyItemParams = zod.object({
 export const updateAdminSupplierTaxonomyItemBodyNameMax = 120;
 
 
+
+
+
 export const updateAdminSupplierTaxonomyItemBodyNotesMax = 500;
 
 
@@ -586,6 +620,8 @@ export const updateAdminSupplierTaxonomyItemBodyNotesMax = 500;
 export const UpdateAdminSupplierTaxonomyItemBody = zod.object({
   "name": zod.string().min(1).max(updateAdminSupplierTaxonomyItemBodyNameMax).optional(),
   "categoryId": zod.number().int().min(1).optional(),
+  "categoryIds": zod.array(zod.number().int().min(1)).min(1).optional(),
+  "primaryCategoryId": zod.number().int().min(1).optional(),
   "notes": zod.string().max(updateAdminSupplierTaxonomyItemBodyNotesMax).nullish(),
   "isActive": zod.boolean().optional()
 })
@@ -595,6 +631,12 @@ export const UpdateAdminSupplierTaxonomyItemResponse = zod.object({
   "name": zod.string(),
   "categoryId": zod.number().int(),
   "categoryPath": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "path": zod.string(),
+  "isPrimary": zod.boolean()
+})),
   "isActive": zod.boolean(),
   "notes": zod.string().nullable(),
   "supplierCount": zod.number().int(),
@@ -623,6 +665,12 @@ export const MoveAdminSupplierTaxonomyItemResponse = zod.object({
   "name": zod.string(),
   "categoryId": zod.number().int(),
   "categoryPath": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "path": zod.string(),
+  "isPrimary": zod.boolean()
+})),
   "isActive": zod.boolean(),
   "notes": zod.string().nullable(),
   "supplierCount": zod.number().int(),

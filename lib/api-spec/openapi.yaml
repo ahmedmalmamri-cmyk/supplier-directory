@@ -312,12 +312,12 @@ paths:
             schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteInput" }
       responses:
         "200":
-          description: Deleted the selected category, transferring its direct subdivisions/items when strategy is transfer
+          description: Deleted categories and their item links without deleting items; primary items receive a replacement category
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteResponse" }
         "400": { description: Missing confirmation or invalid transfer target }
-        "409": { description: Transfer would create duplicate sibling subdivisions or cascade deletion lacks explicit confirmations }
+        "409": { description: "Replacement primary category required, supplier link confirmation missing, or duplicate subdivision" }
         "401": { description: Admin login required }
         "404": { description: Node not found }
   /admin/supplier-taxonomy/order:
@@ -345,6 +345,9 @@ paths:
         - name: categoryId
           in: query
           schema: { type: integer, minimum: 1 }
+        - name: primaryOnly
+          in: query
+          schema: { type: boolean, default: false }
         - name: q
           in: query
           schema: { type: string, maxLength: 100 }
@@ -1781,9 +1784,9 @@ components:
       properties:
         strategy: { type: string, enum: [cascade, transfer] }
         confirmed: { type: boolean }
-        confirmItems: { type: boolean }
         confirmSupplierLinks: { type: boolean }
         transferToNodeId: { type: integer, minimum: 1 }
+        replacementPrimaryCategoryId: { type: integer, minimum: 1 }
     SupplierTaxonomyDeleteResponse:
       type: object
       required: [success, deletedNodeCount, transferredItemCount]
@@ -1819,12 +1822,15 @@ components:
         confirmed: { type: boolean }
     SupplierTaxonomyItem:
       type: object
-      required: [id, name, categoryId, categoryPath, isActive, notes, supplierCount, supplierIds, createdAt, updatedAt]
+      required: [id, name, categoryId, categoryPath, categories, isActive, notes, supplierCount, supplierIds, createdAt, updatedAt]
       properties:
         id: { type: integer }
         name: { type: string }
         categoryId: { type: integer }
         categoryPath: { type: string }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItemCategory" }
         isActive: { type: boolean }
         notes: { type: ["string", "null"] }
         supplierCount: { type: integer }
@@ -1833,12 +1839,26 @@ components:
           items: { type: integer }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    SupplierTaxonomyItemCategory:
+      type: object
+      required: [id, name, path, isPrimary]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        path: { type: string }
+        isPrimary: { type: boolean }
     SupplierTaxonomyItemInput:
       type: object
-      required: [name, categoryId]
+      required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         categoryId: { type: integer, minimum: 1 }
+        categoryIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        primaryCategoryId: { type: integer, minimum: 1 }
         notes: { type: ["string", "null"], maxLength: 500 }
         isActive: { type: boolean }
     SupplierTaxonomyItemsBulkInput:
@@ -1864,6 +1884,12 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         categoryId: { type: integer, minimum: 1 }
+        categoryIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        primaryCategoryId: { type: integer, minimum: 1 }
         notes: { type: ["string", "null"], maxLength: 500 }
         isActive: { type: boolean }
     SupplierTaxonomyItemMoveInput:

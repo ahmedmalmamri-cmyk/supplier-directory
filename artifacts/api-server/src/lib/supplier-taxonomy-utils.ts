@@ -15,7 +15,7 @@ export function transferTaxonomyRoot(database: DatabaseSync, rootId: number, tar
     FROM supplier_taxonomy_nodes WHERE parent_id = ?
   `).get(targetId) as { maxOrder: number }).maxOrder;
   const directItemCount = (database.prepare(`
-    SELECT COUNT(*) AS count FROM supplier_taxonomy_items WHERE category_id = ?
+    SELECT COUNT(*) AS count FROM items_categories WHERE category_id = ?
   `).get(rootId) as { count: number }).count;
 
   const updateChild = database.prepare(`
@@ -23,6 +23,17 @@ export function transferTaxonomyRoot(database: DatabaseSync, rootId: number, tar
     SET parent_id = ?, display_order = ?, updated_at = ? WHERE id = ?
   `);
   children.forEach((child, index) => updateChild.run(targetId, lastTargetOrder + index + 1, now, child.id));
+  database.prepare(`
+    INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+    SELECT item_id, ?, 0, ? FROM items_categories WHERE category_id = ? AND is_primary = 1
+  `).run(targetId, now, rootId);
+  database.prepare(`
+    UPDATE items_categories SET is_primary = 0 WHERE category_id = ? AND is_primary = 1
+  `).run(rootId);
+  database.prepare(`
+    UPDATE items_categories SET is_primary = 1 WHERE category_id = ?
+      AND item_id IN (SELECT id FROM supplier_taxonomy_items WHERE category_id = ?)
+  `).run(targetId, rootId);
   database.prepare(`
     UPDATE supplier_taxonomy_items SET category_id = ?, updated_at = ? WHERE category_id = ?
   `).run(targetId, now, rootId);

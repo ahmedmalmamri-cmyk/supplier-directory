@@ -20,3 +20,9 @@ For the owner-supplied Aramco ready-cake names, respect the owner's explicit cho
 **Why:** After the administrator removed both ready-cake locations, the owner was asked where the nine names should go and specifically chose the mixing branch. Recreating or moving them to a seemingly more natural ready-cake location would contradict that direction.
 
 **How to apply:** Do not automatically reclassify those nine names or recreate a deleted ready-cake section during future taxonomy work; ask before changing their placement.
+
+Multi-section membership in the proposed tree is distinct from the legacy directory's classification system. Retain a single synchronized primary section for existing consumers until they are deliberately migrated, while allowing additional proposed-tree sections without treating those links as a public-directory rollout.
+
+**Why:** The two classification systems have similar terminology but different identities and review status. Silently using the proposed tree for legacy suppliers would bypass the owner's requirement to review the old associations first.
+
+**How to apply:** When extending item browsing or supplier matching, resolve proposed-tree memberships within that tree only; do not infer new supplier or public-directory associations from the additional sections. A proposed section's removal must never erase the underlying item or its supplier associations.

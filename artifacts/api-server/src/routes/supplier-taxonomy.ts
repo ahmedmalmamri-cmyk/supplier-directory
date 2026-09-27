@@ -75,6 +75,7 @@ type ItemRow = {
   name: string;
   categoryId: number;
   categoryPath: string;
+  categories: Array<{ id: number; name: string; path: string; isPrimary: boolean }>;
   isActive: boolean;
   notes: string | null;
   supplierCount: number;
@@ -83,7 +84,7 @@ type ItemRow = {
   updatedAt: string;
 };
 
-type ItemDbRow = Omit<ItemRow, "categoryPath" | "supplierIds" | "isActive"> & {
+type ItemDbRow = Omit<ItemRow, "categoryPath" | "categories" | "supplierIds" | "isActive"> & {
   isActive: number;
   supplierIdsJson: string | null;
 };
@@ -91,7 +92,7 @@ type ItemDbRow = Omit<ItemRow, "categoryPath" | "supplierIds" | "isActive"> & {
 const nodeSelect = `
   SELECT n.id, n.parent_id AS parentId, n.name, n.icon, n.description,
     n.display_order AS displayOrder, n.is_active AS isActive,
-    (SELECT COUNT(*) FROM supplier_taxonomy_items i WHERE i.category_id = n.id) AS itemCount
+    (SELECT COUNT(*) FROM items_categories ic WHERE ic.category_id = n.id) AS itemCount
   FROM supplier_taxonomy_nodes n
 `;
 
@@ -161,11 +162,21 @@ function formatItem(row: ItemDbRow): ItemRow {
   } catch {
     throw new Error(`Invalid supplier links JSON for taxonomy item ${row.id}.`);
   }
+  const links = directoryDb.prepare(`
+    SELECT ic.category_id AS id, n.name, ic.is_primary AS isPrimary
+    FROM items_categories ic
+    JOIN supplier_taxonomy_nodes n ON n.id = ic.category_id
+    WHERE ic.item_id = ?
+    ORDER BY ic.is_primary DESC, n.name, n.id
+  `).all(row.id) as Array<{ id: number; name: string; isPrimary: number }>;
   return {
     id: row.id,
     name: row.name,
     categoryId: row.categoryId,
     categoryPath: getCategoryPath(row.categoryId),
+    categories: links.map(link => ({
+      id: link.id, name: link.name, path: getCategoryPath(link.id), isPrimary: Boolean(link.isPrimary),
+    })),
     isActive: Boolean(row.isActive),
     notes: row.notes,
     supplierCount: row.supplierCount,
@@ -173,6 +184,35 @@ function formatItem(row: ItemDbRow): ItemRow {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function resolveItemCategories(data: {
+  categoryId?: number; categoryIds?: number[]; primaryCategoryId?: number;
+}, existing?: ItemRow): { primaryId: number; categoryIds: number[] } | null {
+  const primaryId = data.primaryCategoryId ?? data.categoryId ?? existing?.categoryId;
+  const categoryIds = data.categoryIds ?? (existing
+    ? [...new Set([...existing.categories.map(category => category.id), ...(primaryId ? [primaryId] : [])])]
+    : primaryId ? [primaryId] : []);
+  if (!primaryId || !categoryIds.length || new Set(categoryIds).size !== categoryIds.length ||
+      !categoryIds.includes(primaryId) || categoryIds.some(id => !getNode(id))) return null;
+  return { primaryId, categoryIds };
+}
+
+function saveItemCategories(itemId: number, categoryIds: number[], primaryId: number, now: string) {
+  const insert = directoryDb.prepare(`
+    INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+    VALUES (?, ?, 0, ?)
+  `);
+  categoryIds.forEach(id => insert.run(itemId, id, now));
+  directoryDb.prepare("UPDATE items_categories SET is_primary = 0 WHERE item_id = ?").run(itemId);
+  directoryDb.prepare("UPDATE items_categories SET is_primary = 1 WHERE item_id = ? AND category_id = ?")
+    .run(itemId, primaryId);
+  directoryDb.prepare("UPDATE supplier_taxonomy_items SET category_id = ?, updated_at = ? WHERE id = ?")
+    .run(primaryId, now, itemId);
+  directoryDb.prepare(`
+    DELETE FROM items_categories
+    WHERE item_id = ? AND category_id NOT IN (${categoryIds.map(() => "?").join(",")})
+  `).run(itemId, ...categoryIds);
 }
 
 function getItem(id: number): ItemRow | undefined {
@@ -491,17 +531,20 @@ router.post("/admin/supplier-taxonomy/nodes/:id/delete", (req, res): void => {
   const ids = getSubtreeIds(root.id);
   const placeholders = ids.map(() => "?").join(",");
   const itemCount = (directoryDb.prepare(`
-    SELECT COUNT(*) AS count FROM supplier_taxonomy_items WHERE category_id IN (${placeholders})
+    SELECT COUNT(DISTINCT item_id) AS count FROM items_categories WHERE category_id IN (${placeholders})
   `).get(...ids) as { count: number }).count;
   const oldNodeLinkCount = (directoryDb.prepare(`
     SELECT COUNT(*) AS count FROM supplier_taxonomy_supplier_links WHERE node_id IN (${placeholders})
   `).get(...ids) as { count: number }).count;
-  const itemSupplierLinkCount = (directoryDb.prepare(`
-    SELECT COUNT(*) AS count
-    FROM supplier_taxonomy_item_suppliers l
-    JOIN supplier_taxonomy_items i ON i.id = l.item_id
-    WHERE i.category_id IN (${placeholders})
-  `).get(...ids) as { count: number }).count;
+  const primaryItems = directoryDb.prepare(`
+    SELECT id, name FROM supplier_taxonomy_items WHERE category_id IN (${placeholders})
+  `).all(...ids) as Array<{ id: number; name: string }>;
+  const replacementId = parsed.data.strategy === "transfer"
+    ? parsed.data.transferToNodeId : parsed.data.replacementPrimaryCategoryId;
+  if (primaryItems.length && (!replacementId || ids.includes(replacementId) || !getNode(replacementId))) {
+    res.status(409).json({ error: "اختر قسماً أساسياً بديلاً خارج الأقسام التي ستحذف؛ ستبقى الأصناف محفوظة." });
+    return;
+  }
   if (parsed.data.strategy === "transfer") {
     const targetId = parsed.data.transferToNodeId;
     if (!targetId || ids.includes(targetId) || !getNode(targetId)) {
@@ -519,18 +562,15 @@ router.post("/admin/supplier-taxonomy/nodes/:id/delete", (req, res): void => {
       return;
     }
   } else {
-    if (itemCount > 0 && !parsed.data.confirmItems) {
-      res.status(409).json({ error: "أكد صراحةً حذف جميع الأصناف الموجودة في الشجرة." });
-      return;
-    }
-    if (oldNodeLinkCount + itemSupplierLinkCount > 0 && !parsed.data.confirmSupplierLinks) {
-      res.status(409).json({ error: "أكد صراحةً حذف جميع ارتباطات الموردين المرتبطة بهذه الشجرة." });
+    if (oldNodeLinkCount > 0 && !parsed.data.confirmSupplierLinks) {
+      res.status(409).json({ error: "أكد إزالة ارتباطات الموردين المباشرة بهذه الأقسام." });
       return;
     }
   }
   const before = directoryDb.prepare(`
-    SELECT id, name, category_id AS categoryId FROM supplier_taxonomy_items
-    WHERE category_id IN (${placeholders}) ORDER BY id
+    SELECT DISTINCT i.id, i.name, i.category_id AS categoryId
+    FROM supplier_taxonomy_items i JOIN items_categories ic ON ic.item_id = i.id
+    WHERE ic.category_id IN (${placeholders}) ORDER BY i.id
   `).all(...ids) as Array<{ id: number; name: string; categoryId: number }>;
   const rootSupplierIds = (directoryDb.prepare(`
     SELECT supplier_id AS supplierId FROM supplier_taxonomy_supplier_links
@@ -552,7 +592,22 @@ router.post("/admin/supplier-taxonomy/nodes/:id/delete", (req, res): void => {
       transferredItemCount = transfer.transferredItemCount;
       transferredChildIds = transfer.transferredChildIds;
     } else {
-      directoryDb.prepare(`DELETE FROM supplier_taxonomy_items WHERE category_id IN (${placeholders})`).run(...ids);
+      if (primaryItems.length && replacementId) {
+        const now = new Date().toISOString();
+        const insert = directoryDb.prepare(`
+          INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+          VALUES (?, ?, 0, ?)
+        `);
+        const unset = directoryDb.prepare("UPDATE items_categories SET is_primary = 0 WHERE item_id = ? AND is_primary = 1");
+        const set = directoryDb.prepare("UPDATE items_categories SET is_primary = 1 WHERE item_id = ? AND category_id = ?");
+        const updateItem = directoryDb.prepare("UPDATE supplier_taxonomy_items SET category_id = ?, updated_at = ? WHERE id = ?");
+        for (const item of primaryItems) {
+          insert.run(item.id, replacementId, now);
+          unset.run(item.id);
+          set.run(item.id, replacementId);
+          updateItem.run(replacementId, now, item.id);
+        }
+      }
       directoryDb.prepare(`DELETE FROM supplier_taxonomy_nodes WHERE id IN (${placeholders})`).run(...ids);
     }
     directoryDb.exec("COMMIT");
@@ -562,18 +617,19 @@ router.post("/admin/supplier-taxonomy/nodes/:id/delete", (req, res): void => {
     res.status(500).json({ error: "تعذر حذف شجرة التصنيف." });
     return;
   }
-  audit(req, parsed.data.strategy === "transfer" ? "delete-transfer" : "cascade-delete", "category", root.id, {
+  audit(req, parsed.data.strategy === "transfer" ? "delete-transfer" : "delete-links", "category", root.id, {
     deletedNodeIds: parsed.data.strategy === "transfer" ? [root.id] : ids,
     consideredNodeIds: ids,
     strategy: parsed.data.strategy,
     transferToNodeId: parsed.data.transferToNodeId ?? null,
+    replacementPrimaryCategoryId: replacementId ?? null,
     affectedItems: parsed.data.strategy === "transfer"
       ? before.filter((item) => item.categoryId === root.id)
       : before,
     transferredChildIds,
     transferredRootSupplierIds: parsed.data.strategy === "transfer" ? rootSupplierIds : [],
     deletedNodeCount,
-    supplierLinkCount: oldNodeLinkCount + itemSupplierLinkCount,
+    supplierLinkCount: oldNodeLinkCount,
   });
   res.json(DeleteAdminSupplierTaxonomyNodeResponse.parse({
     success: true,
@@ -627,7 +683,8 @@ router.get("/admin/supplier-taxonomy/items", (req, res): void => {
   const predicates: string[] = [];
   const values: Array<string | number> = [];
   if (query.data.categoryId !== undefined) {
-    predicates.push("i.category_id = ?");
+    predicates.push(`EXISTS (SELECT 1 FROM items_categories ic WHERE ic.item_id = i.id
+      AND ic.category_id = ? ${req.query.primaryOnly === "true" ? "AND ic.is_primary = 1" : ""})`);
     values.push(query.data.categoryId);
   }
   if (query.data.status === "active") predicates.push("i.is_active = 1");
@@ -657,8 +714,9 @@ router.post("/admin/supplier-taxonomy/items", (req, res): void => {
     res.status(400).json({ error: "اسم الصنف مطلوب." });
     return;
   }
-  if (!getNode(parsed.data.categoryId)) {
-    res.status(400).json({ error: "التصنيف غير موجود." });
+  const categories = resolveItemCategories(parsed.data);
+  if (!categories) {
+    res.status(400).json({ error: "اختر الأقسام وحدد قسماً أساسياً بينها." });
     return;
   }
   if (directoryDb.prepare("SELECT id FROM supplier_taxonomy_items WHERE name = ?").get(name)) {
@@ -666,16 +724,20 @@ router.post("/admin/supplier-taxonomy/items", (req, res): void => {
     return;
   }
   const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
   try {
     const result = directoryDb.prepare(`
       INSERT INTO supplier_taxonomy_items
         (name, category_id, is_active, notes, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name, parsed.data.categoryId, parsed.data.isActive === false ? 0 : 1, parsed.data.notes ?? null, now, now);
+    `).run(name, categories.primaryId, parsed.data.isActive === false ? 0 : 1, parsed.data.notes ?? null, now, now);
     const id = Number(result.lastInsertRowid);
-    audit(req, "create", "item", id, { name, categoryId: parsed.data.categoryId });
+    saveItemCategories(id, categories.categoryIds, categories.primaryId, now);
+    audit(req, "create", "item", id, { name, categoryIds: categories.categoryIds, primaryCategoryId: categories.primaryId });
+    directoryDb.exec("COMMIT");
     res.status(201).json(CreateAdminSupplierTaxonomyItemResponse.parse(getItem(id)));
   } catch (error) {
+    directoryDb.exec("ROLLBACK");
     req.log.error({ err: error }, "Could not create taxonomy item");
     res.status(409).json({ error: "تعذر إنشاء الصنف بالاسم المحدد." });
   }
@@ -689,7 +751,7 @@ router.post("/admin/supplier-taxonomy/items/bulk", (req, res): void => {
     return;
   }
   const prepared = parsed.data.items.map((item) => ({ ...item, name: item.name.trim() }));
-  if (prepared.some((item) => !item.name || !getNode(item.categoryId))) {
+  if (prepared.some((item) => !item.name || !resolveItemCategories(item))) {
     res.status(400).json({ error: "تحقق من أسماء الأصناف والتصنيفات المطلوبة." });
     return;
   }
@@ -707,8 +769,11 @@ router.post("/admin/supplier-taxonomy/items/bulk", (req, res): void => {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
     for (const item of accepted) {
-      const result = insert.run(item.name, item.categoryId, item.isActive === false ? 0 : 1, item.notes ?? null, now, now);
-      createdIds.push(Number(result.lastInsertRowid));
+      const categories = resolveItemCategories(item)!;
+      const result = insert.run(item.name, categories.primaryId, item.isActive === false ? 0 : 1, item.notes ?? null, now, now);
+      const id = Number(result.lastInsertRowid);
+      saveItemCategories(id, categories.categoryIds, categories.primaryId, now);
+      createdIds.push(id);
     }
     directoryDb.exec("COMMIT");
   } catch (error) {
@@ -730,6 +795,8 @@ router.post("/admin/supplier-taxonomy/items/bulk", (req, res): void => {
 function updateItem(req: Parameters<typeof requireAdmin>[0], res: Parameters<typeof requireAdmin>[1], id: number, data: {
   name?: string;
   categoryId?: number;
+  categoryIds?: number[];
+  primaryCategoryId?: number;
   isActive?: boolean;
   notes?: string | null;
 }) {
@@ -739,27 +806,38 @@ function updateItem(req: Parameters<typeof requireAdmin>[0], res: Parameters<typ
     return;
   }
   const name = data.name === undefined ? existing.name : data.name.trim();
-  const categoryId = data.categoryId ?? existing.categoryId;
-  if (!name || !getNode(categoryId)) {
-    res.status(400).json({ error: "اسم الصنف والتصنيف مطلوبان." });
+  const categories = resolveItemCategories(data, existing);
+  if (!name || !categories) {
+    res.status(400).json({ error: "اسم الصنف والأقسام والقسم الأساسي مطلوبة." });
     return;
   }
   if (directoryDb.prepare("SELECT id FROM supplier_taxonomy_items WHERE name = ? AND id != ?").get(name, id)) {
     res.status(409).json({ error: "يوجد صنف بهذا الاسم وبحالة الأحرف نفسها." });
     return;
   }
-  directoryDb.prepare(`
-    UPDATE supplier_taxonomy_items SET name = ?, category_id = ?, is_active = ?, notes = ?, updated_at = ?
-    WHERE id = ?
-  `).run(name, categoryId, data.isActive === undefined ? (existing.isActive ? 1 : 0) : data.isActive ? 1 : 0,
-    data.notes === undefined ? existing.notes : data.notes, new Date().toISOString(), id);
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    directoryDb.prepare(`
+      UPDATE supplier_taxonomy_items SET name = ?, is_active = ?, notes = ?, updated_at = ?
+      WHERE id = ?
+    `).run(name, data.isActive === undefined ? (existing.isActive ? 1 : 0) : data.isActive ? 1 : 0,
+      data.notes === undefined ? existing.notes : data.notes, now, id);
+    saveItemCategories(id, categories.categoryIds, categories.primaryId, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    req.log.error({ err: error }, "Could not update taxonomy item categories");
+    res.status(500).json({ error: "تعذر تحديث روابط الصنف." });
+    return;
+  }
   audit(req, mutationAction(
-    categoryId !== existing.categoryId,
+    categories.primaryId !== existing.categoryId,
     existing.isActive,
     data.isActive ?? existing.isActive,
   ), "item", id, {
-    before: { name: existing.name, categoryId: existing.categoryId, isActive: existing.isActive },
-    after: { name, categoryId, isActive: data.isActive ?? existing.isActive },
+    before: { name: existing.name, categoryIds: existing.categories.map(category => category.id), primaryCategoryId: existing.categoryId, isActive: existing.isActive },
+    after: { name, categoryIds: categories.categoryIds, primaryCategoryId: categories.primaryId, isActive: data.isActive ?? existing.isActive },
   });
   res.json(UpdateAdminSupplierTaxonomyItemResponse.parse(getItem(id)));
 }
@@ -824,7 +902,7 @@ router.post("/admin/supplier-taxonomy/items/:id/delete", (req, res): void => {
       supplierCount: existing.supplierCount,
     },
   });
-  res.json(DeleteAdminSupplierTaxonomyItemResponse.parse({ success: true }));
+  res.json(DeleteAdminSupplierTaxonomyItemResponse.parse({ success: true, message: "حُذف الصنف وروابطه بالأقسام." }));
 });
 
 router.put("/admin/supplier-taxonomy/items/:id/suppliers", (req, res): void => {
@@ -975,10 +1053,12 @@ router.get("/admin/supplier-taxonomy/items/export.csv", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const rows = directoryDb.prepare(`${itemSelect} ORDER BY i.category_id, i.name COLLATE BINARY, i.id`)
     .all() as ItemDbRow[];
-  const lines: unknown[][] = [["id", "name", "category_id", "category_path", "is_active", "notes", "supplier_count", "supplier_ids", "created_at", "updated_at"]];
+  const lines: unknown[][] = [["id", "name", "primary_category_id", "primary_category_path", "category_ids", "category_paths", "is_active", "notes", "supplier_count", "supplier_ids", "created_at", "updated_at"]];
   for (const raw of rows) {
     const item = formatItem(raw);
-    lines.push([item.id, item.name, item.categoryId, item.categoryPath, item.isActive ? "true" : "false",
+    lines.push([item.id, item.name, item.categoryId, item.categoryPath,
+      item.categories.map(category => category.id).join(";"),
+      item.categories.map(category => category.path).join(";"), item.isActive ? "true" : "false",
       item.notes, item.supplierCount, item.supplierIds.join(";"), item.createdAt, item.updatedAt]);
   }
   const csv = `\uFEFF${lines.map((line) => line.map(csvCell).join(",")).join("\r\n")}`;

@@ -48,6 +48,15 @@ test("category transfer preserves subdivision IDs, descendant assignments, and s
       category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE RESTRICT,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE items_categories (
+      id INTEGER PRIMARY KEY,
+      item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+      category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE CASCADE,
+      is_primary INTEGER NOT NULL CHECK (is_primary IN (0, 1)),
+      created_at TEXT NOT NULL,
+      UNIQUE (item_id, category_id)
+    );
+    CREATE UNIQUE INDEX one_primary ON items_categories(item_id) WHERE is_primary = 1;
     CREATE TABLE supplier_taxonomy_supplier_links (
       supplier_id INTEGER NOT NULL,
       node_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE CASCADE,
@@ -80,6 +89,8 @@ test("category transfer preserves subdivision IDs, descendant assignments, and s
       (10, 'root item', 2, 'old'),
       (11, 'child item', 3, 'old'),
       (12, 'nested item', 4, 'old');
+    INSERT INTO items_categories (item_id, category_id, is_primary, created_at) VALUES
+      (10, 2, 1, 'old'), (10, 5, 0, 'old'), (11, 3, 1, 'old'), (12, 4, 1, 'old');
     INSERT INTO supplier_taxonomy_supplier_links VALUES (101, 2, 'original');
     INSERT INTO supplier_taxonomy_supplier_links VALUES (102, 3, 'child link');
     INSERT INTO supplier_taxonomy_item_suppliers VALUES (201, 10, 'item link');
@@ -105,6 +116,10 @@ test("category transfer preserves subdivision IDs, descendant assignments, and s
     { id: 10, categoryId: 1 },
     { id: 11, categoryId: 3 },
     { id: 12, categoryId: 4 },
+  ]);
+  assert.deepEqual(db.prepare("SELECT item_id AS itemId, category_id AS categoryId, is_primary AS isPrimary FROM items_categories WHERE item_id = 10 ORDER BY category_id").all().map((row: Record<string, unknown>) => ({ ...row })), [
+    { itemId: 10, categoryId: 1, isPrimary: 1 },
+    { itemId: 10, categoryId: 5, isPrimary: 0 },
   ]);
   assert.deepEqual(db.prepare("SELECT supplier_id AS supplierId, item_id AS itemId FROM supplier_taxonomy_item_suppliers ORDER BY item_id").all().map((row: Record<string, unknown>) => ({ ...row })), [
     { supplierId: 201, itemId: 10 },

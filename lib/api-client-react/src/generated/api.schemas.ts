@@ -313,10 +313,11 @@ export const SupplierTaxonomyDeleteInputStrategy = {
 export interface SupplierTaxonomyDeleteInput {
   strategy: SupplierTaxonomyDeleteInputStrategy;
   confirmed: boolean;
-  confirmItems?: boolean;
   confirmSupplierLinks?: boolean;
   /** @minimum 1 */
   transferToNodeId?: number;
+  /** @minimum 1 */
+  replacementPrimaryCategoryId?: number;
 }
 
 export interface SupplierTaxonomyDeleteResponse {
@@ -353,11 +354,19 @@ export interface SupplierTaxonomyLegacyMappingInput {
   confirmed: boolean;
 }
 
+export interface SupplierTaxonomyItemCategory {
+  id: number;
+  name: string;
+  path: string;
+  isPrimary: boolean;
+}
+
 export interface SupplierTaxonomyItem {
   id: number;
   name: string;
   categoryId: number;
   categoryPath: string;
+  categories: SupplierTaxonomyItemCategory[];
   isActive: boolean;
   /** @nullable */
   notes: string | null;
@@ -374,7 +383,14 @@ export interface SupplierTaxonomyItemInput {
      */
   name: string;
   /** @minimum 1 */
-  categoryId: number;
+  categoryId?: number;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  categoryIds?: number[];
+  /** @minimum 1 */
+  primaryCategoryId?: number;
   /**
      * @maxLength 500
      * @nullable
@@ -405,6 +421,13 @@ export interface SupplierTaxonomyItemUpdate {
   name?: string;
   /** @minimum 1 */
   categoryId?: number;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  categoryIds?: number[];
+  /** @minimum 1 */
+  primaryCategoryId?: number;
   /**
      * @maxLength 500
      * @nullable
@@ -1272,6 +1295,7 @@ export type ListAdminSupplierTaxonomyItemsParams = {
  * @minimum 1
  */
 categoryId?: number;
+primaryOnly?: boolean;
 /**
  * @maxLength 100
  */
