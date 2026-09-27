@@ -48,6 +48,7 @@ export default function AdminItemCategoriesTab() {
   const importReport = useGetAdminItemCategoryImportReport();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [view, setView] = useState<"all" | "groups">("all");
@@ -81,6 +82,27 @@ export default function AdminItemCategoriesTab() {
       client.invalidateQueries({ queryKey: getListSuppliersQueryKey() }),
       client.invalidateQueries({ queryKey: getSearchDirectoryQueryKey() }),
     ]);
+  };
+  const refreshCategories = async () => {
+    if (refreshing) return;
+    setNotice(null);
+    setRefreshing(true);
+    try {
+      const results = await Promise.all([
+        groupsQuery.refetch(),
+        categoriesQuery.refetch(),
+        activityQuery.refetch(),
+        importReport.refetch(),
+      ]);
+      const failed = results.find((result) => result.isError);
+      setNotice(failed
+        ? { error: true, message: `لم يكتمل تحديث البيانات: ${errorMessage(failed.error)}` }
+        : { error: false, message: "اكتمل تحديث الأصناف والمجموعات والتقرير. إذا لم يتغير العرض، فلا توجد بيانات جديدة تطابق البحث والمرشحات الحالية." });
+    } catch (error) {
+      setNotice({ error: true, message: `لم يكتمل تحديث البيانات: ${errorMessage(error)}` });
+    } finally {
+      setRefreshing(false);
+    }
   };
   const success = (message: string) => { setDialog(null); setNotice({ message, error: false }); void invalidate(); };
   const failure = (error: unknown) => setNotice({ message: errorMessage(error), error: true });
@@ -165,7 +187,7 @@ export default function AdminItemCategoriesTab() {
           <h2 className="text-2xl font-extrabold tracking-tight md:text-3xl">نظّم ما يبحث عنه المخبز</h2>
           <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">مجموعات واضحة للمواد والمكونات، وتصنيف رئيسي واحد لكل صنف مع وسوم لمجموعات أخرى.</p></div>
         <div className="flex flex-wrap gap-2">
-          <button data-testid="button-refresh-categories" type="button" className={subtleButton} onClick={() => { void groupsQuery.refetch(); void categoriesQuery.refetch(); void activityQuery.refetch(); }}><RefreshCw className="h-4 w-4" /> تحديث</button>
+          <button data-testid="button-refresh-categories" type="button" className={subtleButton} disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshCategories()}><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> {refreshing ? "جارٍ التحديث..." : "تحديث"}</button>
           <button data-testid="button-add-group" type="button" className={subtleButton} onClick={() => openGroup()}><Plus className="h-4 w-4" /> إضافة مجموعة</button>
           <button data-testid="button-add-category" type="button" className={mainButton} onClick={() => openCategory()}><Plus className="h-4 w-4" /> إضافة صنف</button>
         </div>
