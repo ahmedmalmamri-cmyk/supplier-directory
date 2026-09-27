@@ -1740,18 +1740,24 @@ function buildItemCategoryDeletionPreview(existing: ItemCategoryRow) {
   const id = existing.id;
   const childCategoryCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM item_categories WHERE parent_id = ?").get(id) as { count: number }).count;
   const supplierLinkCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM supplier_categories WHERE item_category_id = ?").get(id) as { count: number }).count;
-  const aliasCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM item_category_aliases WHERE item_category_id = ?").get(id) as { count: number }).count;
+  const aliases = directoryDb.prepare("SELECT alias FROM item_category_aliases WHERE item_category_id = ?").all(id) as Array<{ alias: string }>;
+  const aliasCount = aliases.length;
   const productCount = (directoryDb.prepare("SELECT COUNT(*) AS count FROM products WHERE category_id = ?").get(id) as { count: number }).count;
   const selectedNames = new Set([existing.name]);
-  // A legacy selection may point to multiple item categories. Removing this
-  // category does not discard the selection when an active alternative still
-  // resolves the same alias.
   const alternativeForAlias = directoryDb.prepare(`
     SELECT 1 FROM item_category_aliases a
     JOIN item_categories c ON c.id = a.item_category_id
     WHERE a.alias = ? AND c.id != ? AND c.is_active = 1
     LIMIT 1
   `);
+  // Shared aliases remain resolvable after this item is removed; unique ones
+  // must not disappear, even when no currently linked supplier uses them.
+  let blockingAliasCount = 0;
+  for (const { alias } of aliases) {
+    if (alternativeForAlias.get(alias, id)) continue;
+    blockingAliasCount++;
+    selectedNames.add(alias);
+  }
   for (const alias of legacyItemCategoryAliasesForNames([existing.name])) {
     if (!alternativeForAlias.get(alias, id)) selectedNames.add(alias);
   }
@@ -1777,9 +1783,9 @@ function buildItemCategoryDeletionPreview(existing: ItemCategoryRow) {
   }
   return {
     id, name: existing.name, isActive: Boolean(existing.isActive),
-    childCategoryCount, supplierLinkCount, aliasCount, requestCount, productCount,
+    childCategoryCount, supplierLinkCount, aliasCount, blockingAliasCount, requestCount, productCount,
     canDelete: !isCanonicalItemCategoryRoot(existing) && !existing.isActive &&
-      !childCategoryCount && !supplierLinkCount && !aliasCount && !requestCount && !productCount && !invalidRequests,
+      !childCategoryCount && !supplierLinkCount && !blockingAliasCount && !requestCount && !productCount && !invalidRequests,
     invalidRequests,
   };
 }
@@ -1841,7 +1847,7 @@ router.delete("/admin/item-categories/:id/permanent", (req, res): void => {
       const linked = [
         preview.childCategoryCount && `${preview.childCategoryCount} تصنيف فرعي`,
         preview.supplierLinkCount && `${preview.supplierLinkCount} ارتباط مورد`,
-        preview.aliasCount && `${preview.aliasCount} اسم بديل`,
+        preview.blockingAliasCount && `${preview.blockingAliasCount} اسم بديل بلا تصنيف نشط آخر`,
         preview.requestCount && `${preview.requestCount} طلب مورد`,
         preview.productCount && `${preview.productCount} منتج`,
       ].filter(Boolean).join("، ");

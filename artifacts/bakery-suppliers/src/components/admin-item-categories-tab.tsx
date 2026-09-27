@@ -305,7 +305,7 @@ export default function AdminItemCategoriesTab() {
             <DeletionReview category={dialog.category} preview={deletionPreview.data} groupById={groupById} />
             {deletionPreview.isFetching && <p role="status" className="text-sm text-muted-foreground">جارٍ فحص الارتباطات قبل الحذف...</p>}
             {deletionPreview.isError && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage(deletionPreview.error)} <button type="button" className="underline" onClick={() => void deletionPreview.refetch()}>إعادة الفحص</button></div>}
-            {deletionPreview.data && !deletionPreview.isFetching && !deletionPreview.data.canDelete && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">لا يمكن الحذف النهائي قبل نقل أو معالجة البيانات المرتبطة المذكورة أعلاه.</p>}
+            {deletionPreview.data && !deletionPreview.isFetching && !deletionPreview.data.canDelete && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{deletionPreview.data.blockingAliasCount ? "بعض الأسماء البديلة لا ترتبط بتصنيف نشط آخر. لا يمكن الحذف النهائي قبل معالجة هذه الأسماء أو البيانات المرتبطة." : "لا يمكن الحذف النهائي قبل نقل أو معالجة البيانات المرتبطة المذكورة أعلاه."}</p>}
             {deletionPreview.data?.canDelete && !deletionPreview.isFetching && <label className="flex items-start gap-2 rounded-xl border p-3 text-sm font-bold"><input type="checkbox" data-testid="checkbox-review-permanent-delete" checked={deletionReviewed} onChange={(e) => setDeletionReviewed(e.target.checked)} className="mt-1 accent-destructive" />راجعت بيانات التصنيف وأؤكد حذفه نهائياً</label>}
           </div>}
         {notice?.error && <p role="alert" data-testid="error-delete-category" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.message}</p>}
@@ -333,7 +333,7 @@ function DeletionReview({ category, preview, groupById }: { category: AdminItemC
       {category.subGroupId && <div><dt className="text-muted-foreground">التقسيم الداخلي</dt><dd className="font-bold">{groupById.get(category.subGroupId)?.name ?? "غير متاح"}</dd></div>}
       {category.description && <div><dt className="text-muted-foreground">الوصف</dt><dd className="font-bold">{category.description}</dd></div>}
     </dl>
-    {dependencies && <div className="border-t pt-3"><p className="mb-2 font-bold">البيانات المرتبطة</p><dl className="grid grid-cols-2 gap-2">{dependencies.map(([label, count]) => <div key={label} className="rounded-lg bg-background px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className={`font-bold ${count ? "text-destructive" : ""}`}>{fmt(count)}</dd></div>)}</dl></div>}
+    {dependencies && <div className="border-t pt-3"><p className="mb-2 font-bold">البيانات المرتبطة</p><dl className="grid grid-cols-2 gap-2">{dependencies.map(([label, count]) => <div key={label} className="rounded-lg bg-background px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className={`font-bold ${count && (label !== "أسماء بديلة" || preview.blockingAliasCount) ? "text-destructive" : ""}`}>{fmt(count)}</dd></div>)}</dl>{preview.aliasCount > preview.blockingAliasCount && <p className="mt-2 text-xs text-muted-foreground">الأسماء البديلة المشتركة ({fmt(preview.aliasCount - preview.blockingAliasCount)}) ستبقى مرتبطة بتصنيف نشط آخر بعد حذف هذا الصنف.</p>}</div>}
   </div>;
 }
 

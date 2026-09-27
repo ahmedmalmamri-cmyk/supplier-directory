@@ -476,6 +476,7 @@ export const GetAdminItemCategoryDeletionPreviewResponse = zod.object({
   "childCategoryCount": zod.number().int(),
   "supplierLinkCount": zod.number().int(),
   "aliasCount": zod.number().int(),
+  "blockingAliasCount": zod.number().int(),
   "requestCount": zod.number().int(),
   "productCount": zod.number().int(),
   "canDelete": zod.boolean()

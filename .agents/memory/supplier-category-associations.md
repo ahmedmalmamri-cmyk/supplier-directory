@@ -14,3 +14,9 @@ An irreversible category removal must also account for supplier selections saved
 **Why:** Removing the category can silently drop a pending request's selection when it is approved later, or attach it to a different category if the same name is reused.
 
 **How to apply:** Treat actionable and approved requests as indirect category references during permanent deletion; do not cascade-delete supplier links or aliases to make a removal succeed.
+
+An inactive category with an alias may be deleted if that exact alias also remains attached to a different active category, provided all other dependency checks pass. An alias without an active alternative must still block deletion.
+
+**Why:** Older taxonomy entries can retain duplicate alias mappings after categories are reorganized. Blocking on every alias prevents removing an otherwise unreferenced legacy item, even though the active replacement continues resolving that name.
+
+**How to apply:** Recheck alternate alias ownership and all supplier, product, child-category, and actionable request dependencies within the permanent-delete transaction. Do not remove the shared alias from its active replacement or bypass the separate admin confirmation.

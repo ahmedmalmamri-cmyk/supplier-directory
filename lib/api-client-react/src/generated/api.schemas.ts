@@ -330,6 +330,7 @@ export interface ItemCategoryDeletionPreview {
   childCategoryCount: number;
   supplierLinkCount: number;
   aliasCount: number;
+  blockingAliasCount: number;
   requestCount: number;
   productCount: number;
   canDelete: boolean;

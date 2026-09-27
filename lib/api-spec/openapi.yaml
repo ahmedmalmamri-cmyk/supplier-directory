@@ -1421,7 +1421,7 @@ components:
         success: { type: boolean }
     ItemCategoryDeletionPreview:
       type: object
-      required: [id, name, isActive, childCategoryCount, supplierLinkCount, aliasCount, requestCount, productCount, canDelete]
+      required: [id, name, isActive, childCategoryCount, supplierLinkCount, aliasCount, blockingAliasCount, requestCount, productCount, canDelete]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -1429,6 +1429,7 @@ components:
         childCategoryCount: { type: integer }
         supplierLinkCount: { type: integer }
         aliasCount: { type: integer }
+        blockingAliasCount: { type: integer }
         requestCount: { type: integer }
         productCount: { type: integer }
         canDelete: { type: boolean }
