@@ -588,3 +588,31 @@ mtime_ms = 1790483835062
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/575296d4-4137-486b-9c7a-39f688ef1a96/ea93fbf3-783c-4668-9012-8a187b0a4154"
 storage_version_token = "1790483862887328"
 content_type = "image/png"
+
+[[outputs]]
+id = "5LHh_FriPeqZIPqq2OOo5"
+uri = "file://screenshots/bakery-warm-night.png"
+type = "image"
+title = "معاينة الوضع الليلي البني"
+description = "لقطة هاتف تُظهر الخلفية البنية الأفتح والبطاقات والنصوص وصورة المخبوزات."
+logical_id = "884cb6e2-500a-4ba2-b85e-2d04a0b8cdac"
+content_hash = "sha256:5b2932703744bc6f8d7d249af43fbe3ab5ea36ca4da02d95d90578ac87e30e7a"
+size = 238478
+mtime_ms = 1790484296577
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/884cb6e2-500a-4ba2-b85e-2d04a0b8cdac/03a6317d-ff68-4cb3-9510-1f91858496d2"
+storage_version_token = "1790484320273379"
+content_type = "image/png"
+
+[[outputs]]
+id = "Z3LsTcB41byKPefoCeOSA"
+uri = "file://screenshots/bakery-sage-night.png"
+type = "image"
+title = "معاينة الوضع الليلي الأخضر المتدرج"
+description = "لقطة هاتف للأخضر البترولي المتدرج مع الأيقونات الذهبية وصورة المخبوزات."
+logical_id = "aa718f98-57f4-41ec-a6a2-882bcfd46427"
+content_hash = "sha256:a6ae9bc2cbc427c6f07d4cad7272c109ab4ce0c1fa6b1d22bf7f127ee89f3720"
+size = 252170
+mtime_ms = 1790484511685
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/aa718f98-57f4-41ec-a6a2-882bcfd46427/77196cfe-611c-4999-aa6f-3f36fb7a69e3"
+storage_version_token = "1790484536182629"
+content_type = "image/png"
