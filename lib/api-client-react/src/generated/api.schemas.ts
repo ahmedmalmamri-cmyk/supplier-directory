@@ -173,6 +173,196 @@ export interface SupplierRequestOfferInput {
   offer: string;
 }
 
+export interface ItemInquiryMatchesResponse {
+  itemId: number;
+  city: string;
+  /** @minimum 0 */
+  count: number;
+}
+
+export interface BuyerItemInquiryInput {
+  /** @minimum 1 */
+  itemId: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  brandOrType: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  city: string;
+  allowAlternatives: boolean;
+  /** @maxLength 200 */
+  packageDetails?: string;
+  /** @maxLength 1000 */
+  note?: string;
+  /** @exclusiveMinimum 0 */
+  quantity?: number;
+  /**
+     * Private object path returned by the photo upload URL endpoint.
+     * @minLength 1
+     * @maxLength 500
+     * @pattern ^/objects/
+     */
+  photoPath?: string;
+}
+
+export type ItemInquiryDetailsStatus = typeof ItemInquiryDetailsStatus[keyof typeof ItemInquiryDetailsStatus];
+
+
+export const ItemInquiryDetailsStatus = {
+  active: 'active',
+  closed: 'closed',
+  expired: 'expired',
+} as const;
+
+export interface ItemInquiryDetails {
+  id: number;
+  itemId: number;
+  itemName: string;
+  brandOrType: string;
+  city: string;
+  allowAlternatives: boolean;
+  /** @nullable */
+  packageDetails: string | null;
+  /** @nullable */
+  note: string | null;
+  /**
+     * @exclusiveMinimum 0
+     * @nullable
+     */
+  quantity: number | null;
+  /**
+     * Authenticated route for the optional private reference photo.
+     * @nullable
+     */
+  photoUrl: string | null;
+  /** @nullable */
+  businessName: string | null;
+  status: ItemInquiryDetailsStatus;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export type ItemInquiryReplyResponseStatus = typeof ItemInquiryReplyResponseStatus[keyof typeof ItemInquiryReplyResponseStatus];
+
+
+export const ItemInquiryReplyResponseStatus = {
+  available: 'available',
+  unavailable: 'unavailable',
+  alternative: 'alternative',
+} as const;
+
+export type ItemInquiryReplyCurrency = typeof ItemInquiryReplyCurrency[keyof typeof ItemInquiryReplyCurrency];
+
+
+export const ItemInquiryReplyCurrency = {
+  SAR: 'SAR',
+} as const;
+
+export interface ItemInquiryReply {
+  supplierId: number;
+  supplierBusinessName: string;
+  responseStatus: ItemInquiryReplyResponseStatus;
+  /**
+     * @exclusiveMinimum 0
+     * @nullable
+     */
+  price: number | null;
+  currency: ItemInquiryReplyCurrency;
+  /** @nullable */
+  packageDetails: string | null;
+  /** @nullable */
+  branchAddress: string | null;
+  /** @nullable */
+  note: string | null;
+  respondedAt: string;
+}
+
+export type BuyerItemInquiry = ItemInquiryDetails & {
+  replies: ItemInquiryReply[];
+};
+
+export type SupplierItemInquiry = ItemInquiryDetails & ({
+  ownReply: null | ItemInquiryReply;
+});
+
+export type SupplierItemInquiryReplyInputResponseStatus = typeof SupplierItemInquiryReplyInputResponseStatus[keyof typeof SupplierItemInquiryReplyInputResponseStatus];
+
+
+export const SupplierItemInquiryReplyInputResponseStatus = {
+  available: 'available',
+  unavailable: 'unavailable',
+  alternative: 'alternative',
+} as const;
+
+export interface SupplierItemInquiryReplyInput {
+  responseStatus: SupplierItemInquiryReplyInputResponseStatus;
+  /** @exclusiveMinimum 0 */
+  price?: number;
+  /** @maxLength 200 */
+  packageDetails?: string;
+  /** @maxLength 300 */
+  branchAddress?: string;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export type ItemInquiryCloseResponseStatus = typeof ItemInquiryCloseResponseStatus[keyof typeof ItemInquiryCloseResponseStatus];
+
+
+export const ItemInquiryCloseResponseStatus = {
+  closed: 'closed',
+} as const;
+
+export interface ItemInquiryCloseResponse {
+  success: boolean;
+  status: ItemInquiryCloseResponseStatus;
+}
+
+export type ItemInquiryPhotoUploadInputContentType = typeof ItemInquiryPhotoUploadInputContentType[keyof typeof ItemInquiryPhotoUploadInputContentType];
+
+
+export const ItemInquiryPhotoUploadInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface ItemInquiryPhotoUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 5242880
+     */
+  size: number;
+  contentType: ItemInquiryPhotoUploadInputContentType;
+}
+
+export interface ItemInquiryPhotoUploadResponse {
+  uploadUrl: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     * @pattern ^/objects/
+     */
+  objectPath: string;
+}
+
+export interface ItemInquiryContactResponse {
+  success: boolean;
+  message: string;
+  simulated: boolean;
+  /** @nullable */
+  whatsappUrl: string | null;
+}
+
 export type RequestInputUnit = typeof RequestInputUnit[keyof typeof RequestInputUnit];
 
 
@@ -1312,6 +1502,18 @@ city?: string;
  * @maxLength 100
  */
 q?: string;
+};
+
+export type GetBuyerItemInquiryMatchesParams = {
+/**
+ * @minimum 1
+ */
+itemId: number;
+/**
+ * @minLength 1
+ * @maxLength 80
+ */
+city: string;
 };
 
 export type ListAdminSupplierTaxonomyItemsParams = {

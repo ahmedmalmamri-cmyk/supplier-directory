@@ -9,6 +9,7 @@ tags:
   - name: health
   - name: directory
   - name: requests
+  - name: item-inquiries
 paths:
   /healthz:
     get:
@@ -156,6 +157,173 @@ paths:
         "401": { description: Active supplier login required }
         "404": { description: Request is unavailable }
         "409": { description: A valid WhatsApp number is unavailable }
+  /buyer/item-inquiries/matches:
+    get:
+      operationId: getBuyerItemInquiryMatches
+      tags: [item-inquiries]
+      parameters:
+        - name: itemId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: city
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 80 }
+      responses:
+        "200":
+          description: Number of active suppliers linked to this item in the selected city
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryMatchesResponse" }
+        "400": { description: Invalid item or city }
+        "401": { description: Buyer login required }
+  /buyer/item-inquiries:
+    get:
+      operationId: listBuyerItemInquiries
+      tags: [item-inquiries]
+      responses:
+        "200":
+          description: Inquiries created by the authenticated buyer, with supplier replies and no supplier contact details
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BuyerItemInquiry" }
+        "401": { description: Buyer login required }
+    post:
+      operationId: createBuyerItemInquiry
+      tags: [item-inquiries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerItemInquiryInput" }
+      responses:
+        "201":
+          description: Availability inquiry sent to matching active suppliers; it expires after 14 days
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerItemInquiry" }
+        "400": { description: "Invalid item, city, or inquiry details" }
+        "401": { description: Buyer login required }
+        "403": { description: Only active business owners may create availability inquiries }
+        "404": { description: Item is unavailable }
+        "409": { description: No active suppliers for this item in the selected city }
+  /buyer/item-inquiries/{id}/close:
+    patch:
+      operationId: closeBuyerItemInquiry
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Inquiry closed; suppliers can no longer reply
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryCloseResponse" }
+        "401": { description: Buyer login required }
+        "403": { description: Inquiry does not belong to this buyer }
+        "404": { description: Inquiry is unavailable }
+  /buyer/item-inquiries/{id}/contact/{supplierId}:
+    post:
+      operationId: createBuyerItemInquiryContact
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: supplierId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Prepared WhatsApp link for a supplier who replied to this inquiry; contact is logged before returning the link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryContactResponse" }
+        "401": { description: Buyer login required }
+        "403": { description: Inquiry does not belong to this buyer }
+        "404": { description: Supplier has not replied to this inquiry or is unavailable }
+        "409": { description: Supplier WhatsApp number is unavailable }
+  /buyer/item-inquiries/photo-upload-url:
+    post:
+      operationId: createBuyerItemInquiryPhotoUploadUrl
+      tags: [item-inquiries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemInquiryPhotoUploadInput" }
+      responses:
+        "200":
+          description: Short-lived upload URL and private object path for an optional product/package reference image
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryPhotoUploadResponse" }
+        "400": { description: Unsupported image type or file size }
+        "401": { description: Buyer login required }
+  /supplier/item-inquiries:
+    get:
+      operationId: listSupplierItemInquiries
+      tags: [item-inquiries]
+      responses:
+        "200":
+          description: Active, unexpired availability inquiries sent only to this supplier for linked items in its city; includes buyer business name and this supplier's reply, never buyer contact fields
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierItemInquiry" }
+        "401": { description: Active supplier login required }
+        "403": { description: Supplier account is not allowed to view inquiries }
+  /supplier/item-inquiries/{id}/reply:
+    put:
+      operationId: upsertSupplierItemInquiryReply
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierItemInquiryReplyInput" }
+      responses:
+        "200":
+          description: Private availability response saved for the matching supplier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryReply" }
+        "400": { description: "Invalid response status, price, or details" }
+        "401": { description: Active supplier login required }
+        "403": { description: Inquiry was not sent to this supplier }
+        "404": { description: "Inquiry is closed, expired, or unavailable" }
+  /item-inquiries/{id}/photo:
+    get:
+      operationId: getItemInquiryPhoto
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Private reference image, accessible only to its buyer and matching active suppliers
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { description: Login required }
+        "403": { description: Account is not authorized to view this image }
+        "404": { description: Inquiry or image is unavailable }
   /admin/item-categories:
     get:
       operationId: listAdminItemCategories
@@ -1720,6 +1888,120 @@ components:
       required: [offer]
       properties:
         offer: { type: string, minLength: 1, maxLength: 1000 }
+    ItemInquiryMatchesResponse:
+      type: object
+      required: [itemId, city, count]
+      properties:
+        itemId: { type: integer }
+        city: { type: string }
+        count: { type: integer, minimum: 0 }
+    BuyerItemInquiryInput:
+      type: object
+      required: [itemId, brandOrType, city, allowAlternatives]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        brandOrType: { type: string, minLength: 1, maxLength: 160 }
+        city: { type: string, minLength: 1, maxLength: 80 }
+        allowAlternatives: { type: boolean }
+        packageDetails: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 1000 }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        photoPath:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: "^/objects/"
+          description: Private object path returned by the photo upload URL endpoint.
+    ItemInquiryDetails:
+      type: object
+      required: [id, itemId, itemName, brandOrType, city, allowAlternatives, packageDetails, note, quantity, photoUrl, businessName, status, createdAt, expiresAt]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        itemName: { type: string }
+        brandOrType: { type: string }
+        city: { type: string }
+        allowAlternatives: { type: boolean }
+        packageDetails: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        quantity: { type: ["number", "null"], exclusiveMinimum: 0 }
+        photoUrl: { type: ["string", "null"], description: Authenticated route for the optional private reference photo. }
+        businessName: { type: ["string", "null"] }
+        status: { type: string, enum: [active, closed, expired] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    BuyerItemInquiry:
+      allOf:
+        - $ref: "#/components/schemas/ItemInquiryDetails"
+        - type: object
+          required: [replies]
+          properties:
+            replies:
+              type: array
+              items: { $ref: "#/components/schemas/ItemInquiryReply" }
+    SupplierItemInquiry:
+      allOf:
+        - $ref: "#/components/schemas/ItemInquiryDetails"
+        - type: object
+          required: [ownReply]
+          properties:
+            ownReply:
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/ItemInquiryReply"
+    ItemInquiryReply:
+      type: object
+      required: [supplierId, supplierBusinessName, responseStatus, price, currency, packageDetails, branchAddress, note, respondedAt]
+      properties:
+        supplierId: { type: integer }
+        supplierBusinessName: { type: string }
+        responseStatus: { type: string, enum: [available, unavailable, alternative] }
+        price: { type: ["number", "null"], exclusiveMinimum: 0 }
+        currency: { type: string, enum: [SAR] }
+        packageDetails: { type: ["string", "null"] }
+        branchAddress: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        respondedAt: { type: string, format: date-time }
+    SupplierItemInquiryReplyInput:
+      type: object
+      required: [responseStatus]
+      properties:
+        responseStatus: { type: string, enum: [available, unavailable, alternative] }
+        price: { type: number, exclusiveMinimum: 0 }
+        packageDetails: { type: string, maxLength: 200 }
+        branchAddress: { type: string, maxLength: 300 }
+        note: { type: string, maxLength: 1000 }
+    ItemInquiryCloseResponse:
+      type: object
+      required: [success, status]
+      properties:
+        success: { type: boolean }
+        status: { type: string, enum: [closed] }
+    ItemInquiryPhotoUploadInput:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+    ItemInquiryPhotoUploadResponse:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: "^/objects/"
+    ItemInquiryContactResponse:
+      type: object
+      required: [success, message, simulated, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        simulated: { type: boolean }
+        whatsappUrl: { type: ["string", "null"], format: uri }
     RequestInput:
       type: object
       required: [categoryId, quantity, unit, frequency, city, description]

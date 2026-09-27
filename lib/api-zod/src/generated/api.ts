@@ -207,6 +207,271 @@ export const CreateSupplierRequestOfferContactResponse = zod.object({
 })
 
 
+
+export const getBuyerItemInquiryMatchesQueryCityMax = 80;
+
+
+
+export const GetBuyerItemInquiryMatchesQueryParams = zod.object({
+  "itemId": zod.coerce.number().int().min(1),
+  "city": zod.coerce.string().min(1).max(getBuyerItemInquiryMatchesQueryCityMax)
+})
+
+export const getBuyerItemInquiryMatchesResponseCountMin = 0;
+
+
+
+export const GetBuyerItemInquiryMatchesResponse = zod.object({
+  "itemId": zod.number().int(),
+  "city": zod.string(),
+  "count": zod.number().int().min(getBuyerItemInquiryMatchesResponseCountMin)
+})
+
+
+export const listBuyerItemInquiriesResponseOneQuantityExclusiveMin = 0;
+
+export const listBuyerItemInquiriesResponseTwoRepliesItemPriceExclusiveMin = 0;
+
+
+
+export const ListBuyerItemInquiriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "itemName": zod.string(),
+  "brandOrType": zod.string(),
+  "city": zod.string(),
+  "allowAlternatives": zod.boolean(),
+  "packageDetails": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "quantity": zod.number().gt(listBuyerItemInquiriesResponseOneQuantityExclusiveMin).nullable(),
+  "photoUrl": zod.string().nullable().describe('Authenticated route for the optional private reference photo.'),
+  "businessName": zod.string().nullable(),
+  "status": zod.enum(['active', 'closed', 'expired']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}).and(zod.object({
+  "replies": zod.array(zod.object({
+  "supplierId": zod.number().int(),
+  "supplierBusinessName": zod.string(),
+  "responseStatus": zod.enum(['available', 'unavailable', 'alternative']),
+  "price": zod.number().gt(listBuyerItemInquiriesResponseTwoRepliesItemPriceExclusiveMin).nullable(),
+  "currency": zod.enum(['SAR']),
+  "packageDetails": zod.string().nullable(),
+  "branchAddress": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "respondedAt": zod.coerce.date()
+}))
+}))
+export const ListBuyerItemInquiriesResponse = zod.array(ListBuyerItemInquiriesResponseItem)
+
+
+
+export const createBuyerItemInquiryBodyBrandOrTypeMax = 160;
+
+export const createBuyerItemInquiryBodyCityMax = 80;
+
+export const createBuyerItemInquiryBodyPackageDetailsMax = 200;
+
+export const createBuyerItemInquiryBodyNoteMax = 1000;
+
+export const createBuyerItemInquiryBodyQuantityExclusiveMin = 0;
+
+export const createBuyerItemInquiryBodyPhotoPathMax = 500;
+
+
+export const createBuyerItemInquiryBodyPhotoPathRegExp = new RegExp('^/objects');
+
+
+export const CreateBuyerItemInquiryBody = zod.object({
+  "itemId": zod.number().int().min(1),
+  "brandOrType": zod.string().min(1).max(createBuyerItemInquiryBodyBrandOrTypeMax),
+  "city": zod.string().min(1).max(createBuyerItemInquiryBodyCityMax),
+  "allowAlternatives": zod.boolean(),
+  "packageDetails": zod.string().max(createBuyerItemInquiryBodyPackageDetailsMax).optional(),
+  "note": zod.string().max(createBuyerItemInquiryBodyNoteMax).optional(),
+  "quantity": zod.number().gt(createBuyerItemInquiryBodyQuantityExclusiveMin).optional(),
+  "photoPath": zod.string().min(1).max(createBuyerItemInquiryBodyPhotoPathMax).regex(createBuyerItemInquiryBodyPhotoPathRegExp).optional().describe('Private object path returned by the photo upload URL endpoint.')
+})
+
+export const createBuyerItemInquiryResponseOneQuantityExclusiveMin = 0;
+
+export const createBuyerItemInquiryResponseTwoRepliesItemPriceExclusiveMin = 0;
+
+
+
+export const CreateBuyerItemInquiryResponse = zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "itemName": zod.string(),
+  "brandOrType": zod.string(),
+  "city": zod.string(),
+  "allowAlternatives": zod.boolean(),
+  "packageDetails": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "quantity": zod.number().gt(createBuyerItemInquiryResponseOneQuantityExclusiveMin).nullable(),
+  "photoUrl": zod.string().nullable().describe('Authenticated route for the optional private reference photo.'),
+  "businessName": zod.string().nullable(),
+  "status": zod.enum(['active', 'closed', 'expired']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}).and(zod.object({
+  "replies": zod.array(zod.object({
+  "supplierId": zod.number().int(),
+  "supplierBusinessName": zod.string(),
+  "responseStatus": zod.enum(['available', 'unavailable', 'alternative']),
+  "price": zod.number().gt(createBuyerItemInquiryResponseTwoRepliesItemPriceExclusiveMin).nullable(),
+  "currency": zod.enum(['SAR']),
+  "packageDetails": zod.string().nullable(),
+  "branchAddress": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "respondedAt": zod.coerce.date()
+}))
+}))
+
+
+
+
+
+export const CloseBuyerItemInquiryParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const CloseBuyerItemInquiryResponse = zod.object({
+  "success": zod.boolean(),
+  "status": zod.enum(['closed'])
+})
+
+
+
+
+
+
+export const CreateBuyerItemInquiryContactParams = zod.object({
+  "id": zod.coerce.number().int().min(1),
+  "supplierId": zod.coerce.number().int().min(1)
+})
+
+export const CreateBuyerItemInquiryContactResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "simulated": zod.boolean(),
+  "whatsappUrl": zod.string().url().nullable()
+})
+
+
+export const createBuyerItemInquiryPhotoUploadUrlBodyNameMax = 255;
+
+export const createBuyerItemInquiryPhotoUploadUrlBodySizeMax = 5242880;
+
+
+
+export const CreateBuyerItemInquiryPhotoUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(createBuyerItemInquiryPhotoUploadUrlBodyNameMax),
+  "size": zod.number().int().min(1).max(createBuyerItemInquiryPhotoUploadUrlBodySizeMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp'])
+})
+
+export const createBuyerItemInquiryPhotoUploadUrlResponseObjectPathMax = 500;
+
+
+export const createBuyerItemInquiryPhotoUploadUrlResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+export const CreateBuyerItemInquiryPhotoUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string().min(1).max(createBuyerItemInquiryPhotoUploadUrlResponseObjectPathMax).regex(createBuyerItemInquiryPhotoUploadUrlResponseObjectPathRegExp)
+})
+
+
+export const listSupplierItemInquiriesResponseOneQuantityExclusiveMin = 0;
+
+export const listSupplierItemInquiriesResponseTwoOwnReplyTwoPriceExclusiveMin = 0;
+
+
+
+export const ListSupplierItemInquiriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "itemName": zod.string(),
+  "brandOrType": zod.string(),
+  "city": zod.string(),
+  "allowAlternatives": zod.boolean(),
+  "packageDetails": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "quantity": zod.number().gt(listSupplierItemInquiriesResponseOneQuantityExclusiveMin).nullable(),
+  "photoUrl": zod.string().nullable().describe('Authenticated route for the optional private reference photo.'),
+  "businessName": zod.string().nullable(),
+  "status": zod.enum(['active', 'closed', 'expired']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+}).and(zod.object({
+  "ownReply": zod.union([zod.null(),zod.object({
+  "supplierId": zod.number().int(),
+  "supplierBusinessName": zod.string(),
+  "responseStatus": zod.enum(['available', 'unavailable', 'alternative']),
+  "price": zod.number().gt(listSupplierItemInquiriesResponseTwoOwnReplyTwoPriceExclusiveMin).nullable(),
+  "currency": zod.enum(['SAR']),
+  "packageDetails": zod.string().nullable(),
+  "branchAddress": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "respondedAt": zod.coerce.date()
+})])
+}))
+export const ListSupplierItemInquiriesResponse = zod.array(ListSupplierItemInquiriesResponseItem)
+
+
+
+
+
+export const UpsertSupplierItemInquiryReplyParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const upsertSupplierItemInquiryReplyBodyPriceExclusiveMin = 0;
+
+export const upsertSupplierItemInquiryReplyBodyPackageDetailsMax = 200;
+
+export const upsertSupplierItemInquiryReplyBodyBranchAddressMax = 300;
+
+export const upsertSupplierItemInquiryReplyBodyNoteMax = 1000;
+
+
+
+export const UpsertSupplierItemInquiryReplyBody = zod.object({
+  "responseStatus": zod.enum(['available', 'unavailable', 'alternative']),
+  "price": zod.number().gt(upsertSupplierItemInquiryReplyBodyPriceExclusiveMin).optional(),
+  "packageDetails": zod.string().max(upsertSupplierItemInquiryReplyBodyPackageDetailsMax).optional(),
+  "branchAddress": zod.string().max(upsertSupplierItemInquiryReplyBodyBranchAddressMax).optional(),
+  "note": zod.string().max(upsertSupplierItemInquiryReplyBodyNoteMax).optional()
+})
+
+export const upsertSupplierItemInquiryReplyResponsePriceExclusiveMin = 0;
+
+
+
+export const UpsertSupplierItemInquiryReplyResponse = zod.object({
+  "supplierId": zod.number().int(),
+  "supplierBusinessName": zod.string(),
+  "responseStatus": zod.enum(['available', 'unavailable', 'alternative']),
+  "price": zod.number().gt(upsertSupplierItemInquiryReplyResponsePriceExclusiveMin).nullable(),
+  "currency": zod.enum(['SAR']),
+  "packageDetails": zod.string().nullable(),
+  "branchAddress": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "respondedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const GetItemInquiryPhotoParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const GetItemInquiryPhotoResponse = zod.unknown()
+
+
 export const listAdminItemCategoriesResponseTwoNotesMax = 500;
 
 

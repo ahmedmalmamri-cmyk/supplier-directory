@@ -53,6 +53,7 @@ export default function ProductDetailPage() {
           {/* Product Info */}
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">{product.name}</h1>
+            <Link href="/inquiries/new" data-testid={`link-product-inquiry-${product.id}`} className="inquiry-btn inquiry-btn-outline mb-5">هل تبحث عن علامة أو عبوة محددة؟ استفسر هنا</Link>
             
             <Link href={`/supplier/${product.supplierId}`} className="inline-flex items-center gap-3 bg-muted/50 p-2 pr-2 pl-4 rounded-full hover:bg-muted transition-colors mb-8 border border-transparent hover:border-border">
               <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">

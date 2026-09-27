@@ -9,6 +9,7 @@ import buyerInvitationsRouter from "./buyer-invitations";
 import itemCategoryGroupsRouter from "./item-category-groups";
 import supplierTaxonomyRouter from "./supplier-taxonomy";
 import testModeRouter from "./test-mode";
+import itemInquiriesRouter from "./item-inquiries";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(registrationsRouter);
 router.use(buyerRouter);
 router.use(buyerInvitationsRouter);
 router.use(supplierRouter);
+router.use(itemInquiriesRouter);
 
 export default router;

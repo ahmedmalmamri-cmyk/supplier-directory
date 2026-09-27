@@ -38,6 +38,9 @@ import SupplierMarketPage from '@/pages/supplier-market';
 import LoginChoicePage from '@/pages/login-choice';
 import RequestsPage from '@/pages/requests';
 import NewRequestPage from '@/pages/request-new';
+import NewInquiryPage from '@/pages/inquiry-new';
+import InquiriesPage from '@/pages/inquiries';
+import SupplierInquiriesPage from '@/pages/supplier-inquiries';
 import { BuyerAuthProvider } from '@/lib/buyer-auth';
 import { SupplierAuthProvider } from '@/lib/supplier-auth';
 
@@ -85,6 +88,7 @@ function Router() {
           <Route path="/supplier/login" component={SupplierLoginPage} />
           <Route path="/supplier/dashboard" component={SupplierDashboardPage} />
           <Route path="/supplier/market" component={SupplierMarketPage} />
+           <Route path="/supplier/inquiries" component={SupplierInquiriesPage} />
           <Route path="/supplier/portal" component={SupplierPortalPage} />
           <Route path="/supplier/:id" component={SupplierProfilePage} />
         <Route path="/product/:id" component={ProductDetailPage} />
@@ -99,6 +103,8 @@ function Router() {
           <Route path="/buyer/profile" component={BuyerProfilePage} />
          <Route path="/requests/new" component={NewRequestPage} />
          <Route path="/requests" component={RequestsPage} />
+          <Route path="/inquiries/new" component={NewInquiryPage} />
+          <Route path="/inquiries" component={InquiriesPage} />
         <Route path="/test-mode" component={() => <TestModePage />} />
         <Route path="/test-mode/report" component={() => <TestModePage view="report" />} />
         <Route path="/expansion" component={ExpansionPage} />

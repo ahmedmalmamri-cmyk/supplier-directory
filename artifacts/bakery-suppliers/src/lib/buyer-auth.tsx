@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListRequestsQueryKey } from "@workspace/api-client-react";
+import { getListBuyerItemInquiriesQueryKey, getListRequestsQueryKey } from "@workspace/api-client-react";
 
 export type BuyerUser = {
   id: number;
@@ -40,7 +40,7 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/buyer/me", { credentials: "same-origin" });
       if (!response.ok) {
         if (id === requestId.current) {
-          if (currentBuyer.current) queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+          if (currentBuyer.current) { queryClient.removeQueries({ queryKey: getListRequestsQueryKey() }); queryClient.removeQueries({ queryKey: getListBuyerItemInquiriesQueryKey() }); }
           currentBuyer.current = null;
           setUser(null);
         }
@@ -50,6 +50,7 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
       if (id === requestId.current) {
         if (currentBuyer.current?.id !== result.user.id || currentBuyer.current?.isOwner !== result.user.isOwner) {
           queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+          queryClient.removeQueries({ queryKey: getListBuyerItemInquiriesQueryKey() });
         }
         currentBuyer.current = { id: result.user.id, isOwner: result.user.isOwner };
         setUser(result.user);
@@ -57,7 +58,7 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
       return result.user;
     } catch {
       if (id === requestId.current) {
-        if (currentBuyer.current) queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+        if (currentBuyer.current) { queryClient.removeQueries({ queryKey: getListRequestsQueryKey() }); queryClient.removeQueries({ queryKey: getListBuyerItemInquiriesQueryKey() }); }
         currentBuyer.current = null;
         setUser(null);
       }
@@ -73,6 +74,7 @@ export function BuyerAuthProvider({ children }: { children: ReactNode }) {
     requestId.current++;
     currentBuyer.current = null;
     queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+    queryClient.removeQueries({ queryKey: getListBuyerItemInquiriesQueryKey() });
     setUser(null);
     setIsLoading(false);
   };

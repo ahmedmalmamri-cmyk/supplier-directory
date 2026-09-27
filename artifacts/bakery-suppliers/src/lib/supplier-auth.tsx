@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListRequestsQueryKey } from "@workspace/api-client-react";
+import { getListRequestsQueryKey, getListSupplierItemInquiriesQueryKey } from "@workspace/api-client-react";
 
 export type SupplierUser = {
   id: number;
@@ -38,6 +38,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
         if (currentSupplierId.current !== next?.id) {
           queryClient.removeQueries({ queryKey: ["supplier"] });
           queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+          queryClient.removeQueries({ queryKey: getListSupplierItemInquiriesQueryKey() });
         }
         currentSupplierId.current = next?.id ?? null;
         setSupplier(next);
@@ -48,6 +49,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
         currentSupplierId.current = null;
         queryClient.removeQueries({ queryKey: ["supplier"] });
         queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+        queryClient.removeQueries({ queryKey: getListSupplierItemInquiriesQueryKey() });
         setSupplier(null);
       }
       return null;
@@ -63,6 +65,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     currentSupplierId.current = null;
     queryClient.removeQueries({ queryKey: ["supplier"] });
     queryClient.removeQueries({ queryKey: getListRequestsQueryKey() });
+    queryClient.removeQueries({ queryKey: getListSupplierItemInquiriesQueryKey() });
     setSupplier(null);
     setIsLoading(false);
   };

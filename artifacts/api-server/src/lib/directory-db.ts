@@ -343,6 +343,62 @@ directoryDb.exec(`
     ON supplier_request_contact_logs (supplier_id, sent_at DESC);
   CREATE INDEX IF NOT EXISTS idx_supplier_request_contacts_request_date
     ON supplier_request_contact_logs (request_id, sent_at DESC);
+  CREATE TABLE IF NOT EXISTS item_availability_photo_uploads (
+    object_path TEXT PRIMARY KEY,
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_availability_photo_uploads_buyer_expiry
+    ON item_availability_photo_uploads (buyer_id, expires_at);
+  CREATE TABLE IF NOT EXISTS item_availability_inquiries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buyer_id INTEGER NOT NULL REFERENCES buyer_users(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE RESTRICT,
+    brand_or_type TEXT NOT NULL CHECK (length(trim(brand_or_type)) BETWEEN 1 AND 160),
+    city TEXT NOT NULL CHECK (length(trim(city)) BETWEEN 1 AND 80),
+    allow_alternatives INTEGER NOT NULL CHECK (allow_alternatives IN (0, 1)),
+    package_details TEXT,
+    note TEXT,
+    quantity REAL CHECK (quantity IS NULL OR (typeof(quantity) IN ('integer', 'real') AND quantity > 0)),
+    photo_path TEXT REFERENCES item_availability_photo_uploads(object_path) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'expired')),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_availability_inquiries_buyer_created
+    ON item_availability_inquiries (buyer_id, created_at DESC);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_item_availability_inquiries_id_buyer
+    ON item_availability_inquiries (id, buyer_id);
+  CREATE INDEX IF NOT EXISTS idx_item_availability_inquiries_status_expiry
+    ON item_availability_inquiries (status, expires_at);
+  CREATE TABLE IF NOT EXISTS item_availability_recipients (
+    inquiry_id INTEGER NOT NULL REFERENCES item_availability_inquiries(id) ON DELETE CASCADE,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    PRIMARY KEY (inquiry_id, supplier_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_availability_recipients_supplier
+    ON item_availability_recipients (supplier_id, inquiry_id);
+  CREATE TABLE IF NOT EXISTS item_availability_replies (
+    inquiry_id INTEGER NOT NULL,
+    supplier_id INTEGER NOT NULL,
+    response_status TEXT NOT NULL CHECK (response_status IN ('available', 'unavailable', 'alternative')),
+    price REAL CHECK (price IS NULL OR (typeof(price) IN ('integer', 'real') AND price > 0)),
+    package_details TEXT,
+    branch_address TEXT,
+    note TEXT,
+    responded_at TEXT NOT NULL,
+    PRIMARY KEY (inquiry_id, supplier_id),
+    FOREIGN KEY (inquiry_id, supplier_id)
+      REFERENCES item_availability_recipients(inquiry_id, supplier_id) ON DELETE CASCADE,
+    CHECK (
+      (response_status = 'unavailable' AND price IS NULL)
+      OR (response_status IN ('available', 'alternative') AND price IS NOT NULL AND branch_address IS NOT NULL)
+    )
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_availability_replies_inquiry
+    ON item_availability_replies (inquiry_id, responded_at DESC);
   CREATE TABLE IF NOT EXISTS supplier_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER NOT NULL UNIQUE REFERENCES suppliers(id) ON DELETE CASCADE,
@@ -381,6 +437,25 @@ directoryDb.exec(`
     ON supplier_page_views (supplier_id, viewed_at);
   CREATE INDEX IF NOT EXISTS idx_contact_logs_supplier_buyer_date
     ON contact_logs (supplier_id, buyer_id, sent_at);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_logs_id_buyer_supplier
+    ON contact_logs (id, buyer_id, supplier_id);
+  CREATE TABLE IF NOT EXISTS item_availability_contact_logs (
+    contact_log_id INTEGER PRIMARY KEY,
+    inquiry_id INTEGER NOT NULL,
+    buyer_id INTEGER NOT NULL,
+    supplier_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (contact_log_id, buyer_id, supplier_id)
+      REFERENCES contact_logs(id, buyer_id, supplier_id) ON DELETE CASCADE,
+    FOREIGN KEY (inquiry_id)
+      REFERENCES item_availability_inquiries(id) ON DELETE CASCADE,
+    FOREIGN KEY (inquiry_id, buyer_id)
+      REFERENCES item_availability_inquiries(id, buyer_id) ON DELETE CASCADE,
+    FOREIGN KEY (inquiry_id, supplier_id)
+      REFERENCES item_availability_recipients(inquiry_id, supplier_id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_item_availability_contact_logs_inquiry
+    ON item_availability_contact_logs (inquiry_id, created_at DESC);
   CREATE TABLE IF NOT EXISTS buyer_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contact_log_id INTEGER NOT NULL UNIQUE REFERENCES contact_logs(id),
