@@ -118,7 +118,8 @@ export const suppliedTaxonomyItems = [
     ],
   },
   {
-    root: "كيك جاهز", branch: "كيك أرمكو", names: [
+    // Owner explicitly selected this branch for the ready-made Aramco cakes.
+    root: "مستلزمات الكيك", branch: "خلطات الكيك", names: [
       "كيك أرمكو فانيليا", "كيك أرمكو شوكولاتة", "كيك أرمكو فراولة",
       "كيك أرمكو ليمون", "كيك أرمكو برتقال", "كيك أرمكو كراميل",
       "كيك أرمكو جوز الهند", "كيك أرمكو موز", "كيك أرمكو مزيج فواكه",

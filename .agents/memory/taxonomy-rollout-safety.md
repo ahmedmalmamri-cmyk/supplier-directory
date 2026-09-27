@@ -14,3 +14,9 @@ For owner-supplied item imports, do not assume every initially proposed branch s
 **Why:** An admin removed both ready-cake locations after the initial tree was created; a whole-list import that required the original destination prevented the API from starting, while silently picking a different destination would override an intentional edit.
 
 **How to apply:** Keep an independent completion marker per supplied group so deferred groups can be placed after clarification without reintroducing previously imported items that the admin later deletes. Report pending destinations to the user.
+
+For the owner-supplied Aramco ready-cake names, respect the owner's explicit choice of the cake-supplies mixing branch even though the names sound like finished products.
+
+**Why:** After the administrator removed both ready-cake locations, the owner was asked where the nine names should go and specifically chose the mixing branch. Recreating or moving them to a seemingly more natural ready-cake location would contradict that direction.
+
+**How to apply:** Do not automatically reclassify those nine names or recreate a deleted ready-cake section during future taxonomy work; ask before changing their placement.
