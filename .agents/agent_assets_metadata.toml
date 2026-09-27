@@ -574,3 +574,17 @@ mtime_ms = 1790453492667
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/537ba289-0043-4391-8409-140b040a5822/083a8c92-239a-4daf-90bd-540f4069fc74"
 storage_version_token = "1790453530517153"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "QQCB2SQYRLGIXUYee_K3c"
+uri = "file://screenshots/bakery-night-hero.png"
+type = "image"
+title = "معاينة الوضع الليلي"
+description = "لقطة هاتف تُظهر صورة المخبوزات بعد تخفيف تعتيمها مع بقاء العنوان واضحاً."
+logical_id = "575296d4-4137-486b-9c7a-39f688ef1a96"
+content_hash = "sha256:f7340ef41d1c657816d8422e05fed28145cd431b099fc534bc37d1184c27a21c"
+size = 236942
+mtime_ms = 1790483835062
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/575296d4-4137-486b-9c7a-39f688ef1a96/ea93fbf3-783c-4668-9012-8a187b0a4154"
+storage_version_token = "1790483862887328"
+content_type = "image/png"
