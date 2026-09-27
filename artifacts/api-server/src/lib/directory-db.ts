@@ -7,7 +7,9 @@ import {
 } from "./item-category-aliases";
 import { itemCategorySlugBase } from "./item-category-slugs";
 import { newItemCategoryNames } from "./new-item-category-names";
+import { migrateRequestsCategoryToSupplierTaxonomy } from "./requests-taxonomy-category-migration";
 import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items";
+import { isLegacyItemCategoriesRetired } from "./retire-legacy-item-categories";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -315,7 +317,7 @@ directoryDb.exec(`
   CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
-    category_id INTEGER NOT NULL REFERENCES item_categories(id),
+    category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id),
     title TEXT NOT NULL CHECK (length(trim(title)) > 0),
     description TEXT NOT NULL,
     quantity REAL NOT NULL CHECK (typeof(quantity) IN ('integer', 'real') AND quantity > 0),
@@ -465,7 +467,7 @@ if (!requestUnitMigration) {
         CREATE TABLE requests (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           buyer_id INTEGER NOT NULL REFERENCES buyer_users(id),
-          category_id INTEGER NOT NULL REFERENCES item_categories(id),
+          category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id),
           title TEXT NOT NULL CHECK (length(trim(title)) > 0),
           description TEXT NOT NULL,
           quantity REAL NOT NULL CHECK (typeof(quantity) IN ('integer', 'real') AND quantity > 0),
@@ -897,9 +899,11 @@ const upsertItemCategory = directoryDb.prepare(`
 const wasPermanentlyDeleted = directoryDb.prepare(
   "SELECT 1 FROM permanently_deleted_item_categories WHERE id = ?",
 );
-itemCategorySeed.forEach((item) => {
-  if (!wasPermanentlyDeleted.get(item[0])) upsertItemCategory.run(...item);
-});
+if (!isLegacyItemCategoriesRetired(directoryDb)) {
+  itemCategorySeed.forEach((item) => {
+    if (!wasPermanentlyDeleted.get(item[0])) upsertItemCategory.run(...item);
+  });
+}
 
 const cakeFillingsMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",
@@ -2487,3 +2491,5 @@ if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").ge
     throw error;
   }
 }
+
+migrateRequestsCategoryToSupplierTaxonomy(directoryDb);

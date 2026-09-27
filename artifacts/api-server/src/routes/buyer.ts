@@ -14,43 +14,13 @@ import { recordSupplierStat } from "../lib/supplier-stats";
 import { clearSupplierSession } from "../lib/supplier-auth";
 import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 import { isTestModeRequest } from "../lib/test-mode";
+import { buildRequestFilter, requestTaxonomyItemJoin } from "../lib/buyer-request-query";
 
 const router: IRouter = Router();
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function buildRequestFilter(filters: { categoryId?: number; city?: string; q?: string }) {
-  const clauses: string[] = [];
-  const values: Array<string | number> = [];
-  const city = text(filters.city);
-  const query = text(filters.q);
-
-  if (filters.categoryId !== undefined) {
-    clauses.push("r.category_id = ?");
-    values.push(filters.categoryId);
-  }
-  if (city) {
-    clauses.push("r.city = ?");
-    values.push(city);
-  }
-  if (query) {
-    clauses.push(`(
-      instr(lower(r.title), lower(?)) > 0
-      OR instr(lower(r.description), lower(?)) > 0
-      OR instr(lower(c.name), lower(?)) > 0
-      OR instr(lower(coalesce(b.business_name, '')), lower(?)) > 0
-      OR instr(lower(r.city), lower(?)) > 0
-    )`);
-    values.push(query, query, query, query, query);
-  }
-
-  return {
-    sql: clauses.map((clause) => `AND ${clause}`).join("\n"),
-    values,
-  };
 }
 
 function normalizeSaudiPhone(value: string) {
@@ -353,12 +323,13 @@ router.get("/requests", (req, res): void => {
         WHERE status = 'active' AND julianday(expires_at) <= julianday(?)
       `).run(now);
       const requests = directoryDb.prepare(`
-        SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+        SELECT r.id, r.category_id AS categoryId,
+          COALESCE(taxonomy_item.name, r.title) AS categoryName,
           r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
           b.business_name AS businessName,
           r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
         FROM requests r
-        JOIN item_categories c ON c.id = r.category_id
+        ${requestTaxonomyItemJoin}
         JOIN buyer_users b ON b.id = r.buyer_id
         WHERE r.status = 'active' AND julianday(r.expires_at) > julianday(?)
           AND b.is_owner = 1 AND b.moderation_status = 'active'
@@ -380,12 +351,13 @@ router.get("/requests", (req, res): void => {
     WHERE status = 'active' AND julianday(expires_at) <= julianday(?)
   `).run(now);
   const requests = directoryDb.prepare(`
-    SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+    SELECT r.id, r.category_id AS categoryId,
+      COALESCE(taxonomy_item.name, r.title) AS categoryName,
       r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
       b.business_name AS businessName,
       r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
     FROM requests r
-    JOIN item_categories c ON c.id = r.category_id
+    ${requestTaxonomyItemJoin}
     JOIN buyer_users b ON b.id = r.buyer_id
     WHERE r.buyer_id = ?
       ${filters.sql}
@@ -420,27 +392,25 @@ router.post("/requests", (req, res): void => {
 
   const input = parsed.data;
   const category = directoryDb.prepare(`
-    WITH RECURSIVE active_category_tree(id) AS (
-      SELECT c.id
-      FROM item_categories c
-      JOIN groups g ON g.id = c.id AND g.is_active = 1
-      WHERE c.parent_id IS NULL AND c.is_active = 1
+    WITH RECURSIVE active_taxonomy_nodes(id) AS (
+      SELECT id
+      FROM supplier_taxonomy_nodes
+      WHERE parent_id IS NULL AND is_active = 1
       UNION ALL
       SELECT child.id
-      FROM item_categories child
-      JOIN active_category_tree parent ON child.parent_id = parent.id
-      JOIN groups g ON g.id = child.primary_group_id AND g.is_active = 1
-      WHERE child.is_active = 1 AND child.primary_group_id = parent.id
+      FROM supplier_taxonomy_nodes child
+      JOIN active_taxonomy_nodes parent ON child.parent_id = parent.id
+      WHERE child.is_active = 1
     )
-    SELECT id, name
-    FROM item_categories
-    WHERE id = ? AND id IN (SELECT id FROM active_category_tree)
+    SELECT item.id, item.name
+    FROM supplier_taxonomy_items item
+    WHERE item.id = ? AND item.is_active = 1
+      AND item.category_id IN (SELECT id FROM active_taxonomy_nodes)
   `).get(input.categoryId) as { id: number; name: string } | undefined;
   if (!category) {
     res.status(404).json({ error: "الصنف المحدد غير متاح." });
     return;
   }
-
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
@@ -477,12 +447,13 @@ router.post("/requests", (req, res): void => {
   );
 
   const request = directoryDb.prepare(`
-    SELECT r.id, r.category_id AS categoryId, c.name AS categoryName,
+    SELECT r.id, r.category_id AS categoryId,
+      COALESCE(taxonomy_item.name, r.title) AS categoryName,
       r.title, r.description, r.quantity, r.unit, r.frequency, r.city,
       b.business_name AS businessName,
       r.status, r.created_at AS createdAt, r.expires_at AS expiresAt
     FROM requests r
-    JOIN item_categories c ON c.id = r.category_id
+    ${requestTaxonomyItemJoin}
     JOIN buyer_users b ON b.id = r.buyer_id
     WHERE r.id = ?
   `).get(Number(result.lastInsertRowid));

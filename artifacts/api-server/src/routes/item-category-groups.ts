@@ -15,6 +15,7 @@ import {
   UpdateAdminGroupResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { isLegacyItemCategoriesRetired } from "../lib/retire-legacy-item-categories";
 import {
   categoryTagGroupIdsMap,
   deleteEmptyGroup,
@@ -25,8 +26,27 @@ import {
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 import { uniqueItemCategorySlug } from "../lib/item-category-slugs";
 import { requireAdmin } from "../lib/admin-auth";
+import { listPublicSupplierTaxonomyGroups } from "../lib/public-supplier-taxonomy";
 
 const router: IRouter = Router();
+
+router.use("/admin/groups", (req, res, next): void => {
+  if (req.method === "GET" || !isLegacyItemCategoriesRetired(directoryDb)) {
+    next();
+    return;
+  }
+  if (!requireAdmin(req, res)) return;
+  res.status(410).json({ error: "تم إيقاف إدارة المجموعات القديمة. استخدم شجرة تصنيفات الموردين الجديدة." });
+});
+
+router.use("/admin/item-categories", (req, res, next): void => {
+  if (req.method === "GET" || !isLegacyItemCategoriesRetired(directoryDb)) {
+    next();
+    return;
+  }
+  if (!requireAdmin(req, res)) return;
+  res.status(410).json({ error: "تم إيقاف إدارة التصنيفات القديمة. استخدم شجرة تصنيفات الموردين الجديدة." });
+});
 
 function itemCategoryRow(id: number) {
   const row = directoryDb.prepare(`
@@ -76,7 +96,7 @@ function itemCategoryRow(id: number) {
 }
 
 router.get("/groups", (_req, res): void => {
-  res.json(ListGroupsResponse.parse(listGroupSummaries(false)));
+  res.json(ListGroupsResponse.parse(listPublicSupplierTaxonomyGroups()));
 });
 
 router.get("/admin/groups", (req, res): void => {

@@ -5,6 +5,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { CompleteSupplierInviteBody } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
+import {
+  getActiveSupplierTaxonomyChoiceRows,
+  getActiveSupplierTaxonomyItems,
+  getActiveSupplierTaxonomyNodes,
+  isActiveSupplierTaxonomySelection,
+} from "../lib/supplier-taxonomy-assignments";
 
 const router: IRouter = Router();
 const uploadsDir = path.resolve(process.cwd(), "uploads");
@@ -108,22 +114,10 @@ router.post("/supplier-requests", (req, res): void => {
   const minOrder = text(body.minOrder);
   const submittedDescription = text(body.description);
   const description = submittedDescription || `مورد متخصص في توفير ${categories.join("، ")}.`;
-  const activeCategoryNames = directoryDb.prepare(`
-    WITH RECURSIVE active_category_tree(id) AS (
-      SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
-      UNION ALL
-      SELECT child.id FROM item_categories child
-      JOIN active_category_tree parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
-    )
-    SELECT name FROM item_categories WHERE id IN (SELECT id FROM active_category_tree)
-  `).all().map((row) => (row as { name: string }).name);
-  const allManagedCategoryNames = new Set(directoryDb.prepare(`
-    SELECT name FROM item_categories
-  `).all().map((row) => (row as { name: string }).name));
   const allowedCategoryNames = new Set([
-    ...activeCategoryNames,
-    ...categoryNames.filter((name) => !allManagedCategoryNames.has(name)),
+    ...getActiveSupplierTaxonomyItems().map((item) => item.name),
+    ...getActiveSupplierTaxonomyNodes().map((node) => node.name),
+    ...categoryNames.filter(isActiveSupplierTaxonomySelection),
   ]);
   const deliversToOtherCities = body.deliversToOtherCities === true;
   const acceptedTerms = body.acceptedTerms === true;
@@ -133,7 +127,9 @@ router.post("/supplier-requests", (req, res): void => {
 
   if (!businessName || !contactPerson || !supplierBusinessTypes.includes(businessType) ||
       !phoneIsValid(phone) || !phoneIsValid(whatsapp) || !eastCities.includes(city) ||
-       categories.length === 0 || categories.some((item) => !allowedCategoryNames.has(item)) ||
+       categories.length === 0 || categories.some((item) =>
+         !allowedCategoryNames.has(item) && !isActiveSupplierTaxonomySelection(item),
+       ) ||
        !availableItems || availableItems.length > 1500 ||
        wordCount(description) > 300 ||
       !acceptedTerms || !acceptedData || !acceptedBusiness || !acceptedPublish ||
@@ -208,40 +204,7 @@ router.get("/invites/:token", (req, res): void => {
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
-  const rawCategoryRows = directoryDb.prepare(`
-    WITH RECURSIVE active_category_tree(id) AS (
-      SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
-      UNION ALL
-      SELECT child.id FROM item_categories child
-      JOIN active_category_tree parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
-    )
-    SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
-      description, display_on_home AS displayOnHome, display_order AS displayOrder,
-      is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
-    FROM item_categories
-    WHERE id IN (SELECT id FROM active_category_tree)
-    ORDER BY COALESCE(parent_id, id),
-      CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, display_order, id
-  `).all() as Array<{
-    id: number;
-    name: string;
-    icon: string;
-    slug: string;
-    groupName: string;
-    parentId: number | null;
-    description: string | null;
-    displayOnHome: number;
-    displayOrder: number;
-    isActive: number;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-  const categoryRows = rawCategoryRows.map((row) => ({
-    ...row,
-    displayOnHome: Boolean(row.displayOnHome),
-    isActive: Boolean(row.isActive),
-  }));
+  const categoryRows = getActiveSupplierTaxonomyChoiceRows();
   const supplierCounts = itemCategorySupplierCounts(categoryRows);
   const categories = categoryRows.map((row) => ({
     ...row,
@@ -298,17 +261,11 @@ router.post("/invites/:token/complete", (req, res): void => {
   const businessName = parsed.data.businessName.trim();
   const city = parsed.data.city.trim();
   const whatsapp = normalizeSaudiPhone(parsed.data.whatsapp);
-  const categoryRows = directoryDb.prepare(`
-    WITH RECURSIVE active_category_tree(id) AS (
-      SELECT id FROM item_categories WHERE parent_id IS NULL AND is_active = 1
-      UNION ALL
-      SELECT child.id FROM item_categories child
-      JOIN active_category_tree parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
-    )
-    SELECT name FROM item_categories WHERE id IN (SELECT id FROM active_category_tree)
-  `).all() as Array<{ name: string }>;
-  const allowedCategories = new Set([...categoryRows.map((row) => row.name), ...inviteReadyMixSubtypes]);
+  const categoryRows = getActiveSupplierTaxonomyChoiceRows();
+  const allowedCategories = new Set([
+    ...categoryRows.map((row) => row.name),
+    ...inviteReadyMixSubtypes.filter(isActiveSupplierTaxonomySelection),
+  ]);
   const categories = [...new Set(parsed.data.categories.map((category) => category.trim()))];
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
@@ -322,7 +279,9 @@ router.post("/invites/:token/complete", (req, res): void => {
   const otherCategory = parsed.data.otherCategory?.trim();
   if (businessName.length < 2 || !/^05\d{8}$/.test(whatsapp) ||
       !allowedCities.includes(city) || categories.length === 0 ||
-      categories.some((category) => !allowedCategories.has(category)) ||
+      categories.some((category) =>
+        !allowedCategories.has(category) && !isActiveSupplierTaxonomySelection(category),
+      ) ||
       (otherCategory !== undefined && otherCategory.length > 100)) {
     res.status(400).json({ error: "تحقق من بيانات النشاط والمدينة والفئات المختارة." });
     return;

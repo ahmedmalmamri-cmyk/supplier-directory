@@ -17,6 +17,7 @@ import {
   PermanentlyDeleteAdminItemCategoryResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { isLegacyItemCategoriesRetired } from "../lib/retire-legacy-item-categories";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 import { categoryTagGroupIdsMap, getGroupRecord } from "../lib/item-category-groups";
 import { legacyItemCategoryAliasesForNames } from "../lib/item-category-aliases";
@@ -35,6 +36,15 @@ const adminCookieName = "bakery_admin_session";
 const sessionDurationSeconds = 60 * 60 * 8;
 const uploadsDir = path.resolve(process.cwd(), "uploads");
 mkdirSync(uploadsDir, { recursive: true });
+
+router.use("/admin/item-categories", (req, res, next): void => {
+  if (req.method === "GET" || !isLegacyItemCategoriesRetired(directoryDb)) {
+    next();
+    return;
+  }
+  if (!requireAdmin(req, res)) return;
+  res.status(410).json({ error: "تم إيقاف إدارة التصنيفات القديمة. استخدم شجرة تصنيفات الموردين الجديدة." });
+});
 
 function getSessionSecret() {
   const secret = process.env.SESSION_SECRET;

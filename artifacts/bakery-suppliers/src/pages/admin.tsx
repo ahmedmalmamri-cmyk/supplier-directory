@@ -1,5 +1,4 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import AdminItemCategoriesTab from "@/components/admin-item-categories-tab";
 import AdminSupplierTaxonomyTab from "@/components/admin-supplier-taxonomy-tab";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
@@ -11,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Clock3, Copy, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LoaderCircle, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 import { Link } from "wouter";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "legacy-item-categories" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -42,7 +41,6 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "buyer-invitations", label: "دعوات أصحاب الأعمال", icon: UserRound },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "item-categories", label: "شجرة تصنيفات الموردين الجديدة", icon: FolderTree },
-  { id: "legacy-item-categories", label: "التصنيفات القديمة (الإدارة السابقة)", icon: Package },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -156,7 +154,6 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
             {tab === "buyer-invitations" && <BuyerInvitationsPanel />}
           {tab === "stats" && <StatsTab stats={stats} />}
           {tab === "item-categories" && <AdminSupplierTaxonomyTab />}
-          {tab === "legacy-item-categories" && <AdminItemCategoriesTab />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
       </div>

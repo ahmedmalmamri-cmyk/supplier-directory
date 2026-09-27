@@ -470,10 +470,20 @@ function handleSupplierRequestContact(req: Request, res: Response, mode: "contac
   const request = directoryDb.prepare(`
     SELECT r.id, r.buyer_id AS buyerId, r.title, r.description, r.quantity, r.unit,
       r.frequency, r.city, b.business_name AS businessName, b.business_type AS businessType,
-      c.name AS categoryName
+      COALESCE(
+        taxonomy_item.name,
+        CASE
+          WHEN instr(r.title, ' — ') > 0
+            THEN trim(substr(r.title, 9, instr(r.title, ' — ') - 9))
+          ELSE r.title
+        END
+      ) AS categoryName
     FROM requests r
     JOIN buyer_users b ON b.id = r.buyer_id
-    JOIN item_categories c ON c.id = r.category_id
+    LEFT JOIN supplier_taxonomy_legacy_imports legacy_mapping
+      ON legacy_mapping.legacy_item_category_id = r.category_id
+    LEFT JOIN supplier_taxonomy_items taxonomy_item
+      ON taxonomy_item.id = legacy_mapping.taxonomy_item_id
     WHERE r.id = ? AND r.status = 'active'
       AND julianday(r.expires_at) > julianday(?)
       AND b.is_owner = 1 AND b.moderation_status = 'active'
@@ -510,12 +520,19 @@ function handleSupplierRequestContact(req: Request, res: Response, mode: "contac
   let message: string;
   if (mode === "offer") {
     const supplierCategories = directoryDb.prepare(`
-      SELECT ic.name
-      FROM supplier_categories sc
-      JOIN item_categories ic ON ic.id = sc.item_category_id
-      WHERE sc.supplier_id = ?
-      ORDER BY ic.display_order, ic.name
-    `).all(session.supplierId) as Array<{ name: string }>;
+      SELECT name FROM (
+        SELECT i.name
+        FROM supplier_taxonomy_item_suppliers item_link
+        JOIN supplier_taxonomy_items i ON i.id = item_link.item_id
+        WHERE item_link.supplier_id = ?
+        UNION
+        SELECT n.name
+        FROM supplier_taxonomy_supplier_links node_link
+        JOIN supplier_taxonomy_nodes n ON n.id = node_link.node_id
+        WHERE node_link.supplier_id = ?
+      )
+      ORDER BY name COLLATE NOCASE
+    `).all(session.supplierId, session.supplierId) as Array<{ name: string }>;
     const supplierCategoryNames = supplierCategories.map((category) => text(category.name)).filter(Boolean);
     const supplierCategoryLabel = supplierCategoryNames.length
       ? `${supplierCategoryNames.slice(0, 4).join("، ")}${supplierCategoryNames.length > 4 ? "، وغيرها" : ""}`

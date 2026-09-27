@@ -1,70 +1,96 @@
 import { directoryDb } from "./directory-db";
-import { resolveItemCategoryIdsForDirectIds } from "./item-category-aliases";
+import {
+  getActiveSupplierTaxonomyItems,
+  getActiveSupplierTaxonomyNodes,
+  normalizeTaxonomyName,
+  resolveActiveSupplierTaxonomySelections,
+} from "./supplier-taxonomy-assignments";
 
 type ItemCategoryReference = {
   id: number;
   name: string;
   parentId: number | null;
-  primaryGroupId?: number | null;
 };
 
 export function itemCategorySupplierCounts(
   categories: ItemCategoryReference[],
-  activeGroupsOnly = false,
+  _activeGroupsOnly = false,
 ) {
-  const primaryGroupIdByCategory = new Map(
-    categories.map((category) => [category.id, category.primaryGroupId ?? null]),
-  );
-  const suppliers = directoryDb.prepare(`
-    SELECT sc.supplier_id AS supplierId, sc.item_category_id AS itemCategoryId
-    FROM supplier_categories sc
-    JOIN suppliers s ON s.id = sc.supplier_id AND s.is_active = 1
-    JOIN item_categories assigned ON assigned.id = sc.item_category_id AND assigned.is_active = 1
-      ${activeGroupsOnly ? `AND (
-        (assigned.parent_id IS NULL AND EXISTS (
-          SELECT 1 FROM groups active_root
-          WHERE active_root.id = assigned.id AND active_root.is_active = 1
-        ))
-        OR (assigned.primary_group_id IS NOT NULL AND EXISTS (
-          SELECT 1 FROM groups active_primary
-          WHERE active_primary.id = assigned.primary_group_id AND active_primary.is_active = 1
-        ))
-      )` : ""}
-  `).all() as Array<{ supplierId: number; itemCategoryId: number }>;
-  const directCategoryIdsBySupplier = new Map<number, Set<number>>();
-  for (const assignment of suppliers) {
-    const directIds = directCategoryIdsBySupplier.get(assignment.supplierId) ?? new Set<number>();
-    directIds.add(assignment.itemCategoryId);
-    directCategoryIdsBySupplier.set(assignment.supplierId, directIds);
+  const nodes = getActiveSupplierTaxonomyNodes();
+  const items = getActiveSupplierTaxonomyItems();
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const nodeByName = new Set(nodes.map((node) => normalizeTaxonomyName(node.name)));
+  const itemByName = new Map(items.map((item) => [normalizeTaxonomyName(item.name), item]));
+  const supplierIdsByItem = new Map<number, Set<number>>();
+  const supplierIdsByNode = new Map<number, Set<number>>();
+  const itemAssignments = directoryDb.prepare(`
+    SELECT links.supplier_id AS supplierId, links.item_id AS itemId
+    FROM supplier_taxonomy_item_suppliers links
+    JOIN suppliers s ON s.id = links.supplier_id AND s.is_active = 1
+    JOIN supplier_taxonomy_items i ON i.id = links.item_id AND i.is_active = 1
+    JOIN supplier_taxonomy_nodes n ON n.id = i.category_id
+    WHERE n.is_active = 1
+  `).all() as Array<{ supplierId: number; itemId: number }>;
+  for (const assignment of itemAssignments) {
+    const supplierIds = supplierIdsByItem.get(assignment.itemId) ?? new Set<number>();
+    supplierIds.add(assignment.supplierId);
+    supplierIdsByItem.set(assignment.itemId, supplierIds);
   }
-  const tagGroupIdsByCategory = new Map<number, Set<number>>();
-  const categoryTags = directoryDb.prepare(`
-    SELECT category_id AS categoryId, group_id AS groupId
-    FROM category_tags
-    ${activeGroupsOnly ? "JOIN groups g ON g.id = category_tags.group_id AND g.is_active = 1" : ""}
-  `).all() as Array<{ categoryId: number; groupId: number }>;
-  for (const tag of categoryTags) {
-    const groupIds = tagGroupIdsByCategory.get(tag.categoryId) ?? new Set<number>();
-    groupIds.add(tag.groupId);
-    tagGroupIdsByCategory.set(tag.categoryId, groupIds);
-  }
-  const suppliersByCategory = new Map<number, Set<number>>();
 
-  for (const [supplierId, directIds] of directCategoryIdsBySupplier) {
-    const included = new Set<number>();
-    for (const directId of directIds) {
-      for (const id of resolveItemCategoryIdsForDirectIds([directId], categories)) included.add(id);
-      const primaryGroupId = primaryGroupIdByCategory.get(directId);
-      if (primaryGroupId != null) included.add(primaryGroupId);
-      for (const groupId of tagGroupIdsByCategory.get(directId) ?? []) included.add(groupId);
-    }
-
-    for (const categoryId of included) {
-      const supplierIds = suppliersByCategory.get(categoryId) ?? new Set<number>();
+  const nodeAssignments = directoryDb.prepare(`
+    SELECT links.supplier_id AS supplierId, links.node_id AS nodeId
+    FROM supplier_taxonomy_supplier_links links
+    JOIN suppliers s ON s.id = links.supplier_id AND s.is_active = 1
+    JOIN supplier_taxonomy_nodes n ON n.id = links.node_id AND n.is_active = 1
+  `).all() as Array<{ supplierId: number; nodeId: number }>;
+  const addToNodeAndAncestors = (supplierId: number, startId: number) => {
+    let nodeId: number | null = startId;
+    while (nodeId !== null) {
+      const supplierIds = supplierIdsByNode.get(nodeId) ?? new Set<number>();
       supplierIds.add(supplierId);
-      suppliersByCategory.set(categoryId, supplierIds);
+      supplierIdsByNode.set(nodeId, supplierIds);
+      nodeId = nodeById.get(nodeId)?.parentId ?? null;
     }
+  };
+  for (const assignment of nodeAssignments) {
+    addToNodeAndAncestors(assignment.supplierId, assignment.nodeId);
+  }
+  const categoryIdByItem = new Map(items.map((item) => [item.id, item.categoryId]));
+  for (const assignment of itemAssignments) {
+    const categoryId = categoryIdByItem.get(assignment.itemId);
+    if (categoryId !== undefined) addToNodeAndAncestors(assignment.supplierId, categoryId);
   }
 
-  return new Map([...suppliersByCategory].map(([id, supplierIds]) => [id, supplierIds.size]));
+  const depthByNode = new Map<number, number>();
+  const nodeDepth = (id: number): number => {
+    const cached = depthByNode.get(id);
+    if (cached !== undefined) return cached;
+    const node = nodeById.get(id);
+    const depth = !node || node.parentId === null ? 0 : nodeDepth(node.parentId) + 1;
+    depthByNode.set(id, depth);
+    return depth;
+  };
+
+  const counts = new Map<number, number>();
+  for (const category of categories) {
+    const normalized = normalizeTaxonomyName(category.name);
+    const item = itemByName.get(normalized);
+    const isExplicitNode = nodeByName.has(normalized);
+
+    if (item && !(category.parentId === null && isExplicitNode)) {
+      counts.set(category.id, supplierIdsByItem.get(item.id)?.size ?? 0);
+      continue;
+    }
+
+    const selection = resolveActiveSupplierTaxonomySelections([category.name]);
+    const selectedNodeId = [...selection.nodeIds]
+      .sort((left, right) => nodeDepth(right) - nodeDepth(left))[0];
+    if (selectedNodeId !== undefined) {
+      counts.set(category.id, supplierIdsByNode.get(selectedNodeId)?.size ?? 0);
+      continue;
+    }
+
+    counts.set(category.id, 0);
+  }
+  return counts;
 }

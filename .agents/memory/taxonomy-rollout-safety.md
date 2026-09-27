@@ -3,11 +3,11 @@ name: Taxonomy rollout safety
 description: Preserve existing supplier associations while replacing the public item classification.
 ---
 
-The six-section item tree is a reviewed replacement, not permission to reassign or erase legacy classifications automatically. Keep the public directory on its existing classifications until the old items and supplier links have explicit destinations and the replacement can be activated safely.
+The supplier item tree is now the public classification source. Treat retired old classifications as an archive for audit and recovery, not as a second live directory or a source for automatic reseeding.
 
-**Why:** The user chose replacement only with preservation of existing items and supplier links, and specifically wanted their distribution reviewed before moving them. A guessed destination could silently change which suppliers buyers find.
+**Why:** The owner approved the complete proposed distribution, including its 23 initially uncertain placements, before authorizing activation and deletion of the old classification rows. Prior to that approval, the old tree remained in use to avoid guessed destinations.
 
-**How to apply:** When implementing public browsing or migration, require a complete review of linked legacy records, make the switch atomic and reversible, and retain the source records until the new display and associations are verified. Do not treat creation of proposed sections alone as approval of the old-to-new mapping.
+**How to apply:** Use new taxonomy nodes/items for future browsing, supplier assignments and requests. Keep archived legacy data read-only; do not restore or infer associations from old names without explicit review.
 
 For owner-supplied item imports, do not assume every initially proposed branch still exists. Import available groups independently and defer groups with deleted destinations rather than recreating a deleted branch or preventing the whole service from starting.
 
@@ -21,14 +21,14 @@ For the owner-supplied Aramco ready-cake names, respect the owner's explicit cho
 
 **How to apply:** Do not automatically reclassify those nine names or recreate a deleted ready-cake section during future taxonomy work; ask before changing their placement.
 
-Multi-section membership in the proposed tree is distinct from the legacy directory's classification system. Retain a single synchronized primary section for existing consumers until they are deliberately migrated, while allowing additional proposed-tree sections without treating those links as a public-directory rollout.
+Multi-section membership is distinct from a supplier's explicit item links. Retain a single synchronized primary section for each item even when it appears in additional sections.
 
-**Why:** The two classification systems have similar terminology but different identities and review status. Silently using the proposed tree for legacy suppliers would bypass the owner's requirement to review the old associations first.
+**Why:** The former and current classification systems had similar terminology but different identities. A supplier's item association cannot be deduced solely from a section's name.
 
-**How to apply:** When extending item browsing or supplier matching, resolve proposed-tree memberships within that tree only; do not infer new supplier or public-directory associations from the additional sections. A proposed section's removal must never erase the underlying item or its supplier associations.
+**How to apply:** Resolve section membership within the current tree only, and maintain supplier links explicitly. A section's removal must never erase the underlying item or its supplier associations.
 
-Old item names without an exact match in the proposed tree belong in an inactive temporary "unclassified items" section until their real destinations are reviewed; duplicate items must not be created. Keep the legacy classification source intact throughout this staging period.
+The temporary "unclassified items" section was a staging area, not a permanent public grouping; the owner later approved all staged destinations, including initially ambiguous ones. Duplicate old names should not create duplicate current items.
 
-**Why:** The owner explicitly chose a temporary section rather than guessing a destination from the old groups. The old hierarchy mixes headings and items, so inferring new sections from similar-sounding groups risks misclassification and premature public visibility.
+**Why:** The owner first chose staging rather than guessing from old group headings, then reviewed and approved the complete distribution before activating it.
 
-**How to apply:** Treat this as a staging import, not approval to expose the new tree or delete old categories. Ensure existing-item supplier links are reviewed and the public directory is deliberately switched before considering legacy cleanup.
+**How to apply:** Do not reintroduce old headings as items, automatically recreate removed imports, or reassign the approved placements from their current destinations without a new decision.

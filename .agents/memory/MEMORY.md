@@ -16,4 +16,4 @@
 - [Gold accent contrast](gold-accent-contrast.md) — honey-gold backgrounds need dark chocolate text; reserve white text for the milk-chocolate primary.
 - [Supply request visibility](supply-request-visibility.md) — suppliers see live requests and business names; owner phone stays private until an authenticated contact action.
 - [Supplier offer category source](supplier-offer-category-source.md) — use linked item categories, not Google business categories, to describe supplier offerings.
-- [Taxonomy rollout safety](taxonomy-rollout-safety.md) — keep the proposed six-section tree separate from public results until old item and supplier links are reviewed.
+- [Taxonomy rollout safety](taxonomy-rollout-safety.md) — the approved supplier tree is public; do not reseed retired old categories or infer new supplier links from names.
