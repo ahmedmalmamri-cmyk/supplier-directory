@@ -372,7 +372,7 @@ router.get("/admin/supplier-requests", (req, res): void => {
     SELECT id, request_code AS requestCode, business_name AS businessName,
       contact_person AS contactPerson, business_type AS businessType, phone, whatsapp, email,
       website, city, address, delivers_to_other_cities AS deliversToOtherCities,
-      other_cities AS otherCities, categories, min_order AS minOrder, description,
+      other_cities AS otherCities, categories, available_items AS availableItems, min_order AS minOrder, description,
       commercial_license_url AS commercialLicenseUrl, id_card_url AS idCardUrl,
       health_certificate_url AS healthCertificateUrl, accepted_terms AS acceptedTerms,
       accepted_business AS acceptedBusiness, accepted_publish AS acceptedPublish,
@@ -406,7 +406,7 @@ router.get("/admin/supplier-requests/:id", (req, res): void => {
     SELECT id, request_code AS requestCode, business_name AS businessName,
       contact_person AS contactPerson, business_type AS businessType, phone, whatsapp, email,
       website, city, address, delivers_to_other_cities AS deliversToOtherCities,
-      other_cities AS otherCities, categories, min_order AS minOrder, description,
+      other_cities AS otherCities, categories, available_items AS availableItems, min_order AS minOrder, description,
       commercial_license_url AS commercialLicenseUrl, id_card_url AS idCardUrl,
       health_certificate_url AS healthCertificateUrl, accepted_terms AS acceptedTerms,
       accepted_business AS acceptedBusiness, accepted_publish AS acceptedPublish,
@@ -447,6 +447,9 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
   const city = String(request.city);
   const phone = String(request.phone);
   const whatsapp = String(request.whatsapp);
+  const availableItems = String(request.available_items || "").trim();
+  const description = [String(request.description).trim(), availableItems ? `الأصناف المتوفرة: ${availableItems}` : ""]
+    .filter(Boolean).join("\n\n");
   const reviewedAt = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
@@ -463,7 +466,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       directoryDb.prepare(`
         UPDATE suppliers SET name = ?, city = ?, region = 'المنطقة الشرقية', description = ?,
           phone = ?, whatsapp = ?, is_verified = ?, is_active = 1, request_id = ? WHERE id = ?
-      `).run(businessName, city, String(request.description), phone, whatsapp, verified, id, existing.id);
+      `).run(businessName, city, description, phone, whatsapp, verified, id, existing.id);
       directoryDb.prepare("UPDATE supplier_users SET phone = ? WHERE supplier_id = ?").run(phone, existing.id);
       const subscription = directoryDb.prepare("SELECT id FROM subscriptions WHERE supplier_id = ? LIMIT 1").get(existing.id);
       if (!subscription) createBasicSubscription(existing.id, reviewedAt);
@@ -475,7 +478,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
           (id, name, city, region, description, phone, whatsapp, is_verified, request_id,
            is_active, plan_id, max_products_allowed, is_featured, added_via, created_at)
         VALUES (?, ?, ?, 'المنطقة الشرقية', ?, ?, ?, ?, ?, 1, 1, 3, 0, 'self_registered', ?)
-      `).run(nextId, businessName, city, String(request.description), phone, whatsapp, verified, id, reviewedAt);
+      `).run(nextId, businessName, city, description, phone, whatsapp, verified, id, reviewedAt);
       createBasicSubscription(nextId, reviewedAt);
       approvedSupplierId = nextId;
     }

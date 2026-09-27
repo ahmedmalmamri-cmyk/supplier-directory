@@ -13,7 +13,7 @@ type SupplierForm = {
   businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; sameWhatsapp: boolean; email: string; website: string;
   city: string; address: string; deliversToOtherCities: boolean; otherCities: string;
-  categories: string[]; minOrder: string; description: string;
+  categories: string[]; availableItems: string; minOrder: string; description: string;
   commercialLicense: string; idCard: string; healthCertificate: string;
   acceptedData: boolean; acceptedTerms: boolean; acceptedBusiness: boolean; acceptedPublish: boolean;
 };
@@ -87,7 +87,7 @@ const legacyCategoryAliases: Record<string, string> = {
 const emptySupplier: SupplierForm = {
   businessName: "", contactPerson: "", businessType: "", phone: "", whatsapp: "", sameWhatsapp: true,
   email: "", website: "", city: "", address: "", deliversToOtherCities: false, otherCities: "",
-  categories: [], minOrder: "", description: "", commercialLicense: "", idCard: "", healthCertificate: "",
+  categories: [], availableItems: "", minOrder: "", description: "", commercialLicense: "", idCard: "", healthCertificate: "",
   acceptedData: false, acceptedTerms: false, acceptedBusiness: false, acceptedPublish: false,
 };
 const emptyBuyer: BuyerForm = {
@@ -179,7 +179,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
         <div className="container mx-auto px-4 text-center">
           <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center"><UserPlus className="w-7 h-7" /></div>
           <h1 className="text-4xl font-bold mb-4">{title}</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "أرسل طلب انضمامك في دقيقة: اختر فئتك وأدخل اسم النشاط ووسيلة التواصل والمدينة. تُراجع الطلبات قبل النشر."}</p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{type === "buyer" ? "أنشئ حساباً مجانياً خلال دقيقة وابدأ التواصل مع الموردين مباشرة." : "اختر الأصناف التي توفرها وأدخل تفاصيلها وبيانات نشاطك. يُراجع طلبك قبل نشر ملف المورد وتفعيل الحساب، حتى لو كنت مسجلاً من قبل."}</p>
           <p className="mt-5 text-base font-semibold">هل لديك حساب بالفعل؟ <Link data-testid="link-register-login" href={type === "supplier" ? "/login?role=supplier" : "/login?role=buyer"} className="font-extrabold text-primary underline underline-offset-4 hover:opacity-75">تسجيل الدخول</Link></p>
         </div>
       </div>
@@ -207,7 +207,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
                   businessName: supplier.businessName, contactPerson: supplier.contactPerson, businessType: supplier.businessType,
                   phone: normalizeSaudiPhone(supplier.phone), whatsapp: normalizeSaudiPhone(supplier.whatsapp), email: supplier.email, website: supplier.website,
                   city: supplier.city, address: supplier.address, deliversToOtherCities: supplier.deliversToOtherCities,
-                  otherCities: supplier.otherCities, categories: supplier.categories, minOrder: supplier.minOrder,
+                   otherCities: supplier.otherCities, categories: supplier.categories, availableItems: supplier.availableItems, minOrder: supplier.minOrder,
                   description: supplier.description, commercialLicense: supplier.commercialLicense,
                   idCard: supplier.idCard, healthCertificate: supplier.healthCertificate,
                   acceptedData: supplier.acceptedData, acceptedTerms: supplier.acceptedTerms, acceptedBusiness: supplier.acceptedBusiness, acceptedPublish: supplier.acceptedPublish,
@@ -312,6 +312,10 @@ function SupplierWizard({ form, categoryGroups, categoriesLoading, categoriesErr
       <div className="mb-6 rounded-xl bg-muted/30 p-4 text-sm">
         <span className="font-bold">فئاتك:</span> {form.categories.join("، ")}
         <button type="button" onClick={() => setStep(0)} className="mr-3 font-bold text-primary hover:underline">تعديل</button>
+      </div>
+      <div className="mb-6">
+        <TextAreaField label="الأصناف والمنتجات المتوفرة لديك *" value={form.availableItems ?? ""} onChange={(value) => onChange({ availableItems: value })} placeholder="اكتب أسماء المنتجات المتوفرة، وأنواعها أو أحجامها إن وجدت. مثال: دقيق مخابز 25 كجم، خميرة فورية 500 جم..." />
+        <p className="mt-1 text-xs text-muted-foreground">ستراجع الإدارة هذه التفاصيل قبل قبول ملفك ونشره. الحد الأقصى 1500 حرف.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="اسم المورد أو النشاط التجاري *" value={form.businessName} onChange={(value) => onChange({ businessName: value })} autoComplete="organization" />
@@ -461,7 +465,7 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
   return (
     <div>
       <h2 className="text-2xl font-extrabold">ما الذي تبيعه؟</h2>
-      <p className="mt-1 text-sm text-muted-foreground">اختر كل ما ينطبق. يكفي تحديد الفئة؛ تفاصيل الأنواع والتوفر تُعرف عبر واتساب.</p>
+      <p className="mt-1 text-sm text-muted-foreground">اختر كل الأصناف التي توفرها فعلياً، ثم اكتب تفاصيل المنتجات والأنواع في الخطوة التالية.</p>
       {isLoading ? (
         <p className="mt-5 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
       ) : hasError ? (
@@ -673,6 +677,8 @@ function validateSupplier(form: SupplierForm) {
   if (!isSaudiPhone(form.whatsapp)) return form.sameWhatsapp ? "تحقق من رقم الجوال." : "أدخل رقم الواتساب أو فعّل خيار «رقم واتساب المورد هو نفس رقم الجوال».";
   if (!form.city) return "اختر المدينة.";
   if (!form.categories.length) return "اختر فئة واحدة على الأقل، مثل زبدة.";
+  if (!form.availableItems?.trim()) return "اذكر الأصناف والمنتجات المتوفرة لديك قبل إرسال الطلب.";
+  if (form.availableItems.trim().length > 1500) return "اختصر تفاصيل الأصناف إلى 1500 حرف أو أقل.";
   if (form.deliversToOtherCities && !form.otherCities.trim()) return "اذكر المدن التي توصل إليها أو ألغِ خيار التوصيل لمدن أخرى.";
   if (!form.acceptedData || !form.acceptedTerms || !form.acceptedBusiness || !form.acceptedPublish) return "وافق على الإقرار قبل إرسال الطلب.";
   if (wordCount(form.description) > 300) return "اختصر النبذة إلى 300 كلمة أو أقل.";

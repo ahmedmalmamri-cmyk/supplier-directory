@@ -104,6 +104,7 @@ router.post("/supplier-requests", (req, res): void => {
   const address = text(body.address);
   const otherCities = text(body.otherCities);
   const categories = Array.isArray(body.categories) ? body.categories.filter((item): item is string => typeof item === "string") : [];
+  const availableItems = text(body.availableItems);
   const minOrder = text(body.minOrder);
   const submittedDescription = text(body.description);
   const description = submittedDescription || `مورد متخصص في توفير ${categories.join("، ")}.`;
@@ -132,7 +133,8 @@ router.post("/supplier-requests", (req, res): void => {
 
   if (!businessName || !contactPerson || !supplierBusinessTypes.includes(businessType) ||
       !phoneIsValid(phone) || !phoneIsValid(whatsapp) || !eastCities.includes(city) ||
-      categories.length === 0 || categories.some((item) => !allowedCategoryNames.has(item)) ||
+       categories.length === 0 || categories.some((item) => !allowedCategoryNames.has(item)) ||
+       !availableItems || availableItems.length > 1500 ||
        wordCount(description) > 300 ||
       !acceptedTerms || !acceptedData || !acceptedBusiness || !acceptedPublish ||
       (deliversToOtherCities && !otherCities)) {
@@ -148,14 +150,14 @@ router.post("/supplier-requests", (req, res): void => {
     const result = directoryDb.prepare(`
       INSERT INTO supplier_requests
         (request_code, business_name, contact_person, business_type, phone, whatsapp, email, website,
-         city, address, delivers_to_other_cities, other_cities, categories, min_order, description,
+         city, address, delivers_to_other_cities, other_cities, categories, available_items, min_order, description,
          commercial_license_url, id_card_url, health_certificate_url, accepted_terms, accepted_data, accepted_business,
          accepted_publish, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
     `).run(
       `TEMP-${randomUUID()}`, businessName, contactPerson, businessType, phone, whatsapp, email || null, website || null,
       city, address || null, deliversToOtherCities ? 1 : 0, otherCities || null, JSON.stringify(categories),
-      minOrder || null, description, commercialLicenseUrl, idCardUrl, healthCertificateUrl,
+      availableItems, minOrder || null, description, commercialLicenseUrl, idCardUrl, healthCertificateUrl,
       1, 1, 1, 1, now,
     );
     const id = Number(result.lastInsertRowid);

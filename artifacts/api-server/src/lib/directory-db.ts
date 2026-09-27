@@ -156,6 +156,7 @@ directoryDb.exec(`
     delivers_to_other_cities INTEGER NOT NULL DEFAULT 0,
     other_cities TEXT,
     categories TEXT NOT NULL,
+    available_items TEXT NOT NULL DEFAULT '',
     min_order TEXT,
     description TEXT NOT NULL,
     commercial_license_url TEXT,
@@ -561,6 +562,9 @@ if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) =
 }
 if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "product_images")) {
   directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN product_images TEXT NOT NULL DEFAULT '[]'");
+}
+if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "available_items")) {
+  directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN available_items TEXT NOT NULL DEFAULT ''");
 }
 const supplierSourceMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",

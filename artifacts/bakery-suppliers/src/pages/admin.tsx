@@ -14,7 +14,7 @@ type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "i
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
-  deliversToOtherCities: boolean; otherCities: string | null; categories: string[]; minOrder: string | null; description: string;
+  deliversToOtherCities: boolean; otherCities: string | null; categories: string[]; availableItems: string; minOrder: string | null; description: string;
   commercialLicenseUrl: string | null; idCardUrl: string | null; healthCertificateUrl: string | null;
   status: "pending" | "pending_review" | "approved" | "rejected"; rejectionReason: string | null; adminNote: string | null;
   invitedSupplierId: number | null; productImages: string[];
@@ -301,6 +301,7 @@ function DetailGrid({ request }: { request: SupplierRequest }) {
       <Info label="مدن أخرى" value={request.otherCities || "لا يوجد"} />
       <Info label="الفئات" value={request.categories.join("، ")} />
       <Info label="الحد الأدنى" value={request.minOrder || "غير محدد"} />
+      {request.availableItems && <div className="md:col-span-2" data-testid={`text-request-available-items-${request.id}`}><strong>الأصناف والمنتجات المتوفرة:</strong><p className="mt-1 whitespace-pre-line leading-7 text-muted-foreground">{request.availableItems}</p></div>}
       <div className="md:col-span-2"><strong>النبذة:</strong><p className="mt-1 leading-7 text-muted-foreground">{request.description}</p></div>
       {request.productImages.length > 0 && <div className="md:col-span-2">
         <strong>صور المنتجات المرفقة</strong>

@@ -230,7 +230,7 @@ export function SupplierInvitationsPanel() {
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
   const registrationUrl = publishedPageUrl("/register/supplier");
-  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى إدخال بيانات منشأتكم بأنفسكم. سيُراجع الطلب من الإدارة قبل اعتماده ونشره.`;
+  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى اختيار الأصناف المتوفرة لديكم وكتابة تفاصيل منتجاتكم وبيانات منشأتكم. ستراجع الإدارة الطلب قبل قبوله ونشره.`;
   const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
   return (
@@ -280,7 +280,7 @@ export function SupplierInvitationsPanel() {
           <div className="space-y-4">
             <div className="rounded-xl border bg-muted/30 p-3 text-sm leading-6">
               <p>سيفتح واتساب لاختيار المستلم، وستحتاج إلى الضغط على إرسال داخل واتساب.</p>
-              <p className="mt-2 text-muted-foreground">على المورد إدخال بياناته بنفسه في نموذج التسجيل. يبقى الطلب بانتظار مراجعة الإدارة قبل اعتماده ونشره.</p>
+               <p className="mt-2 text-muted-foreground">على المورد اختيار الأصناف المتوفرة وكتابة تفاصيل منتجاته بنفسه. يبقى الطلب بانتظار مراجعة الإدارة قبل قبوله ونشره.</p>
               {isDevelopmentPreview() && <p className="mt-2 font-bold text-destructive">هذا رابط تسجيل عام في الموقع المنشور، وليس تحديثاً للموردين المحفوظين في المعاينة.</p>}
               <p className="mt-2 break-all text-xs text-muted-foreground" dir="ltr">{registrationUrl}</p>
             </div>
