@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { directoryDb } from "./directory-db";
 
@@ -6,10 +6,6 @@ export type TestModeRole = "supplier" | "buyer";
 
 const testModeCookieName = "bakery_test_mode";
 const testModeDurationSeconds = 60 * 60 * 12;
-const testAccounts = {
-  supplier: { phone: "0500000001", name: "مورد تجريبي" },
-} as const;
-
 directoryDb.exec(`
   CREATE TABLE IF NOT EXISTS test_mode_accounts (
     role TEXT PRIMARY KEY CHECK (role IN ('supplier', 'buyer')),
@@ -45,7 +41,8 @@ export function getTestModeSession(req: Request) {
   const providedBuffer = Buffer.from(provided);
   const expectedBuffer = Buffer.from(expected);
   if (providedBuffer.length !== expectedBuffer.length || !timingSafeEqual(providedBuffer, expectedBuffer)) return null;
-  if (role === "supplier" && !isTestModeAccount("supplier", id)) return null;
+  // Supplier preview accounts have been retired; old preview cookies must not grant access.
+  if (role === "supplier") return null;
   if (role === "buyer" && !directoryDb.prepare("SELECT 1 FROM buyer_users WHERE id = ? AND moderation_status != 'blocked'").get(id)) return null;
   return { role: role as TestModeRole, id };
 }
@@ -83,115 +80,6 @@ export function clearTestModeSession(res: Response) {
   });
 }
 
-function randomPasswordHash() {
-  const salt = randomBytes(16);
-  const hash = scryptSync(randomBytes(32).toString("hex"), salt, 64);
-  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
-}
-
-function accountConflict(): Error {
-  return new Error(`TEST_MODE_ACCOUNT_CONFLICT:supplier:${testAccounts.supplier.phone}`);
-}
-
-export function ensureTestModeAccounts() {
-  const setup = () => {
-    const now = new Date().toISOString();
-    const supplierAccount = directoryDb.prepare(
-      "SELECT entity_id AS entityId FROM test_mode_accounts WHERE role = 'supplier'",
-    ).get() as { entityId: number } | undefined;
-    if (supplierAccount) {
-      const present = directoryDb.prepare(`
-        SELECT 1 FROM suppliers s
-        JOIN supplier_users su ON su.supplier_id = s.id
-        WHERE s.id = ? AND su.phone = ?
-      `).get(supplierAccount.entityId, testAccounts.supplier.phone);
-      const duplicate = directoryDb.prepare(
-        "SELECT supplier_id AS supplierId FROM supplier_users WHERE phone = ? AND supplier_id != ? LIMIT 1",
-      ).get(testAccounts.supplier.phone, supplierAccount.entityId);
-      if (!present || duplicate) throw accountConflict();
-    } else if (directoryDb.prepare(
-      "SELECT 1 FROM supplier_users WHERE phone = ? LIMIT 1",
-    ).get(testAccounts.supplier.phone)) {
-      throw accountConflict();
-    }
-
-    if (!supplierAccount) {
-      const plan = directoryDb.prepare("SELECT id FROM plans ORDER BY id LIMIT 1").get() as { id: number } | undefined;
-      if (!plan) throw new Error("لم يتم إعداد أي باقة للموردين.");
-      const supplierResult = directoryDb.prepare(`
-        INSERT INTO suppliers
-          (name, city, region, description, phone, whatsapp, address, is_verified,
-           plan_id, max_products_allowed, is_featured, added_via, created_at, is_active)
-        VALUES (?, 'الدمام', 'المنطقة الشرقية', ?, ?, ?, 'بيانات تجريبية غير منشورة', 0,
-          ?, 3, 0, 'test_mode', ?, 0)
-      `).run(
-        testAccounts.supplier.name,
-        "حساب تجريبي لمعاينة لوحة المورد فقط. هذه البيانات افتراضية وليست نشاطاً تجارياً حقيقياً.",
-        testAccounts.supplier.phone,
-        testAccounts.supplier.phone,
-        plan.id,
-        now,
-      );
-      const supplierId = Number(supplierResult.lastInsertRowid);
-      directoryDb.prepare(`
-        INSERT INTO supplier_users (supplier_id, phone, password_hash, status, created_at)
-        VALUES (?, ?, ?, 'active', ?)
-      `).run(supplierId, testAccounts.supplier.phone, randomPasswordHash(), now);
-      directoryDb.prepare(`
-        INSERT INTO test_mode_accounts (role, entity_id, phone, created_at)
-        VALUES ('supplier', ?, ?, ?)
-      `).run(supplierId, testAccounts.supplier.phone, now);
-
-      const addCategory = directoryDb.prepare(`
-        INSERT OR IGNORE INTO supplier_categories (supplier_id, item_category_id)
-        SELECT ?, id FROM item_categories WHERE id = ?
-      `);
-      for (const itemCategoryId of [5, 6, 49]) addCategory.run(supplierId, itemCategoryId);
-
-      const productCategory = directoryDb.prepare("SELECT id FROM categories ORDER BY id LIMIT 1").get() as { id: number } | undefined;
-      if (productCategory) {
-        directoryDb.prepare(`
-          INSERT INTO products
-            (supplier_id, category_id, name, weight, unit, country_of_origin, ingredients,
-             technical_data, recommended_use, shelf_life, storage_conditions, min_order,
-             image_url, sort_order, created_at)
-          VALUES (?, ?, 'عينة منتج للمعاينة', '١٠', 'كجم', 'بيانات تجريبية',
-            'بيانات توضيحية فقط', 'بيانات توضيحية فقط', 'للمعاينة', 'غير محدد',
-            'غير محدد', 1, NULL, 0, ?)
-        `).run(supplierId, productCategory.id, now);
-      }
-    }
-  };
-
-  try {
-    directoryDb.exec("BEGIN IMMEDIATE");
-    setup();
-    directoryDb.exec("COMMIT");
-  } catch (error) {
-    if (directoryDb.isTransaction) directoryDb.exec("ROLLBACK");
-    throw error;
-  }
-  return listTestModeAccounts();
-}
-
-export function listTestModeAccounts() {
-  const row = directoryDb.prepare(`
-    SELECT entity_id AS id, phone FROM test_mode_accounts WHERE role = 'supplier'
-  `).get() as { id: number; phone: string } | undefined;
-  if (!row) return [{ role: "supplier" as const, id: 0, name: testAccounts.supplier.name, phone: testAccounts.supplier.phone, ready: false, route: "/supplier/dashboard" }];
-  const supplier = directoryDb.prepare("SELECT name FROM suppliers WHERE id = ?").get(row.id) as { name: string } | undefined;
-  const supplierUser = directoryDb.prepare("SELECT 1 FROM supplier_users WHERE supplier_id = ? AND phone = ?")
-    .get(row.id, testAccounts.supplier.phone);
-  return [{
-    role: "supplier" as const,
-    id: row.id,
-    name: supplier?.name ?? testAccounts.supplier.name,
-    phone: row.phone,
-    ready: Boolean(supplier && supplierUser),
-    route: "/supplier/dashboard",
-  }];
-}
-
 export function buildTestModeReport() {
   const databaseVersion = (directoryDb.prepare("SELECT sqlite_version() AS version").get() as { version: string }).version;
   const activeSuppliers = (directoryDb.prepare("SELECT COUNT(*) AS total FROM suppliers WHERE is_active = 1").get() as { total: number }).total;
@@ -208,31 +96,12 @@ export function buildTestModeReport() {
     SELECT COUNT(*) AS total FROM products p
     JOIN suppliers s ON s.id = p.supplier_id AND s.is_active = 1
   `).get() as { total: number }).total;
-  const inactiveDemoSuppliers = (directoryDb.prepare(`
-    SELECT COUNT(*) AS total FROM test_mode_accounts t
-    JOIN suppliers s ON s.id = t.entity_id
-    WHERE t.role = 'supplier' AND s.is_active = 0
-  `).get() as { total: number }).total;
-  const accounts = listTestModeAccounts();
-  const accountReady = accounts.every((account) => account.ready);
-  const checks = [
+  const checks: Array<{ key: string; label: string; status: "pass" | "warning" | "fail"; detail: string }> = [
     {
       key: "database",
       label: "اتصال قاعدة البيانات",
       status: "pass" as const,
       detail: `قاعدة SQLite متاحة، الإصدار ${databaseVersion}.`,
-    },
-    {
-      key: "test-accounts",
-      label: "حساب المورد التجريبي",
-      status: accountReady ? "pass" as const : "fail" as const,
-      detail: `حسابات المورد الجاهزة: ${accounts.filter((account) => account.ready).length} من ${accounts.length}.`,
-    },
-    {
-      key: "demo-isolation",
-      label: "عزل المورد التجريبي",
-      status: inactiveDemoSuppliers === 1 ? "pass" as const : "fail" as const,
-      detail: `المورد التجريبي غير منشور في الدليل: ${inactiveDemoSuppliers === 1 ? "نعم" : "لا"}.`,
     },
     {
       key: "supplier-descriptions",

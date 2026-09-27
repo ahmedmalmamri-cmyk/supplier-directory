@@ -5,16 +5,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { useSupplierAuth } from "@/lib/supplier-auth";
 
-type TestRole = "supplier" | "buyer";
+type TestRole = "buyer";
 type TestModeView = "home" | "report";
-type SupplierAccount = { role: "supplier"; id: number; name: string; phone: string; ready: boolean; route: string };
 type BuyerPreview = { available: boolean; name: string | null; route: "/buyer/profile" | "/buyer/login" };
 type TestReport = {
   generatedAt: string;
   summary: { passed: number; warnings: number; failed: number };
   checks: Array<{ key: string; label: string; status: "pass" | "warning" | "fail"; detail: string }>;
 };
-type Overview = { accounts: SupplierAccount[]; buyerPreview: BuyerPreview; report: TestReport };
+type Overview = { buyerPreview: BuyerPreview; report: TestReport };
 
 class AdminRequestError extends Error {
   status: number;
@@ -157,7 +156,7 @@ export default function TestModePage({ view = "home" }: { view?: TestModeView })
                 <span className="block text-primary">من دون أثر تجاري</span>
               </h1>
         <p className="mt-4 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
-                ادخل إلى شاشة المورد بحساب تجريبي معزول، أو استخدم حساب صاحب العمل الموجود لديك لمعاينة واجهته دون إنشاء حساب إضافي.
+                أُلغي حساب المورد التجريبي. يمكنك معاينة واجهة صاحب العمل بحسابك الحالي، وتسجيل مورد حقيقي لاحقاً بعد تجهيز بياناته.
               </p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-sm shadow-warm">
@@ -168,7 +167,7 @@ export default function TestModePage({ view = "home" }: { view?: TestModeView })
           </div>
           <nav className="mt-8 flex flex-wrap items-center gap-2 border-t pt-4 text-sm font-bold" aria-label="تنقل وضع المعاينة">
             <Link href="/test-mode" data-testid="link-test-mode-home" className={`rounded-lg px-3 py-2 ${view === "home" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-card hover:text-foreground"}`}>
-              الحسابات الجاهزة
+              المعاينة
             </Link>
             <Link href="/test-mode/report" data-testid="link-test-mode-report" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 ${view === "report" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-card hover:text-foreground"}`}>
               <FileText className="h-4 w-4" />
@@ -246,44 +245,24 @@ function HomeView({ overview, error, startingRole, onStart, onRetry }: { overvie
   return (
     <div className="space-y-7">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">الحسابات المجهزة</p><h2 className="mt-2 text-2xl font-extrabold md:text-3xl">اختر واجهة لفحصها</h2></div>
-         <p className="max-w-md text-sm leading-7 text-muted-foreground">حساب المورد معزول عن الدليل، ومعاينة صاحب العمل تستخدم حسابك الحالي فقط.</p>
+        <div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">المعاينة المتاحة</p><h2 className="mt-2 text-2xl font-extrabold md:text-3xl">افحص واجهة صاحب العمل</h2></div>
+         <p className="max-w-md text-sm leading-7 text-muted-foreground">لا يوجد حساب مورد تجريبي. يمكنك تسجيل مورد حقيقي لاحقاً ببيانات نشاطه الفعلية.</p>
       </div>
       {error && <ErrorNotice message={error} onRetry={onRetry} />}
       <div className="grid gap-5 md:grid-cols-2">
-        {overview?.accounts.map((account) => <AccountCard key={`${account.role}-${account.id}`} account={account} isStarting={startingRole === account.role} onStart={() => onStart(account.role)} />)}
         {overview?.buyerPreview && <BuyerPreviewCard preview={overview.buyerPreview} isStarting={startingRole === "buyer"} onStart={() => onStart("buyer")} />}
+        <article className="rounded-3xl border bg-card p-6 shadow-warm md:p-7">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Store className="h-6 w-6" /></div>
+          <h3 className="mt-6 text-xl font-extrabold">حساب المورد الحقيقي لاحقاً</h3>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">أُلغي حساب المورد التجريبي ولن يُنشأ مجدداً. عند جاهزية بيانات المورد الحقيقي، قدّم طلب التسجيل، وبعد موافقة المدير يمكن تفعيل حسابه.</p>
+          <Link href="/register/supplier" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/25 px-4 py-2 text-sm font-extrabold text-primary hover:bg-primary/5">تسجيل مورد حقيقي <ArrowLeft className="h-4 w-4" /></Link>
+        </article>
       </div>
       <section className="grid gap-4 rounded-3xl border border-primary/15 bg-primary/[0.06] p-5 md:grid-cols-[1fr_auto] md:items-center md:p-7" aria-labelledby="test-mode-guardrails">
         <div className="flex gap-3"><div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary"><ShieldCheck className="h-5 w-5" /></div><div><h2 id="test-mode-guardrails" className="font-extrabold">حدود البيئة الاختبارية</h2><p className="mt-1 text-sm leading-7 text-muted-foreground">زر التواصل لا يفتح واتساب، وأي نشاط تجريبي لا يُحفظ في سجلات النشاط التجاري. يمكنك العودة إلى هذه الصفحة في أي وقت.</p></div></div>
         <Link href="/test-mode/report" data-testid="link-test-mode-report-cta" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-card px-4 text-sm font-extrabold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground">عرض تقرير الفحص <ArrowLeft className="h-4 w-4" /></Link>
       </section>
     </div>
-  );
-}
-
-function AccountCard({ account, isStarting, onStart }: { account: SupplierAccount; isStarting: boolean; onStart: () => void }) {
-  return (
-    <article className="group relative overflow-hidden rounded-3xl border bg-card p-6 shadow-warm transition-transform hover:-translate-y-0.5 md:p-7" data-testid={`card-test-account-${account.role}-${account.id}`}>
-      <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Store className="h-6 w-6" /></div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold ${account.ready ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`} data-testid={`status-test-account-${account.role}-${account.id}`}>
-          {account.ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
-          {account.ready ? "جاهز للفحص" : "يحتاج مراجعة"}
-        </span>
-      </div>
-      <p className="mt-6 text-xs font-extrabold text-muted-foreground">حساب المورد الاختباري</p>
-      <h3 className="mt-1 text-2xl font-extrabold" data-testid={`text-test-account-name-${account.role}-${account.id}`}>{account.name}</h3>
-      <div className="mt-5 space-y-3 rounded-2xl bg-muted/35 p-4 text-sm">
-        <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">رقم الاختبار</span><strong dir="ltr" data-testid={`text-test-account-phone-${account.role}-${account.id}`}>{account.phone}</strong></div>
-        <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">الواجهة</span><strong data-testid={`text-test-account-route-${account.role}-${account.id}`}>{account.route}</strong></div>
-      </div>
-      <button type="button" onClick={onStart} disabled={isStarting || !account.ready} data-testid={`button-start-test-${account.role}-${account.id}`} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-extrabold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-        {isStarting ? "جارٍ فتح الحساب..." : "دخول إلى شاشة المورد"}
-        <ArrowLeft className="h-4 w-4" />
-      </button>
-    </article>
   );
 }
 
@@ -327,7 +306,7 @@ function ReportView({ report, error, onRetry }: { report: TestReport | null; err
   ] as const;
   return (
     <div className="space-y-7">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">تقرير حي</p><h2 className="mt-2 text-2xl font-extrabold md:text-3xl">نتيجة فحص وضع المعاينة</h2><p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" />آخر توليد: <time dateTime={report.generatedAt} data-testid="text-test-report-generated-at">{formatArabicDate(report.generatedAt)}</time></p></div><Link href="/test-mode" data-testid="link-test-mode-return" className="inline-flex items-center gap-2 text-sm font-extrabold text-primary hover:underline"><ArrowLeft className="h-4 w-4" />العودة للحسابات</Link></div>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">تقرير حي</p><h2 className="mt-2 text-2xl font-extrabold md:text-3xl">نتيجة فحص وضع المعاينة</h2><p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" />آخر توليد: <time dateTime={report.generatedAt} data-testid="text-test-report-generated-at">{formatArabicDate(report.generatedAt)}</time></p></div><Link href="/test-mode" data-testid="link-test-mode-return" className="inline-flex items-center gap-2 text-sm font-extrabold text-primary hover:underline"><ArrowLeft className="h-4 w-4" />العودة للمعاينة</Link></div>
       <section className="grid gap-3 sm:grid-cols-3" aria-label="ملخص الفحص">
         {summaryItems.map(({ key, label, value, icon: Icon, tone }) => <div key={key} className="rounded-2xl border bg-card p-5 shadow-warm"><div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div><p className="mt-4 text-sm font-bold text-muted-foreground">{label}</p><p className="mt-1 text-3xl font-extrabold" data-testid={`text-test-report-summary-${key}`}>{value}</p></div>)}
       </section>
