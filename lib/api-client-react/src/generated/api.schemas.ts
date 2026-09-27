@@ -212,9 +212,22 @@ export interface RequestOptions {
   cities: string[];
 }
 
-export type AdminItemCategory = ItemCategory & {
+export type AdminItemCategory = ItemCategory & ({
   supplierCount: number;
-};
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes: string | null;
+});
+
+export interface ItemCategoryImportReport {
+  added: number;
+  skipped: number;
+  failed: number;
+  /** @nullable */
+  appliedAt: string | null;
+}
 
 export interface ItemCategoryInput {
   /**
@@ -227,7 +240,11 @@ export interface ItemCategoryInput {
      * @maxLength 24
      */
   icon?: string;
-  primaryGroupId: number;
+  /**
+     * Null leaves this item unassigned.
+     * @nullable
+     */
+  primaryGroupId?: number | null;
   /** Optional legacy alias for primaryGroupId. */
   parentId?: number;
   /** @nullable */
@@ -237,6 +254,11 @@ export interface ItemCategoryInput {
      * @nullable
      */
   description?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes?: string | null;
 }
 
 export interface ItemCategoryUpdate {
@@ -255,9 +277,15 @@ export interface ItemCategoryUpdate {
      * @nullable
      */
   description?: string | null;
-  primaryGroupId?: number;
+  /** @nullable */
+  primaryGroupId?: number | null;
   /** @nullable */
   subGroupId?: number | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes?: string | null;
   /** @minimum 0 */
   displayOrder?: number;
   isActive?: boolean;

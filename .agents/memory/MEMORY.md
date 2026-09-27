@@ -8,6 +8,7 @@
 - [Supplier source attribution](supplier-source-attribution.md) — classify only known creation sources; old records with ambiguous origins remain unattributed.
 - [Item-category group headings](item-category-group-headings.md) — use the latest 11-root/6-cake-subgroup mapping; preserve old records despite illustrative counts.
 - [Taxonomy icon scope](taxonomy-icon-scope.md) — sections and groups use Lucide SVG icons; individual item classifications stay text-only.
+- [Unassigned item visibility](unassigned-item-visibility.md) — imported items may stay active but invisible publicly until assigned to a root group.
 - [Supplier category associations](supplier-category-associations.md) — preserve registration choices in JSON; update normalized supplier links transactionally and retain stable alias IDs.
 - [Admin browser test environment](admin-browser-test-environment.md) — browser testers may not inherit runtime secrets; use secure server-side tooling for authenticated checks.
 - [API startup proxy fallback](api-startup-proxy-fallback.md) — during startup the proxy may return HTML 404 for /api; distinguish it from an API JSON 404.

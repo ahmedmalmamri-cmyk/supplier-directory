@@ -131,6 +131,7 @@ type ItemCategoryRow = {
   subGroupId: number | null;
   tagGroupIds: number[];
   description: string | null;
+  notes: string | null;
   displayOnHome: number;
   displayOrder: number;
   isActive: number;
@@ -142,7 +143,7 @@ function getItemCategoryRows() {
   const rows = directoryDb.prepare(`
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       primary_group_id AS primaryGroupId, sub_group_id AS subGroupId,
-      description, display_on_home AS displayOnHome, display_order AS displayOrder,
+      description, notes, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories
     ORDER BY COALESCE(parent_id, id),
@@ -159,7 +160,7 @@ function getItemCategory(id: number) {
   const row = directoryDb.prepare(`
     SELECT id, name, icon, slug, group_name AS groupName, parent_id AS parentId,
       primary_group_id AS primaryGroupId, sub_group_id AS subGroupId,
-      description, display_on_home AS displayOnHome, display_order AS displayOrder,
+      description, notes, display_on_home AS displayOnHome, display_order AS displayOrder,
       is_active AS isActive, created_at AS createdAt, updated_at AS updatedAt
     FROM item_categories WHERE id = ?
   `).get(id) as Omit<ItemCategoryRow, "tagGroupIds"> | undefined;
@@ -192,6 +193,7 @@ function itemCategorySnapshot(row: ItemCategoryRow) {
     subGroupId: row.subGroupId,
     tagGroupIds: row.tagGroupIds,
     description: row.description,
+    notes: row.notes,
     displayOnHome: Boolean(row.displayOnHome),
     displayOrder: row.displayOrder,
     isActive: Boolean(row.isActive),
@@ -1280,17 +1282,22 @@ router.get("/admin/item-categories", (req, res): void => {
   })));
 });
 
+router.get("/admin/item-categories/import-report", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const report = directoryDb.prepare(`
+    SELECT added, skipped, failed, applied_at AS appliedAt
+    FROM item_category_import_reports WHERE name = ?
+  `).get("supplied-unassigned-items-2026-09-27");
+  res.json(report ?? { added: 0, skipped: 0, failed: 0, appliedAt: null });
+});
+
 router.post("/admin/item-categories", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const body = req.body as Record<string, unknown>;
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const icon = (typeof body.icon === "string" ? body.icon.trim() : "") || "icon:package";
-  const rawParentId = body.primaryGroupId ?? body.parentId;
-  if (rawParentId === undefined || rawParentId === null) {
-    res.status(400).json({ error: "يجب إضافة التصنيف الفرعي تحت مجموعة رئيسية نشطة." });
-    return;
-  }
-  const parentId = typeof rawParentId === "number" ? rawParentId : Number.NaN;
+  const rawParentId = Object.hasOwn(body, "primaryGroupId") ? body.primaryGroupId : body.parentId ?? null;
+  const parentId = rawParentId === null ? null : typeof rawParentId === "number" ? rawParentId : Number.NaN;
   const rawSubGroupId = body.subGroupId === undefined || body.subGroupId === null
     ? null
     : Number(body.subGroupId);
@@ -1299,10 +1306,14 @@ router.post("/admin/item-categories", (req, res): void => {
     : typeof body.description === "string"
       ? body.description.trim() || null
       : undefined;
+  const notes = body.notes === undefined || body.notes === null
+    ? null : typeof body.notes === "string" ? body.notes.trim() || null : undefined;
   if (!name || name.length > 100 || (body.icon !== undefined && typeof body.icon !== "string") || icon.length > 24 || description === undefined ||
       description && description.length > 500 ||
-      !Number.isInteger(parentId) ||
+      notes === undefined || (notes && notes.length > 500) ||
+      (parentId !== null && !Number.isInteger(parentId)) ||
       (rawSubGroupId !== null && !Number.isInteger(rawSubGroupId)) ||
+      (parentId === null && rawSubGroupId !== null) ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean")) {
     res.status(400).json({ error: "تحقق من اسم التصنيف ووصفه." });
     return;
@@ -1311,9 +1322,9 @@ router.post("/admin/item-categories", (req, res): void => {
     res.status(409).json({ error: "يوجد تصنيف بهذا الاسم بالفعل." });
     return;
   }
-  const parent = getItemCategory(parentId);
-  const primaryGroup = getGroupRecord(parentId);
-  if (!isActiveCanonicalItemCategoryRoot(parent) || !primaryGroup?.isActive || primaryGroup.parentId !== null) {
+  const parent = parentId === null ? undefined : getItemCategory(parentId);
+  const primaryGroup = parentId === null ? undefined : getGroupRecord(parentId);
+  if (parentId !== null && (!isActiveCanonicalItemCategoryRoot(parent) || !primaryGroup?.isActive || primaryGroup.parentId !== null)) {
     res.status(400).json({ error: "يجب اختيار مجموعة رئيسية نشطة كأب للتصنيف." });
     return;
   }
@@ -1354,17 +1365,18 @@ router.post("/admin/item-categories", (req, res): void => {
     );
     const result = directoryDb.prepare(`
       INSERT INTO item_categories
-        (id, name, icon, slug, group_name, parent_id, description, display_on_home,
+        (id, name, icon, slug, group_name, parent_id, description, notes, display_on_home,
          display_order, is_active, created_at, updated_at, primary_group_id, sub_group_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
     `).run(
       id,
       name,
       icon,
       slug,
-      primaryGroup.name,
+      primaryGroup?.name ?? "",
       parentId as number | null,
       description,
+      notes,
       displayOnHome ? 1 : 0,
       displayOrder,
       now,
@@ -1455,9 +1467,9 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
   const icon = body.icon === undefined ? existing.icon : (typeof body.icon === "string" ? body.icon.trim() : "") || "icon:package";
   const rawPrimaryGroupId = body.primaryGroupId === undefined
     ? existing.primaryGroupId
-    : Number(body.primaryGroupId);
-  const primaryGroupId = rawPrimaryGroupId === null ? Number.NaN : Number(rawPrimaryGroupId);
-  const primaryGroup = Number.isInteger(primaryGroupId) ? getGroupRecord(primaryGroupId) : undefined;
+    : body.primaryGroupId === null ? null : Number(body.primaryGroupId);
+  const primaryGroupId = rawPrimaryGroupId === null ? null : Number(rawPrimaryGroupId);
+  const primaryGroup = primaryGroupId !== null && Number.isInteger(primaryGroupId) ? getGroupRecord(primaryGroupId) : undefined;
   const rawSubGroupId = body.subGroupId === undefined ? existing.subGroupId :
     body.subGroupId === null ? null : Number(body.subGroupId);
   const subGroup = rawSubGroupId === null ? undefined :
@@ -1472,18 +1484,22 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
       : typeof body.description === "string"
         ? body.description.trim() || null
         : undefined;
+  const notes = body.notes === undefined ? existing.notes :
+    body.notes === null ? null :
+    typeof body.notes === "string" ? body.notes.trim() || null : undefined;
   if (!name || name.length > 100 || (body.icon !== undefined && typeof body.icon !== "string") || icon.length > 24 ||
       description === undefined || description && description.length > 500 ||
+      notes === undefined || (notes && notes.length > 500) ||
       (body.isActive !== undefined && typeof body.isActive !== "boolean") ||
       (body.displayOnHome !== undefined && typeof body.displayOnHome !== "boolean") ||
       !Number.isInteger(displayOrder) || displayOrder < 0 ||
-      !Number.isInteger(primaryGroupId) || !primaryGroup || !primaryGroup.isActive ||
-      primaryGroup.parentId !== null || !isActiveCanonicalItemCategoryRoot(getItemCategory(primaryGroupId))) {
+      (primaryGroupId !== null && (!Number.isInteger(primaryGroupId) || !primaryGroup?.isActive ||
+        primaryGroup.parentId !== null || !isActiveCanonicalItemCategoryRoot(getItemCategory(primaryGroupId))))) {
     res.status(400).json({ error: "تحقق من بيانات التصنيف." });
     return;
   }
-  if (rawSubGroupId !== null &&
-      (!Number.isInteger(rawSubGroupId) || !subGroup?.isActive || subGroup.parentId !== primaryGroupId)) {
+  if (rawSubGroupId !== null && (primaryGroupId === null ||
+      !Number.isInteger(rawSubGroupId) || !subGroup?.isActive || subGroup.parentId !== primaryGroupId)) {
     res.status(400).json({ error: "يجب اختيار قسم فرعي تابع للمجموعة الرئيسية المحددة." });
     return;
   }
@@ -1494,7 +1510,7 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
     res.status(409).json({ error: "يوجد تصنيف بهذا الاسم بالفعل." });
     return;
   }
-  if (primaryGroupId !== existing.primaryGroupId) {
+  if (primaryGroupId !== null && primaryGroupId !== existing.primaryGroupId) {
     const moveError = primaryGroupMoveError(getItemCategoryRows(), id, primaryGroupId);
     if (moveError) {
       res.status(400).json({ error: moveError });
@@ -1503,23 +1519,24 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
   }
   const isActive = body.isActive === undefined ? Boolean(existing.isActive) : body.isActive as boolean;
   const displayOnHome = false;
-  const groupName = primaryGroup.name;
+  const groupName = primaryGroup?.name ?? "";
   const now = new Date().toISOString();
   directoryDb.exec("BEGIN");
   try {
     directoryDb.prepare(`
       UPDATE item_categories
       SET name = ?, icon = ?, group_name = ?, parent_id = ?, primary_group_id = ?, sub_group_id = ?,
-          description = ?, is_active = ?, display_order = ?, display_on_home = ?, updated_at = ?
+          description = ?, notes = ?, is_active = ?, display_order = ?, display_on_home = ?, updated_at = ?
       WHERE id = ?
     `).run(
       name,
       icon,
       groupName,
       primaryGroupId,
-      rawSubGroupId,
       primaryGroupId,
+      rawSubGroupId,
       description,
+      notes,
       isActive ? 1 : 0,
       displayOrder,
       displayOnHome ? 1 : 0,
@@ -1532,7 +1549,9 @@ router.patch("/admin/item-categories/:id", (req, res): void => {
         VALUES (?, ?)
       `).run(existing.name, id);
     }
-    if (existing.primaryGroupId !== primaryGroupId) {
+    if (primaryGroupId === null) {
+      directoryDb.prepare("DELETE FROM category_tags WHERE category_id = ?").run(id);
+    } else if (existing.primaryGroupId !== primaryGroupId) {
       directoryDb.prepare(`
         DELETE FROM category_tags WHERE category_id = ? AND group_id = ?
       `).run(id, primaryGroupId);
@@ -1580,7 +1599,7 @@ router.post("/admin/item-categories/:id/transfer", (req, res): void => {
   }
   const previousParent = existing.parentId === null ? undefined : getItemCategory(existing.parentId);
   const previousGroup = existing.primaryGroupId === null ? undefined : getGroupRecord(existing.primaryGroupId);
-  if (!isActiveCanonicalItemCategoryRoot(previousParent) || !previousGroup?.isActive) {
+  if (existing.primaryGroupId !== null && (!isActiveCanonicalItemCategoryRoot(previousParent) || !previousGroup?.isActive)) {
     res.status(400).json({ error: "يمكن نقل التصنيف الفرعي الموجود تحت مجموعة رئيسية فقط." });
     return;
   }
@@ -1759,7 +1778,7 @@ function buildItemCategoryDeletionPreview(existing: ItemCategoryRow) {
   return {
     id, name: existing.name, isActive: Boolean(existing.isActive),
     childCategoryCount, supplierLinkCount, aliasCount, requestCount, productCount,
-    canDelete: existing.parentId !== null && !existing.isActive &&
+    canDelete: !isCanonicalItemCategoryRoot(existing) && !existing.isActive &&
       !childCategoryCount && !supplierLinkCount && !aliasCount && !requestCount && !productCount && !invalidRequests,
     invalidRequests,
   };
@@ -1801,7 +1820,7 @@ router.delete("/admin/item-categories/:id/permanent", (req, res): void => {
       res.status(404).json({ error: "التصنيف غير موجود." });
       return;
     }
-    if (existing.parentId === null || isCanonicalItemCategoryRoot(existing)) {
+    if (isCanonicalItemCategoryRoot(existing)) {
       directoryDb.exec("ROLLBACK");
       res.status(400).json({ error: "لا يمكن حذف مجموعة رئيسية نهائياً من هذا المسار." });
       return;

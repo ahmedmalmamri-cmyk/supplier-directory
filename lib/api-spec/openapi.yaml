@@ -185,6 +185,17 @@ paths:
               schema: { $ref: "#/components/schemas/AdminItemCategory" }
         "400": { description: Invalid category or duplicate name }
         "401": { description: Admin login required }
+  /admin/item-categories/import-report:
+    get:
+      operationId: getAdminItemCategoryImportReport
+      tags: [admin]
+      responses:
+        "200":
+          description: Result of importing the supplied item list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryImportReport" }
+        "401": { description: Admin login required }
   /admin/groups:
     get:
       operationId: listAdminGroups
@@ -1338,27 +1349,38 @@ components:
       allOf:
         - $ref: "#/components/schemas/ItemCategory"
         - type: object
-          required: [supplierCount]
+          required: [supplierCount, notes]
           properties:
             supplierCount: { type: integer }
+            notes: { type: ["string", "null"], maxLength: 500 }
+    ItemCategoryImportReport:
+      type: object
+      required: [added, skipped, failed, appliedAt]
+      properties:
+        added: { type: integer }
+        skipped: { type: integer }
+        failed: { type: integer }
+        appliedAt: { type: ["string", "null"] }
     ItemCategoryInput:
       type: object
-      required: [name, primaryGroupId]
+      required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         icon: { type: string, maxLength: 24, description: "Optional. Blank or omitted uses the default package icon." }
-        primaryGroupId: { type: integer }
+        primaryGroupId: { type: ["integer", "null"], description: "Null leaves this item unassigned." }
         parentId: { type: integer, description: "Optional legacy alias for primaryGroupId." }
         subGroupId: { type: ["integer", "null"] }
         description: { type: ["string", "null"], maxLength: 500 }
+        notes: { type: ["string", "null"], maxLength: 500 }
     ItemCategoryUpdate:
       type: object
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         icon: { type: string, maxLength: 24, description: "Blank selects the default package icon; omission preserves the existing icon." }
         description: { type: ["string", "null"], maxLength: 500 }
-        primaryGroupId: { type: integer }
+        primaryGroupId: { type: ["integer", "null"] }
         subGroupId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"], maxLength: 500 }
         displayOrder: { type: integer, minimum: 0 }
         isActive: { type: boolean }
         displayOnHome: { type: boolean }

@@ -6,6 +6,7 @@ import {
   resolveDirectItemCategoryIdsForSelections,
 } from "./item-category-aliases";
 import { itemCategorySlugBase } from "./item-category-slugs";
+import { newItemCategoryNames } from "./new-item-category-names";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -30,6 +31,7 @@ directoryDb.exec(`
     parent_id INTEGER REFERENCES item_categories(id),
     slug TEXT,
     description TEXT,
+    notes TEXT,
     display_on_home INTEGER NOT NULL DEFAULT 0 CHECK (display_on_home IN (0, 1)),
     display_order INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
@@ -438,6 +440,9 @@ if (!itemCategoryColumns.some((column) => column.name === "slug")) {
 }
 if (!itemCategoryColumns.some((column) => column.name === "description")) {
   directoryDb.exec("ALTER TABLE item_categories ADD COLUMN description TEXT");
+}
+if (!itemCategoryColumns.some((column) => column.name === "notes")) {
+  directoryDb.exec("ALTER TABLE item_categories ADD COLUMN notes TEXT");
 }
 if (!itemCategoryColumns.some((column) => column.name === "created_at")) {
   directoryDb.exec("ALTER TABLE item_categories ADD COLUMN created_at TEXT NOT NULL DEFAULT ''");
@@ -2015,6 +2020,79 @@ if (!legacyCakeRootCategoryMigration) {
     directoryDb.prepare(`
       INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)
     `).run(legacyCakeRootCategoryMigrationName, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+// Import the supplied list once per database. Unassigned rows have no public
+// taxonomy path until an administrator moves them to an active group.
+directoryDb.exec(`
+  CREATE TABLE IF NOT EXISTS item_category_import_reports (
+    name TEXT PRIMARY KEY,
+    added INTEGER NOT NULL,
+    skipped INTEGER NOT NULL,
+    failed INTEGER NOT NULL,
+    applied_at TEXT NOT NULL
+  );
+`);
+const suppliedListImportName = "supplied-unassigned-items-2026-09-27";
+if (!directoryDb.prepare("SELECT name FROM directory_migrations WHERE name = ?").get(suppliedListImportName)) {
+  const now = new Date().toISOString();
+  const existingNames = new Set(
+    (directoryDb.prepare("SELECT name FROM item_categories").all() as Array<{ name: string }>)
+      .map(({ name }) => name.trim().normalize("NFC").toLocaleLowerCase("ar")),
+  );
+  const slugTaken = directoryDb.prepare(`
+    SELECT 1 FROM item_categories WHERE slug = ?
+    UNION ALL SELECT 1 FROM groups WHERE slug = ?
+    LIMIT 1
+  `);
+  const insert = directoryDb.prepare(`
+    INSERT INTO item_categories
+      (id, name, icon, group_name, parent_id, slug, description, notes,
+       display_on_home, display_order, is_active, created_at, updated_at,
+       primary_group_id, sub_group_id)
+    VALUES (?, ?, 'icon:package', '', NULL, ?, NULL, NULL, 0, 0, 1, ?, ?, NULL, NULL)
+  `);
+  let nextId = (directoryDb.prepare(`
+    SELECT COALESCE(MAX(id), 0) + 1 AS id FROM (
+      SELECT id FROM groups
+      UNION ALL SELECT id FROM item_categories
+      UNION ALL SELECT id FROM permanently_deleted_item_categories
+    )
+  `).get() as { id: number }).id;
+  let added = 0;
+  let skipped = 0;
+  let failed = 0;
+  directoryDb.exec("BEGIN");
+  try {
+    for (const rawName of newItemCategoryNames) {
+      const name = rawName.trim();
+      const key = name.normalize("NFC").toLocaleLowerCase("ar");
+      if (existingNames.has(key)) {
+        skipped++;
+        continue;
+      }
+      if (!name || name.length > 100) {
+        failed++;
+        continue;
+      }
+      const base = itemCategorySlugBase(name);
+      let slug = base;
+      let suffix = 1;
+      while (slugTaken.get(slug, slug)) slug = `${base}-${nextId}-${suffix++}`;
+      insert.run(nextId++, name, slug, now, now);
+      existingNames.add(key);
+      added++;
+    }
+    directoryDb.prepare(`
+      INSERT INTO item_category_import_reports (name, added, skipped, failed, applied_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(suppliedListImportName, added, skipped, failed, now);
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)").run(suppliedListImportName, now);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");

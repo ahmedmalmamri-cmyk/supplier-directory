@@ -57,6 +57,7 @@ import type {
   ItemCategory,
   ItemCategoryDeleteResponse,
   ItemCategoryDeletionPreview,
+  ItemCategoryImportReport,
   ItemCategoryInput,
   ItemCategoryOrderInput,
   ItemCategoryOrderResponse,
@@ -945,6 +946,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateAdminItemCategoryMutationOptions(options));
     }
+
+export const getGetAdminItemCategoryImportReportUrl = () => {
+
+
+
+
+  return `/api/admin/item-categories/import-report`
+}
+
+export const getAdminItemCategoryImportReport = async ( options?: Parameters<typeof customFetch>[1]): Promise<ItemCategoryImportReport> => {
+
+  return customFetch<ItemCategoryImportReport>(getGetAdminItemCategoryImportReportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminItemCategoryImportReportQueryKey = () => {
+    return [
+    `/api/admin/item-categories/import-report`
+    ] as const;
+    }
+
+
+export const getGetAdminItemCategoryImportReportQueryOptions = <TData = Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminItemCategoryImportReportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>> = ({ signal }) => getAdminItemCategoryImportReport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminItemCategoryImportReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>>
+export type GetAdminItemCategoryImportReportQueryError = ErrorType<void>
+
+
+
+export function useGetAdminItemCategoryImportReport<TData = Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminItemCategoryImportReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminItemCategoryImportReportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListAdminGroupsUrl = () => {
 

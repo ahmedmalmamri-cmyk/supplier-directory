@@ -207,6 +207,10 @@ export const CreateSupplierRequestOfferContactResponse = zod.object({
 })
 
 
+export const listAdminItemCategoriesResponseTwoNotesMax = 500;
+
+
+
 export const ListAdminItemCategoriesResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -225,7 +229,8 @@ export const ListAdminItemCategoriesResponseItem = zod.object({
   "updatedAt": zod.string(),
   "supplierCount": zod.number().int()
 }).and(zod.object({
-  "supplierCount": zod.number().int()
+  "supplierCount": zod.number().int(),
+  "notes": zod.string().max(listAdminItemCategoriesResponseTwoNotesMax).nullable()
 }))
 export const ListAdminItemCategoriesResponse = zod.array(ListAdminItemCategoriesResponseItem)
 
@@ -236,16 +241,23 @@ export const createAdminItemCategoryBodyIconMax = 24;
 
 export const createAdminItemCategoryBodyDescriptionMax = 500;
 
+export const createAdminItemCategoryBodyNotesMax = 500;
+
 
 
 export const CreateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(createAdminItemCategoryBodyNameMax),
   "icon": zod.string().max(createAdminItemCategoryBodyIconMax).optional().describe('Optional. Blank or omitted uses the default package icon.'),
-  "primaryGroupId": zod.number().int(),
+  "primaryGroupId": zod.number().int().nullish().describe('Null leaves this item unassigned.'),
   "parentId": zod.number().int().optional().describe('Optional legacy alias for primaryGroupId.'),
   "subGroupId": zod.number().int().nullish(),
-  "description": zod.string().max(createAdminItemCategoryBodyDescriptionMax).nullish()
+  "description": zod.string().max(createAdminItemCategoryBodyDescriptionMax).nullish(),
+  "notes": zod.string().max(createAdminItemCategoryBodyNotesMax).nullish()
 })
+
+export const createAdminItemCategoryResponseTwoNotesMax = 500;
+
+
 
 export const CreateAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
@@ -265,8 +277,17 @@ export const CreateAdminItemCategoryResponse = zod.object({
   "updatedAt": zod.string(),
   "supplierCount": zod.number().int()
 }).and(zod.object({
-  "supplierCount": zod.number().int()
+  "supplierCount": zod.number().int(),
+  "notes": zod.string().max(createAdminItemCategoryResponseTwoNotesMax).nullable()
 }))
+
+
+export const GetAdminItemCategoryImportReportResponse = zod.object({
+  "added": zod.number().int(),
+  "skipped": zod.number().int(),
+  "failed": zod.number().int(),
+  "appliedAt": zod.string().nullable()
+})
 
 
 export const ListAdminGroupsResponseItem = zod.object({
@@ -389,6 +410,8 @@ export const updateAdminItemCategoryBodyIconMax = 24;
 
 export const updateAdminItemCategoryBodyDescriptionMax = 500;
 
+export const updateAdminItemCategoryBodyNotesMax = 500;
+
 export const updateAdminItemCategoryBodyDisplayOrderMin = 0;
 
 
@@ -397,12 +420,17 @@ export const UpdateAdminItemCategoryBody = zod.object({
   "name": zod.string().min(1).max(updateAdminItemCategoryBodyNameMax).optional(),
   "icon": zod.string().max(updateAdminItemCategoryBodyIconMax).optional().describe('Blank selects the default package icon; omission preserves the existing icon.'),
   "description": zod.string().max(updateAdminItemCategoryBodyDescriptionMax).nullish(),
-  "primaryGroupId": zod.number().int().optional(),
+  "primaryGroupId": zod.number().int().nullish(),
   "subGroupId": zod.number().int().nullish(),
+  "notes": zod.string().max(updateAdminItemCategoryBodyNotesMax).nullish(),
   "displayOrder": zod.number().int().min(updateAdminItemCategoryBodyDisplayOrderMin).optional(),
   "isActive": zod.boolean().optional(),
   "displayOnHome": zod.boolean().optional()
 })
+
+export const updateAdminItemCategoryResponseTwoNotesMax = 500;
+
+
 
 export const UpdateAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
@@ -422,7 +450,8 @@ export const UpdateAdminItemCategoryResponse = zod.object({
   "updatedAt": zod.string(),
   "supplierCount": zod.number().int()
 }).and(zod.object({
-  "supplierCount": zod.number().int()
+  "supplierCount": zod.number().int(),
+  "notes": zod.string().max(updateAdminItemCategoryResponseTwoNotesMax).nullable()
 }))
 
 
@@ -472,6 +501,10 @@ export const TransferAdminItemCategoryBody = zod.object({
   "subGroupId": zod.number().int().nullish().describe('Destination subdivision; null clears the subdivision.')
 })
 
+export const transferAdminItemCategoryResponseTwoNotesMax = 500;
+
+
+
 export const TransferAdminItemCategoryResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -490,7 +523,8 @@ export const TransferAdminItemCategoryResponse = zod.object({
   "updatedAt": zod.string(),
   "supplierCount": zod.number().int()
 }).and(zod.object({
-  "supplierCount": zod.number().int()
+  "supplierCount": zod.number().int(),
+  "notes": zod.string().max(transferAdminItemCategoryResponseTwoNotesMax).nullable()
 }))
 
 
@@ -501,6 +535,10 @@ export const SetAdminItemCategoryTagsParams = zod.object({
 export const SetAdminItemCategoryTagsBody = zod.object({
   "groupIds": zod.array(zod.number().int())
 })
+
+export const setAdminItemCategoryTagsResponseTwoNotesMax = 500;
+
+
 
 export const SetAdminItemCategoryTagsResponse = zod.object({
   "id": zod.number().int(),
@@ -520,7 +558,8 @@ export const SetAdminItemCategoryTagsResponse = zod.object({
   "updatedAt": zod.string(),
   "supplierCount": zod.number().int()
 }).and(zod.object({
-  "supplierCount": zod.number().int()
+  "supplierCount": zod.number().int(),
+  "notes": zod.string().max(setAdminItemCategoryTagsResponseTwoNotesMax).nullable()
 }))
 
 

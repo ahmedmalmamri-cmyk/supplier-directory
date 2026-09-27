@@ -8,6 +8,7 @@ import {
   useListAdminItemCategories, useCreateAdminItemCategory, useUpdateAdminItemCategory,
   useTransferAdminItemCategory, useDeleteAdminItemCategory, usePermanentlyDeleteAdminItemCategory, useSetAdminItemCategoryTags,
   useListAdminActivityLog, useGetAdminItemCategoryDeletionPreview, getGetAdminItemCategoryDeletionPreviewQueryKey,
+  useGetAdminItemCategoryImportReport,
   type Group, type AdminItemCategory, type ItemCategoryDeletionPreview,
 } from "@workspace/api-client-react";
 import { getGroupIcon, groupIconValue } from "@/lib/group-icons";
@@ -44,14 +45,16 @@ export default function AdminItemCategoriesTab() {
   const groupsQuery = useListAdminGroups();
   const categoriesQuery = useListAdminItemCategories();
   const activityQuery = useListAdminActivityLog();
+  const importReport = useGetAdminItemCategoryImportReport();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [unassignedOpen, setUnassignedOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(false);
   const [groupForm, setGroupForm] = useState({ name: "", icon: "", parentId: "", displayOrder: 0, isActive: true });
-  const [categoryForm, setCategoryForm] = useState({ name: "", primaryGroupId: "", subGroupId: "", displayOrder: 0, description: "", isActive: true });
+  const [categoryForm, setCategoryForm] = useState({ name: "", primaryGroupId: "", subGroupId: "", displayOrder: 0, description: "", notes: "", isActive: true });
   const [destinationId, setDestinationId] = useState("");
   const [destinationSubGroupId, setDestinationSubGroupId] = useState("");
   const [tagIds, setTagIds] = useState<number[]>([]);
@@ -63,7 +66,7 @@ export default function AdminItemCategoriesTab() {
   });
   const groups = useMemo(() => [...(groupsQuery.data ?? [])].sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id), [groupsQuery.data]);
   const rootGroups = groups.filter((group) => group.parentId === null);
-  const categories = (categoriesQuery.data ?? []).filter((category) => category.primaryGroupId !== null);
+  const categories = categoriesQuery.data ?? [];
   const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
   const invalidate = async () => {
     await Promise.all([
@@ -96,7 +99,7 @@ export default function AdminItemCategoriesTab() {
     onError: failure,
   } });
   const setTags = useSetAdminItemCategoryTags({ mutation: { onSuccess: () => success("حُفظت جميع مجموعات الوسوم."), onError: failure } });
-  const pending = createGroup.isPending || updateGroup.isPending || deleteGroup.isPending || createCategory.isPending || transferCategory.isPending || deleteCategory.isPending || permanentlyDeleteCategory.isPending || setTags.isPending;
+  const pending = createGroup.isPending || updateGroup.isPending || deleteGroup.isPending || createCategory.isPending || updateCategory.isPending || transferCategory.isPending || deleteCategory.isPending || permanentlyDeleteCategory.isPending || setTags.isPending;
 
   const openGroup = (group?: Group) => {
     setNotice(null);
@@ -106,8 +109,8 @@ export default function AdminItemCategoriesTab() {
   const openCategory = (category?: AdminItemCategory, groupId?: number) => {
     setNotice(null);
     setCategoryForm(category
-      ? { name: category.name, primaryGroupId: String(category.primaryGroupId ?? ""), subGroupId: String(category.subGroupId ?? ""), displayOrder: category.displayOrder, description: category.description ?? "", isActive: category.isActive }
-      : { name: "", primaryGroupId: String(groupId && groups.find((group) => group.id === groupId)?.parentId ? groups.find((group) => group.id === groupId)?.parentId : groupId ?? rootGroups.find((group) => group.isActive)?.id ?? ""), subGroupId: groupId && groups.find((group) => group.id === groupId)?.parentId ? String(groupId) : "", displayOrder: 0, description: "", isActive: true });
+      ? { name: category.name, primaryGroupId: String(category.primaryGroupId ?? ""), subGroupId: String(category.subGroupId ?? ""), displayOrder: category.displayOrder, description: category.description ?? "", notes: category.notes ?? "", isActive: category.isActive }
+      : { name: "", primaryGroupId: String(groupId && groups.find((group) => group.id === groupId)?.parentId ? groups.find((group) => group.id === groupId)?.parentId : groupId ?? ""), subGroupId: groupId && groups.find((group) => group.id === groupId)?.parentId ? String(groupId) : "", displayOrder: 0, description: "", notes: "", isActive: true });
     setDialog({ kind: "category", category, groupId });
   };
   const openTags = (category: AdminItemCategory) => {
@@ -124,17 +127,17 @@ export default function AdminItemCategoriesTab() {
   };
   const onCategorySubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const primaryGroupId = Number(categoryForm.primaryGroupId);
+    const primaryGroupId = categoryForm.primaryGroupId ? Number(categoryForm.primaryGroupId) : null;
     const name = categoryForm.name.trim();
     const subGroupId = categoryForm.subGroupId ? Number(categoryForm.subGroupId) : null;
-    if (!name || !groupById.get(primaryGroupId)?.isActive || groupById.get(primaryGroupId)?.parentId !== null) return setNotice({ error: true, message: "أدخل الاسم واختر مجموعة رئيسية نشطة." });
-    if (groups.some((group) => group.parentId === primaryGroupId && group.isActive) && !subGroupId) return setNotice({ error: true, message: "اختر التقسيم الداخلي لهذا القسم." });
+    if (!name || (primaryGroupId !== null && (!groupById.get(primaryGroupId)?.isActive || groupById.get(primaryGroupId)?.parentId !== null))) return setNotice({ error: true, message: "أدخل الاسم واختر مجموعة رئيسية نشطة أو اتركها فارغة." });
     if (dialog?.kind === "category" && dialog.category) {
-      updateCategory.mutate({ id: dialog.category.id, data: { name, primaryGroupId, subGroupId, displayOrder: Number(categoryForm.displayOrder), description: categoryForm.description.trim() || null, isActive: categoryForm.isActive } });
-    } else createCategory.mutate({ data: { name, primaryGroupId, subGroupId, description: categoryForm.description.trim() || null } });
+      updateCategory.mutate({ id: dialog.category.id, data: { name, primaryGroupId, subGroupId, displayOrder: Number(categoryForm.displayOrder), description: categoryForm.description.trim() || null, notes: categoryForm.notes.trim() || null, isActive: categoryForm.isActive } });
+    } else createCategory.mutate({ data: { name, primaryGroupId, subGroupId, description: categoryForm.description.trim() || null, notes: categoryForm.notes.trim() || null } });
   };
 
   const term = search.trim().toLocaleLowerCase("ar");
+  const unassigned = categories.filter((item) => item.primaryGroupId === null && (status === "all" || item.isActive === (status === "active")) && (!term || item.name.toLocaleLowerCase("ar").includes(term)));
   const filteredGroups = groups.filter((group) => {
     const members = categories.filter((item) => group.parentId === null ? item.primaryGroupId === group.id || item.tagGroupIds.includes(group.id) : item.subGroupId === group.id);
     const statusMatch = (item: AdminItemCategory) => status === "all" || item.isActive === (status === "active");
@@ -156,7 +159,7 @@ export default function AdminItemCategoriesTab() {
         <div className="flex flex-wrap gap-2">
           <button data-testid="button-refresh-categories" type="button" className={subtleButton} onClick={() => { void groupsQuery.refetch(); void categoriesQuery.refetch(); void activityQuery.refetch(); }}><RefreshCw className="h-4 w-4" /> تحديث</button>
           <button data-testid="button-add-group" type="button" className={subtleButton} onClick={() => openGroup()}><Plus className="h-4 w-4" /> إضافة مجموعة</button>
-          <button data-testid="button-add-category" type="button" className={mainButton} onClick={() => openCategory()} disabled={!groups.some((g) => g.isActive)}><Plus className="h-4 w-4" /> إضافة منتج</button>
+          <button data-testid="button-add-category" type="button" className={mainButton} onClick={() => openCategory()}><Plus className="h-4 w-4" /> إضافة صنف</button>
         </div>
       </div>
       <div className="grid grid-cols-2 divide-x-reverse divide-x border-t bg-secondary/15 md:grid-cols-4">
@@ -166,6 +169,11 @@ export default function AdminItemCategoriesTab() {
         <Metric icon={<Tags className="h-4 w-4" />} label="وسوم إضافية" value={categories.reduce((sum, item) => sum + item.tagGroupIds.filter((id) => id !== item.primaryGroupId).length, 0)} />
       </div>
     </header>
+    {importReport.data?.appliedAt && <div role="status" data-testid="category-import-report" className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+      <strong className="block mb-2">تقرير إضافة قائمة الأصناف</strong>
+      <div className="flex flex-wrap gap-x-6 gap-y-1"><span>أُضيف: {fmt(importReport.data.added)}</span><span>موجود مسبقاً: {fmt(importReport.data.skipped)}</span><span>فشل: {fmt(importReport.data.failed)}</span></div>
+      <p className="mt-2 text-xs text-muted-foreground">الأصناف الجديدة غير موزعة بعد؛ انقلها إلى مجموعاتها من القائمة أدناه. تاريخ الإضافة: {new Date(importReport.data.appliedAt).toLocaleString("ar-SA")}</p>
+    </div>}
 
     {notice && <div role={notice.error ? "alert" : "status"} data-testid="status-category-action" className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${notice.error ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-foreground"}`}><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{notice.message}</span><button type="button" data-testid="button-dismiss-category-notice" aria-label="إغلاق التنبيه" className="mr-auto p-1" onClick={() => setNotice(null)}><X className="h-4 w-4" /></button></div>}
 
@@ -198,17 +206,36 @@ export default function AdminItemCategoriesTab() {
           </div>
           {open && <div className="border-t bg-background/50 p-2 md:p-3">{members.length === 0 ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">لا توجد تصنيفات مطابقة في هذه المجموعة.</div> : <div className="space-y-2">{members.map((item) => <div key={item.id} data-testid={`category-row-${group.id}-${item.id}`} className="flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
              <div className="flex min-w-0 items-start gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong data-testid={`text-category-name-${item.id}`} className="text-sm">{item.name}</strong><Pill active={item.isActive} /><span className="text-xs text-muted-foreground">{fmt(item.supplierCount)} مورد</span></div>
-               <div className="mt-1.5 flex flex-wrap gap-1">{item.primaryGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">رئيسية: {groupById.get(item.primaryGroupId)?.name ?? item.groupName}</span>}{item.subGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">تقسيم: {groupById.get(item.subGroupId)?.name}</span>}{item.tagGroupIds.filter((id) => id !== item.primaryGroupId).map((id) => <span key={id} className="rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">وسم: {groupById.get(id)?.name ?? `مجموعة ${id}`}</span>)}</div>
+                <div className="mt-1.5 flex flex-wrap gap-1">{item.primaryGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">رئيسية: {groupById.get(item.primaryGroupId)?.name ?? item.groupName}</span>}{item.subGroupId && <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">تقسيم: {groupById.get(item.subGroupId)?.name}</span>}{item.tagGroupIds.filter((id) => id !== item.primaryGroupId).map((id) => <span key={id} className="rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">وسم: {groupById.get(id)?.name ?? `مجموعة ${id}`}</span>)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">أُضيف: {new Date(item.createdAt).toLocaleDateString("ar-SA")}{item.notes && <> · ملاحظات: {item.notes}</>}</p>
             </div></div>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" data-testid={`button-edit-category-${item.id}`} className={subtleButton} onClick={() => openCategory(item)}><Pencil className="h-3.5 w-3.5" /> تعديل</button>
               <button type="button" data-testid={`button-tags-category-${item.id}`} className={subtleButton} onClick={() => openTags(item)}><Tags className="h-3.5 w-3.5" /> الوسوم</button>
                <button type="button" data-testid={`button-move-category-${item.id}`} className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDestinationSubGroupId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-3.5 w-3.5" /> نقل</button>
-                <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDeletionReviewed(false); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> حذف</button>
+               {!item.isActive && <button type="button" className={subtleButton} disabled={pending} onClick={() => updateCategory.mutate({ id: item.id, data: { isActive: true } })}>إعادة تفعيل</button>}
+               <button type="button" data-testid={`button-delete-category-${item.id}`} className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDeletionReviewed(false); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-3.5 w-3.5" /> {item.isActive ? "إيقاف الصنف" : "حذف نهائي"}</button>
             </div>
           </div>)}</div>}</div>}
         </article>;
       })}</div>}
+
+    <section className="overflow-hidden rounded-2xl border bg-card" aria-label="الأصناف غير الموزعة">
+      <button type="button" aria-expanded={unassignedOpen} onClick={() => setUnassignedOpen(!unassignedOpen)} className="flex w-full items-center justify-between p-4 text-right font-bold hover:bg-muted/40">
+        <span>الأصناف غير الموزعة ({fmt(categories.filter((item) => item.primaryGroupId === null).length)})</span>{unassignedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {unassignedOpen && <div className="max-h-[32rem] space-y-2 overflow-y-auto border-t p-3">
+        {unassigned.length === 0 ? <p className="p-4 text-sm text-muted-foreground">لا توجد أصناف غير موزعة تطابق البحث والحالة المختارين.</p> : unassigned.map((item) => <div key={item.id} data-testid={`unassigned-category-${item.id}`} className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><div className="flex items-center gap-2"><strong>{item.name}</strong><Pill active={item.isActive} /></div><p className="mt-1 text-xs text-muted-foreground">أُضيف: {new Date(item.createdAt).toLocaleDateString("ar-SA")}{item.notes && <> · ملاحظات: {item.notes}</>}</p></div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={subtleButton} onClick={() => openCategory(item)}><Pencil className="h-4 w-4" /> تعديل</button>
+            <button type="button" className={subtleButton} onClick={() => { setNotice(null); setDestinationId(""); setDestinationSubGroupId(""); setDialog({ kind: "move", category: item }); }}><ArrowLeftRight className="h-4 w-4" /> نقل إلى مجموعة</button>
+            {!item.isActive && <button type="button" className={subtleButton} disabled={pending} onClick={() => updateCategory.mutate({ id: item.id, data: { isActive: true } })}>إعادة تفعيل</button>}
+            <button type="button" className={`${subtleButton} text-destructive`} onClick={() => { setNotice(null); setDeletionReviewed(false); setDialog({ kind: "delete-category", category: item }); }}><Trash2 className="h-4 w-4" /> {item.isActive ? "إيقاف الصنف" : "حذف نهائي"}</button>
+          </div>
+        </div>)}
+      </div>}
+    </section>
 
     <div className="overflow-hidden rounded-2xl border bg-card"><button type="button" data-testid="button-toggle-category-activity" aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)} className="flex w-full items-center justify-between p-4 text-right text-sm font-bold hover:bg-muted/40"><span className="flex items-center gap-2"><History className="h-4 w-4 text-primary" /> سجل نشاط التصنيفات</span>{activityOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
        {activityOpen && <div className="space-y-2 border-t p-4">{activityQuery.isLoading ? <div className="h-14 animate-pulse rounded-lg bg-muted" /> : activityQuery.isError ? <button type="button" className={subtleButton} onClick={() => void activityQuery.refetch()}>تعذّر تحميل السجل · إعادة المحاولة</button> : !activityQuery.data?.length ? <p className="text-sm text-muted-foreground">لا يوجد نشاط مسجل بعد.</p> : activityQuery.data.map((entry) => <div key={entry.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-xs"><span className="font-bold">{entry.actionType === "delete" && entry.newValue?.permanentlyDeleted === true ? "حذف نهائي" : (({ add: "إضافة", edit: "تعديل", transfer: "نقل", delete: "تعطيل" } as Record<string, string>)[entry.actionType] ?? entry.actionType)} · {entry.entityType === "category" ? "تصنيف" : entry.entityType} #{entry.entityId}</span><time className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString("ar-SA")}</time></div>)}</div>}
@@ -225,15 +252,16 @@ export default function AdminItemCategoriesTab() {
     {dialog?.kind === "category" && <Modal title={dialog.category ? "تعديل التصنيف" : "تصنيف جديد"} onClose={() => setDialog(null)}>
       <form onSubmit={onCategorySubmit} className="space-y-4">
         <Label text="اسم التصنيف"><input required maxLength={100} data-testid="input-category-name" className={field} value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} /></Label>
-        <Label text="المجموعة الرئيسية"><select required data-testid="select-category-primary-group" className={field} value={categoryForm.primaryGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, primaryGroupId: e.target.value, subGroupId: "" })}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive || String(g.id) === categoryForm.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}{!g.isActive ? " (معطلة)" : ""}</option>)}</select></Label>
-          {groups.some((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive) && <Label text="التقسيم الداخلي"><select required data-testid="select-category-subgroup" className={field} value={categoryForm.subGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, subGroupId: e.target.value })}><option value="">اختر تقسيمًا</option>{groups.filter((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>}
+        <Label text="المجموعة الرئيسية (اختياري)"><select data-testid="select-category-primary-group" className={field} value={categoryForm.primaryGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, primaryGroupId: e.target.value, subGroupId: "" })}><option value="">غير موزع حالياً</option>{rootGroups.filter((g) => g.isActive || String(g.id) === categoryForm.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}{!g.isActive ? " (معطلة)" : ""}</option>)}</select></Label>
+           {categoryForm.primaryGroupId && groups.some((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive) && <Label text="التقسيم الداخلي (اختياري)"><select data-testid="select-category-subgroup" className={field} value={categoryForm.subGroupId} onChange={(e) => setCategoryForm({ ...categoryForm, subGroupId: e.target.value })}><option value="">دون تقسيم فرعي</option>{groups.filter((g) => g.parentId === Number(categoryForm.primaryGroupId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>}
         <Label text="الوصف"><textarea maxLength={500} data-testid="input-category-description" className={`${field} min-h-20 py-2`} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} /></Label>
+        <Label text="ملاحظات (اختياري)"><textarea maxLength={500} data-testid="input-category-notes" className={`${field} min-h-20 py-2`} value={categoryForm.notes} onChange={(e) => setCategoryForm({ ...categoryForm, notes: e.target.value })} /></Label>
         {dialog.category && <><Label text="ترتيب العرض"><input type="number" min={0} required data-testid="input-category-order" className={field} value={categoryForm.displayOrder} onChange={(e) => setCategoryForm({ ...categoryForm, displayOrder: Number(e.target.value) })} /></Label><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" data-testid="checkbox-category-active" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} className="accent-primary" /> تصنيف نشط</label></>}
         <Footer pending={pending} onClose={() => setDialog(null)} /></form></Modal>}
     {dialog?.kind === "tags" && <Modal title={`وسوم ${dialog.category.name}`} onClose={() => setDialog(null)}><p className="mb-4 text-sm text-muted-foreground">المجموعة الرئيسية: <strong className="text-foreground">{groupById.get(dialog.category.primaryGroupId ?? -1)?.name ?? dialog.category.groupName}</strong>. اختر كل المجموعات الثانوية المراد ربطها بهذا التصنيف.</p>
        <div className="max-h-72 space-y-2 overflow-auto">{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => { const Icon = getGroupIcon(g); return <label key={g.id} className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-bold hover:bg-muted/40"><input type="checkbox" data-testid={`checkbox-category-tag-${g.id}`} checked={tagIds.includes(g.id)} onChange={(e) => setTagIds((ids) => e.target.checked ? [...ids, g.id] : ids.filter((id) => id !== g.id))} className="accent-primary" /> <Icon className="h-5 w-5 text-primary" aria-hidden="true" />{g.name}</label>; })}</div>
       <div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-save-category-tags" className={mainButton} disabled={pending} onClick={() => setTags.mutate({ id: dialog.category.id, data: { groupIds: tagIds } })}>{pending ? "جارٍ الحفظ..." : "حفظ جميع الوسوم"}</button></div></Modal>}
-    {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك إدارة المجموعات الثانوية من نافذة الوسوم.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => { setDestinationId(e.target.value); setDestinationSubGroupId(""); }}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>{groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && <div className="mt-4"><Label text="التقسيم الداخلي الجديد"><select required data-testid="select-move-category-subgroup" className={field} value={destinationSubGroupId} onChange={(e) => setDestinationSubGroupId(e.target.value)}><option value="">اختر تقسيمًا</option>{groups.filter((g) => g.parentId === Number(destinationId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label></div>}<div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId || (groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && !destinationSubGroupId)} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), subGroupId: destinationSubGroupId ? Number(destinationSubGroupId) : null, moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
+    {dialog?.kind === "move" && <Modal title="تأكيد نقل التصنيف" onClose={() => setDialog(null)}><p className="mb-4 text-sm leading-7">نقل <strong>{dialog.category.name}</strong> يغيّر مجموعته الرئيسية. يمكنك اختيار تقسيم داخلي الآن أو لاحقاً.</p><Label text="المجموعة الرئيسية الجديدة"><select data-testid="select-move-category-group" className={field} value={destinationId} onChange={(e) => { setDestinationId(e.target.value); setDestinationSubGroupId(""); }}><option value="">اختر مجموعة</option>{rootGroups.filter((g) => g.isActive && g.id !== dialog.category.primaryGroupId).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label>{groups.some((g) => g.parentId === Number(destinationId) && g.isActive) && <div className="mt-4"><Label text="التقسيم الداخلي (اختياري)"><select data-testid="select-move-category-subgroup" className={field} value={destinationSubGroupId} onChange={(e) => setDestinationSubGroupId(e.target.value)}><option value="">دون تقسيم فرعي</option>{groups.filter((g) => g.parentId === Number(destinationId) && g.isActive).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Label></div>}<div className="mt-5 flex justify-end gap-2"><button type="button" className={subtleButton} onClick={() => setDialog(null)}>إلغاء</button><button type="button" data-testid="button-confirm-move-category" className={mainButton} disabled={pending || !destinationId || Number(destinationId) === dialog.category.primaryGroupId} onClick={() => transferCategory.mutate({ id: dialog.category.id, data: { destinationId: Number(destinationId), subGroupId: destinationSubGroupId ? Number(destinationSubGroupId) : null, moveSubcategories: false } })}>تأكيد النقل</button></div></Modal>}
       {dialog?.kind === "delete-category" && <Modal title={dialog.category.isActive ? "تعطيل التصنيف" : "مراجعة الحذف النهائي"} onClose={() => { if (!pending) setDialog(null); }}>
         {dialog.category.isActive
           ? <p className="text-sm leading-7">هل تريد تعطيل <strong>{dialog.category.name}</strong>؟ سيختفي من المجموعات العامة وتُزال وسومه. يمكن إعادة تفعيله لاحقاً من التعديل، لكن الوسوم لن تُستعاد تلقائياً.</p>
