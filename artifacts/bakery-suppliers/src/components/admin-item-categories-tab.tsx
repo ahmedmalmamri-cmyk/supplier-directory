@@ -156,7 +156,7 @@ export default function AdminItemCategoriesTab() {
         <div className="flex flex-wrap gap-2">
           <button data-testid="button-refresh-categories" type="button" className={subtleButton} onClick={() => { void groupsQuery.refetch(); void categoriesQuery.refetch(); void activityQuery.refetch(); }}><RefreshCw className="h-4 w-4" /> تحديث</button>
           <button data-testid="button-add-group" type="button" className={subtleButton} onClick={() => openGroup()}><Plus className="h-4 w-4" /> إضافة مجموعة</button>
-          <button data-testid="button-add-category" type="button" className={mainButton} onClick={() => openCategory()} disabled={!groups.some((g) => g.isActive)}><Plus className="h-4 w-4" /> إضافة تصنيف</button>
+          <button data-testid="button-add-category" type="button" className={mainButton} onClick={() => openCategory()} disabled={!groups.some((g) => g.isActive)}><Plus className="h-4 w-4" /> إضافة منتج</button>
         </div>
       </div>
       <div className="grid grid-cols-2 divide-x-reverse divide-x border-t bg-secondary/15 md:grid-cols-4">
