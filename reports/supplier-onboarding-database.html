@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حالة قاعدة بيانات تسجيل الموردين</title>
+  <style>
+    :root { font-family: Arial, "Noto Sans Arabic", sans-serif; color: #382a27; background: #f7f3ed; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 54px 62px; width: 1360px; min-height: 940px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; padding-bottom: 30px; border-bottom: 1px solid #ded4c8; }
+    .kicker { color: #9b6650; font-weight: 700; font-size: 16px; margin: 0 0 8px; }
+    h1 { font-size: 36px; line-height: 1.4; margin: 0; }
+    .subtitle { color: #786d63; margin: 8px 0 0; font-size: 17px; }
+    .stamp { border: 1px solid #d4bdae; color: #734738; background: #fff9f4; border-radius: 14px; padding: 12px 18px; white-space: nowrap; font-size: 15px; font-weight: bold; }
+    .grid { display: grid; grid-template-columns: 1fr 1.17fr 1.16fr; gap: 18px; margin-top: 30px; align-items: stretch; }
+    .card { border: 1px solid #e4d9cc; border-radius: 20px; padding: 24px; background: #fffdfa; box-shadow: 0 12px 30px #49331b0b; min-height: 490px; }
+    .card.current { border-color: #aa7863; background: #fffaf6; }
+    .card h2 { font-family: ui-monospace, monospace; font-size: 17px; direction: ltr; text-align: right; margin: 0 0 7px; overflow-wrap: anywhere; color: #633d30; }
+    .tag { font-size: 12px; color: #785c4d; background: #f3e9de; border-radius: 999px; padding: 5px 10px; display: inline-block; font-weight: bold; }
+    .count { font-size: 36px; font-weight: bold; margin: 20px 0 4px; line-height: 1; color: #4c3029; }
+    .countlabel { color: #817165; font-size: 13px; }
+    .rows { margin-top: 22px; border-top: 1px solid #eee5db; }
+    .row { padding: 11px 0; border-bottom: 1px solid #f1ebe4; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 14px; }
+    .row code { font-family: ui-monospace, monospace; direction: ltr; color: #4e3c32; font-size: 13px; }
+    .row span { color: #927f71; font-size: 12px; text-align: left; }
+    .note { color: #776a60; line-height: 1.8; font-size: 13px; margin: 18px 0 0; }
+    .connections { display: flex; gap: 14px; flex-wrap: wrap; margin: 22px 0 0; }
+    .connection { border-radius: 12px; padding: 10px 16px; background: #eee6db; color: #513f34; font-size: 13px; font-family: ui-monospace, monospace; direction: ltr; }
+    .footer { margin-top: 24px; display: flex; justify-content: space-between; gap: 24px; border-top: 1px solid #ded4c8; padding-top: 19px; font-size: 14px; color: #74665e; }
+    .ok { color: #3c7559; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div><p class="kicker">فحص مباشر لبنية SQLite • قاعدة التطوير</p><h1>تهيئة تسجيل الموردين الذكي</h1><p class="subtitle">صورة توضيحية من أسماء الجداول والحقول والمفاتيح الأجنبية وعدد السجلات الفعلي</p></div>
+    <div class="stamp">27 سبتمبر 2026<br>بعد التهيئة</div>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <h2>supplier_categories</h2><div class="tag">موجود سابقاً • تصنيفات قديمة</div>
+      <div class="count">0</div><div class="countlabel">صفوف حالياً</div>
+      <div class="rows">
+        <div class="row"><code>supplier_id</code><span>FK → suppliers.id</span></div>
+        <div class="row"><code>item_category_id</code><span>FK → item_categories.id</span></div>
+        <div class="row"><code>is_approved</code><span>جديد • افتراضي 0</span></div>
+      </div>
+      <p class="note">حُفظ مفتاح الجدول المركب وروابطه القديمة؛ لم تُحوّل هذه الصفوف إلى الشجرة الجديدة قسراً.</p>
+    </section>
+    <section class="card">
+      <h2>supplier_requests</h2><div class="tag">موجود سابقاً • طلبات الانضمام</div>
+      <div class="count">0</div><div class="countlabel">صفوف حالياً</div>
+      <div class="rows">
+        <div class="row"><code>id</code><span>المعرّف الأساسي</span></div>
+        <div class="row"><code>supplier_id</code><span>جديد • FK اختياري قبل الاعتماد</span></div>
+        <div class="row"><code>selected_categories</code><span>جديد • JSON []</span></div>
+        <div class="row"><code>status</code><span>موجود سابقاً</span></div>
+        <div class="row"><code>admin_notes</code><span>جديد</span></div>
+        <div class="row"><code>reviewed_at / created_at</code><span>موجودان سابقاً</span></div>
+      </div>
+      <p class="note">احتُفظ بجميع حقول التسجيل وحالة pending_review الموجودة لئلا تنكسر الدعوات الحالية.</p>
+    </section>
+    <section class="card current">
+      <h2>supplier_category_selections</h2><div class="tag">جديد • الشجرة الحالية</div>
+      <div class="count">0</div><div class="countlabel">صفوف حالياً</div>
+      <div class="rows">
+        <div class="row"><code>id</code><span>المعرّف الأساسي</span></div>
+        <div class="row"><code>request_id</code><span>FK → supplier_requests.id</span></div>
+        <div class="row"><code>supplier_id</code><span>FK → suppliers.id • اختياري</span></div>
+        <div class="row"><code>category_id</code><span>FK → supplier_taxonomy_nodes.id</span></div>
+        <div class="row"><code>is_approved</code><span>افتراضي 0</span></div>
+        <div class="row"><code>created_at</code><span>وقت الإنشاء</span></div>
+      </div>
+      <p class="note">هذا هو جدول العلاقات الفعلية للفئات الجديدة؛ عناصر JSON وحدها لا يمكن ربطها بمفتاح أجنبي في SQLite.</p>
+    </section>
+  </div>
+  <div class="connections"><div class="connection">supplier_requests.supplier_id → suppliers.id</div><div class="connection">supplier_category_selections.category_id → supplier_taxonomy_nodes.id</div><div class="connection">supplier_category_selections.request_id → supplier_requests.id</div></div>
+  <div class="footer"><span class="ok">✓ PRAGMA foreign_key_check: ‏0 أخطاء</span><span>الأرقام تخص قاعدة التطوير، ولا تعرض بيانات شخصية.</span></div>
+</body>
+</html>

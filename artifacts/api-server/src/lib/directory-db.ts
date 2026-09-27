@@ -10,6 +10,7 @@ import { newItemCategoryNames } from "./new-item-category-names";
 import { migrateRequestsCategoryToSupplierTaxonomy } from "./requests-taxonomy-category-migration";
 import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items";
 import { isLegacyItemCategoriesRetired } from "./retire-legacy-item-categories";
+import { ensureSupplierOnboardingSchema } from "./supplier-onboarding-schema";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -741,6 +742,7 @@ if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) =
 if (supplierRequestColumns.length > 0 && !supplierRequestColumns.some((column) => column.name === "available_items")) {
   directoryDb.exec("ALTER TABLE supplier_requests ADD COLUMN available_items TEXT NOT NULL DEFAULT ''");
 }
+ensureSupplierOnboardingSchema(directoryDb);
 const supplierSourceMigration = directoryDb.prepare(
   "SELECT name FROM directory_migrations WHERE name = ?",
 ).get("classify-existing-supplier-sources") as { name: string } | undefined;

@@ -20,3 +20,9 @@ An inactive category with an alias may be deleted if that exact alias also remai
 **Why:** Older taxonomy entries can retain duplicate alias mappings after categories are reorganized. Blocking on every alias prevents removing an otherwise unreferenced legacy item, even though the active replacement continues resolving that name.
 
 **How to apply:** Recheck alternate alias ownership and all supplier, product, child-category, and actionable request dependencies within the permanent-delete transaction. Do not remove the shared alias from its active replacement or bypass the separate admin confirmation.
+
+Future staged supplier registration must use identifiers from the current supplier taxonomy, not the old item-category identities. Keep the legacy supplier-category association intact for compatibility; record proposed choices against the current tree with real relational foreign keys, and treat any JSON list as a snapshot rather than an enforceable relationship.
+
+**Why:** The owner explicitly chose the current supplier tree when preparing the smart-registration schema. The existing legacy association points to retired item categories; silently reusing it for new identifiers would associate suppliers with the wrong products.
+
+**How to apply:** When implementing the registration UI and review flow, keep unapproved choices out of public supplier filters and exact-item matching. Promote only administrator-reviewed associations, without converting old name-based selections by guessing matching IDs.

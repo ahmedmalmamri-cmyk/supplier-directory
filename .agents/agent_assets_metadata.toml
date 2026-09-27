@@ -630,3 +630,17 @@ mtime_ms = 1790510465561
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/9ee09e6c-2495-49b2-b7e2-5fe61cc544a9/8e1ab70d-3e60-4be3-9d02-8aac13d0adbf"
 storage_version_token = "1790510516098652"
 content_type = "text/csv"
+
+[[outputs]]
+id = "CjQknnSpbI-qWugVtLN4p"
+uri = "file://reports/supplier-onboarding-database.png"
+type = "image"
+title = "صورة بنية قاعدة بيانات تسجيل الموردين"
+description = "صورة من فحص قاعدة التطوير بعد إضافة حقول التسجيل واختيارات الشجرة الحالية، مع أعداد الصفوف والمفاتيح الأجنبية."
+logical_id = "128db723-95b7-4ec8-a4d1-00a0fdbdc258"
+content_hash = "sha256:cc20af604936fd106aea55c94f7bdc8e8886683f88e9fd35ab6e8fafca0b1b87"
+size = 150816
+mtime_ms = 1790542783402
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/128db723-95b7-4ec8-a4d1-00a0fdbdc258/d35fcd09-c8d0-4289-bb06-46ff12847d84"
+storage_version_token = "1790542896506696"
+content_type = "image/png"

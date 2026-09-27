@@ -494,7 +494,11 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
       createBasicSubscription(nextId, reviewedAt);
       approvedSupplierId = nextId;
     }
-    directoryDb.prepare("UPDATE supplier_requests SET status = 'approved', rejection_reason = NULL, reviewed_at = ? WHERE id = ?").run(reviewedAt, id);
+    directoryDb.prepare(`
+      UPDATE supplier_requests
+      SET status = 'approved', supplier_id = ?, rejection_reason = NULL, reviewed_at = ?
+      WHERE id = ?
+    `).run(approvedSupplierId, reviewedAt, id);
     syncSupplierCategoryAssignments(approvedSupplierId);
     directoryDb.exec("COMMIT");
   } catch (error) {
@@ -601,7 +605,9 @@ router.post("/admin/supplier-requests/:id/request-info", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const id = Number(req.params.id);
   const note = typeof req.body.note === "string" ? req.body.note.trim().slice(0, 500) : "";
-  const result = directoryDb.prepare("UPDATE supplier_requests SET admin_note = ? WHERE id = ?").run(note, id);
+  const result = directoryDb.prepare(`
+    UPDATE supplier_requests SET admin_note = ?, admin_notes = ? WHERE id = ?
+  `).run(note, note, id);
   if (!result.changes) {
     res.status(404).json({ error: "طلب المورد غير موجود" });
     return;
