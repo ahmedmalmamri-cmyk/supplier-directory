@@ -7,6 +7,7 @@ import {
   useListAdminSupplierTaxonomyItems, getListAdminSupplierTaxonomyItemsQueryKey,
   useCreateAdminSupplierTaxonomyItem, useBulkCreateAdminSupplierTaxonomyItems, useUpdateAdminSupplierTaxonomyItem, useMoveAdminSupplierTaxonomyItem, useDeleteAdminSupplierTaxonomyItem,
   useListAdminSupplierTaxonomyLegacyReview, getListAdminSupplierTaxonomyLegacyReviewQueryKey, useApplyAdminSupplierTaxonomyLegacyMapping,
+  usePreviewAdminSupplierTaxonomyLegacyImport, getPreviewAdminSupplierTaxonomyLegacyImportQueryKey, useImportAdminSupplierTaxonomyLegacyItems,
   useGetAdminSupplierTaxonomyAudit, getGetAdminSupplierTaxonomyAuditQueryKey,
   exportAdminSupplierTaxonomyItemsCsv, exportAdminSupplierTaxonomyCsv,
   type SupplierTaxonomyNode, type SupplierTaxonomyItem, type SupplierTaxonomyLegacyReview,
@@ -20,6 +21,7 @@ type Modal =
   | { kind: "move-item"; item: SupplierTaxonomyItem }
   | { kind: "delete-item"; item: SupplierTaxonomyItem }
   | { kind: "bulk" }
+  | { kind: "legacy-import" }
   | { kind: "mapping"; legacy: SupplierTaxonomyLegacyReview };
 type Notice = { text: string; error: boolean } | null;
 const fmt = (n: number) => n.toLocaleString("ar-SA");
@@ -73,6 +75,10 @@ export default function AdminSupplierTaxonomyTab() {
     queryKey: getListAdminSupplierTaxonomyLegacyReviewQueryKey(),
     refetchInterval: query => query.state.status === "error" ? 10_000 : false,
   } });
+  const importPreviewQuery = usePreviewAdminSupplierTaxonomyLegacyImport({ query: {
+    queryKey: getPreviewAdminSupplierTaxonomyLegacyImportQueryKey(),
+    refetchInterval: query => query.state.status === "error" ? 10_000 : false,
+  } });
   const auditQuery = useGetAdminSupplierTaxonomyAudit({ query: {
     queryKey: getGetAdminSupplierTaxonomyAuditQueryKey(),
     refetchInterval: query => query.state.status === "error" ? 10_000 : false,
@@ -112,7 +118,7 @@ export default function AdminSupplierTaxonomyTab() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      const results = await Promise.all([treeQuery.refetch(), itemsQuery.refetch(), reviewQuery.refetch(), auditQuery.refetch()]);
+      const results = await Promise.all([treeQuery.refetch(), itemsQuery.refetch(), reviewQuery.refetch(), auditQuery.refetch(), importPreviewQuery.refetch()]);
       setNotice(results.some(r => r.isError)
         ? { error: true, text: "لم تكتمل إعادة التحميل. حاول مرة أخرى." }
         : { error: false, text: "اكتمل تحديث الأقسام والأصناف والمراجعات وسجل النشاط." });
@@ -127,6 +133,7 @@ export default function AdminSupplierTaxonomyTab() {
     void client.invalidateQueries({ queryKey: getGetAdminSupplierTaxonomyTreeQueryKey() });
     void client.invalidateQueries({ queryKey: getListAdminSupplierTaxonomyItemsQueryKey() });
     void client.invalidateQueries({ queryKey: getGetAdminSupplierTaxonomyAuditQueryKey() });
+    void client.invalidateQueries({ queryKey: getPreviewAdminSupplierTaxonomyLegacyImportQueryKey() });
     if (reviewChanged) void client.invalidateQueries({ queryKey: getListAdminSupplierTaxonomyLegacyReviewQueryKey() });
   };
   const failed = (error: unknown) => setNotice({ text: message(error), error: true });
@@ -141,7 +148,11 @@ export default function AdminSupplierTaxonomyTab() {
   const moveItem = useMoveAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("تغيّر القسم الأساسي مع الاحتفاظ بالروابط الأخرى."), onError: failed } });
   const deleteItem = useDeleteAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("حُذف الصنف."), onError: failed } });
   const applyMapping = useApplyAdminSupplierTaxonomyLegacyMapping({ mutation: { onSuccess: () => changed("حُفظ الربط بعد المراجعة. لم يتحول الدليل العام إلى التصنيف الجديد.", true), onError: failed } });
-  const pending = [createNode, updateNode, moveNode, deleteNode, reorder, createItem, bulkCreate, updateItem, moveItem, deleteItem, applyMapping].some(m => m.isPending);
+  const importLegacy = useImportAdminSupplierTaxonomyLegacyItems({ mutation: {
+    onSuccess: result => changed(`نُقل ${fmt(result.added)} صنف غير مكرر إلى «أصناف غير مصنفة»، وتُخطّي ${fmt(result.skippedDuplicates)} صنف مكرر. بقيت التصنيفات القديمة محفوظة.`, true),
+    onError: failed,
+  } });
+  const pending = [createNode, updateNode, moveNode, deleteNode, reorder, createItem, bulkCreate, updateItem, moveItem, deleteItem, applyMapping, importLegacy].some(m => m.isPending);
   const openNode = (node?: SupplierTaxonomyNode, parentId?: number) => { setNotice(null); setName(node?.name ?? ""); setIcon(node?.icon ?? ""); setDescription(node?.description ?? ""); setActive(node?.isActive ?? true); setDestination(String(parentId ?? node?.parentId ?? "")); setModal({ kind: "node", node, parentId }); };
   const openItem = (item?: SupplierTaxonomyItem) => {
     setNotice(null); setName(item?.name ?? ""); setNotes(item?.notes ?? ""); setActive(item?.isActive ?? true);
@@ -216,6 +227,7 @@ export default function AdminSupplierTaxonomyTab() {
       if (review.find(row => row.legacyId === modal.legacy.legacyId)?.mappedItemId != null) { setModal(null); failed(new Error("سبق تأكيد هذا الربط؛ لا يمكن تغييره.")); return; }
       applyMapping.mutate({ legacyId: modal.legacy.legacyId, data: { itemId: Number(destination), confirmed: true } });
     }
+    if (modal.kind === "legacy-import") importLegacy.mutate({ data: { confirmed: true } });
   };
   const nodeOptions = (excludeId?: number) => <><option value="">اختر القسم</option>{flat.filter(n => n.node.id !== excludeId && !n.ancestors.includes(excludeId ?? -1)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</>;
   return <section dir="rtl" className="taxonomy-workbench space-y-5" aria-label="شجرة تصنيفات الموردين الجديدة">
@@ -263,6 +275,25 @@ export default function AdminSupplierTaxonomyTab() {
       </div>}<p data-testid="text-taxonomy-result-count" className="text-xs text-muted-foreground">{fmt(filtered.length)} من {fmt(items.length)} صنف</p>
     </div>}
     {view === "review" && <div className="taxonomy-surface p-4 md:p-6"><div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><h3 className="text-lg font-extrabold">مراجعة ربط الأصناف القديمة</h3><p className="mt-1 text-sm text-muted-foreground">اختر صنفاً جديداً لكل تصنيف قديم ثم أكّد الربط بنفسك. عدد الموردين يعرض الروابط الموجودة لا روابط جديدة.</p></div><label className="flex items-center gap-2 text-sm"><input data-testid="checkbox-only-pending-review" type="checkbox" checked={onlyPending} onChange={e => setOnlyPending(e.target.checked)}/> المعلّقة فقط</label></div>
+      {importPreviewQuery.isLoading ? <Skeleton/> : importPreviewQuery.isError && !importPreviewQuery.data
+        ? <Failure retry={() => void importPreviewQuery.refetch()}/>
+        : importPreviewQuery.data && <div className="mb-6 rounded-xl border bg-secondary/20 p-4 text-sm">
+          <h4 className="font-extrabold">نقل الأصناف غير المكررة إلى الشجرة الجديدة</h4>
+          <p className="mt-1 text-muted-foreground">يُنقل الصنف غير الموجود بالاسم إلى قسم «أصناف غير مصنفة» بحالة معطّلة حتى تحدد قسمه الصحيح. لا تُحذف التصنيفات القديمة، ولا تُنشأ نسخ من الأصناف المكررة.</p>
+          <div className="mt-3 flex flex-wrap gap-3 text-xs">
+            <span>الأصناف القديمة: <strong>{fmt(importPreviewQuery.data.sourceItemCount)}</strong></span>
+            <span>نُقلت سابقاً: <strong>{fmt(importPreviewQuery.data.importedCount)}</strong></span>
+            <span>المكررة (لن تُنقل): <strong>{fmt(importPreviewQuery.data.duplicateCount)}</strong></span>
+            <span>جاهزة للنقل: <strong>{fmt(importPreviewQuery.data.readyToImportCount)}</strong></span>
+          </div>
+          {importPreviewQuery.data.unreviewedItemCount > 0 && <p className="mt-2 text-xs text-muted-foreground">
+            تبقى {fmt(importPreviewQuery.data.unreviewedItemCount)} حالة تحتاج مراجعة ربط قبل التخلي عن التصنيفات القديمة
+            {importPreviewQuery.data.unreviewedSupplierLinkCount > 0 ? `، ومنها ${fmt(importPreviewQuery.data.unreviewedSupplierLinkCount)} ارتباطاً بمورد` : ""}.
+          </p>}
+          {importPreviewQuery.data.missingImportedCount > 0 && <p role="alert" className="mt-2 text-xs text-destructive">حُذف {fmt(importPreviewQuery.data.missingImportedCount)} صنف مستورد بعد نقله؛ لن يُعاد إنشاؤه تلقائياً. راجع الربط قبل حذف القديم.</p>}
+          <button type="button" data-testid="button-preview-legacy-import" className={`${primary} mt-3`} disabled={pending || importPreviewQuery.data.readyToImportCount === 0}
+            onClick={() => { setNotice(null); setModal({kind:"legacy-import"}); }}>نقل الأصناف غير المكررة</button>
+        </div>}
       {reviewQuery.isLoading || itemsQuery.isLoading ? <Skeleton/> : (reviewQuery.isError && reviewQuery.data === undefined) || (itemsQuery.isError && itemsQuery.data === undefined) ? <Failure retry={() => void refresh()}/> : !review.length ? <Empty title="لا توجد تصنيفات قديمة للمراجعة" detail="ستظهر هنا سجلات الربط عندما تتوفر بياناتها."/> : <div className="space-y-2">
         {review.filter(row => !onlyPending || row.mappedItemId === null).map(row => <div data-testid={`row-taxonomy-review-${row.legacyId}`} key={row.legacyId} className="flex flex-col gap-3 rounded-xl border bg-background p-4 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1"><strong>{row.legacyName}</strong><p className="text-xs text-muted-foreground">{row.legacyGroupName} · {fmt(row.supplierCount)} مورد</p></div>
@@ -283,9 +314,14 @@ export default function AdminSupplierTaxonomyTab() {
         </li>)}
       </ol>}
     </div>}
-    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 p-3" onMouseDown={e => { if (e.target === e.currentTarget && !pending) setModal(null); }}><div role="dialog" aria-modal="true" aria-labelledby="taxonomy-dialog-title" className="taxonomy-surface max-h-[90dvh] w-full max-w-lg overflow-y-auto p-5 shadow-warm-lg md:p-7"><div className="mb-5 flex items-start justify-between gap-2"><div><h3 id="taxonomy-dialog-title" className="text-xl font-extrabold">{modal.kind === "node" ? modal.node ? "تعديل القسم" : "إضافة قسم" : modal.kind === "item" ? modal.item ? "تعديل الصنف" : "إضافة صنف" : modal.kind === "bulk" ? "إضافة أصناف دفعة واحدة" : modal.kind === "mapping" ? "تأكيد ربط التصنيف القديم" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : "نقل إلى مكان جديد"}</h3><p className="mt-1 text-xs text-muted-foreground">احفظ التغييرات بعد التحقق من القسم والروابط المرتبطة به.</p></div><button type="button" data-testid="button-close-taxonomy-dialog" aria-label="إغلاق" disabled={pending} onClick={() => setModal(null)}><X size={20}/></button></div>
+    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 p-3" onMouseDown={e => { if (e.target === e.currentTarget && !pending) setModal(null); }}><div role="dialog" aria-modal="true" aria-labelledby="taxonomy-dialog-title" className="taxonomy-surface max-h-[90dvh] w-full max-w-lg overflow-y-auto p-5 shadow-warm-lg md:p-7"><div className="mb-5 flex items-start justify-between gap-2"><div><h3 id="taxonomy-dialog-title" className="text-xl font-extrabold">{modal.kind === "node" ? modal.node ? "تعديل القسم" : "إضافة قسم" : modal.kind === "item" ? modal.item ? "تعديل الصنف" : "إضافة صنف" : modal.kind === "bulk" ? "إضافة أصناف دفعة واحدة" : modal.kind === "legacy-import" ? "نقل الأصناف غير المكررة" : modal.kind === "mapping" ? "تأكيد ربط التصنيف القديم" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : "نقل إلى مكان جديد"}</h3><p className="mt-1 text-xs text-muted-foreground">احفظ التغييرات بعد التحقق من القسم والروابط المرتبطة به.</p></div><button type="button" data-testid="button-close-taxonomy-dialog" aria-label="إغلاق" disabled={pending} onClick={() => setModal(null)}><X size={20}/></button></div>
       <form onSubmit={submit} className="space-y-4">
         {notice?.error && <p role="alert" data-testid="status-taxonomy-dialog-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.text}</p>}
+        {modal.kind === "legacy-import" && <div className="space-y-3 rounded-xl border bg-secondary/20 p-4 text-sm">
+          <p>سيُنقل <strong>{fmt(importPreviewQuery.data?.readyToImportCount ?? 0)}</strong> صنفاً جديداً إلى القسم المؤقت بحالة معطّلة. ستُتخطّى الأسماء المكررة ولن يتغير الصنف الموجود أو أقسامه.</p>
+          <p>ستبقى جميع السجلات القديمة كما هي. ترتبط الأصناف المنقولة بمورديها القدامى إن وُجدوا؛ أما المكررات فتبقى روابط مورديها في السجلات القديمة حتى تراجع ربطها يدوياً.</p>
+          <p className="font-bold text-destructive">لن تُحذف التصنيفات القديمة، ولن تُعرض هذه الأصناف في الدليل العام قبل تصنيفها واعتماد النقل.</p>
+        </div>}
         {(modal.kind === "node" || modal.kind === "item") && <><label><span className={label}>الاسم</span><input data-testid="input-taxonomy-name" autoFocus className="taxonomy-field" required maxLength={modal.kind === "node" ? 100 : 120} value={name} onChange={e => setName(e.target.value)}/></label>{modal.kind === "node" ? <><label><span className={label}>رمز القسم (اختياري)</span><input data-testid="input-taxonomy-icon" className="taxonomy-field" maxLength={24} value={icon} onChange={e => setIcon(e.target.value)} placeholder="رمز قصير"/></label><label><span className={label}>الوصف</span><textarea data-testid="input-taxonomy-description" className="taxonomy-field min-h-20" maxLength={500} value={description} onChange={e => setDescription(e.target.value)}/></label></> : <label><span className={label}>ملاحظات داخلية</span><textarea data-testid="input-taxonomy-notes" className="taxonomy-field min-h-20" maxLength={500} value={notes} onChange={e => setNotes(e.target.value)}/></label>}<label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" data-testid="checkbox-taxonomy-active" checked={active} onChange={e => setActive(e.target.checked)}/> نشط</label></>}
         {modal.kind === "bulk" && <label><span className={label}>اسم واحد في كل سطر (حتى ١٠٠٠ صنف)</span><textarea data-testid="textarea-taxonomy-bulk" className="taxonomy-field min-h-44" value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"اكتب اسم الصنف الأول\nواسم الصنف الثاني"}/><span className="text-xs text-muted-foreground">{fmt(bulkText.split(/\r?\n/).map(s => s.trim()).filter(Boolean).length)} اسم مُدخل</span></label>}
         {modal.kind === "delete-node" && <><div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm"><strong>حذف «{modal.node.name}»</strong><p>لن يُحذف أي صنف. ستُزال روابط الأقسام المحذوفة فقط، ويجب اختيار بديل لأي قسم أساسي محذوف.</p></div><div role="radiogroup" aria-label="طريقة الحذف" className="flex flex-col gap-2 text-sm"><label><input type="radio" name="strategy" data-testid="radio-taxonomy-transfer" checked={deleteStrategy === "transfer"} onChange={() => setDeleteStrategy("transfer")}/> نقل الفروع إلى قسم آخر وحذف هذا القسم فقط</label><label><input type="radio" name="strategy" data-testid="radio-taxonomy-cascade" checked={deleteStrategy === "cascade"} onChange={() => setDeleteStrategy("cascade")}/> حذف هذا القسم وفروعه مع إبقاء الأصناف</label></div></>}
@@ -316,7 +352,7 @@ export default function AdminSupplierTaxonomyTab() {
         {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الأساسي الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
         {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{flat.filter(n => n.node.id !== modal.node.id && !n.ancestors.includes(modal.node.id)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "delete-node" && deleteStrategy === "cascade" && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-legacy-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن روابط الموردين المباشرة بالأقسام المحذوفة ستُزال؛ لن تُحذف الأصناف أو روابط الموردين بالأصناف.</label>}
-        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "item" && (!chosenCategories.length || !chosenCategories.includes(Number(primaryCategory)))) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && (!chosenCategories.length || !chosenCategories.includes(Number(primaryCategory)))) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
       </form>
     </div></div>}
   </section>;

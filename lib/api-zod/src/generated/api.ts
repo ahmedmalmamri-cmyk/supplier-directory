@@ -721,6 +721,41 @@ export const SetAdminSupplierTaxonomyItemSuppliersResponse = zod.object({
 export const ExportAdminSupplierTaxonomyItemsCsvResponse = zod.unknown()
 
 
+export const PreviewAdminSupplierTaxonomyLegacyImportResponse = zod.object({
+  "sourceItemCount": zod.number().int(),
+  "duplicateCount": zod.number().int(),
+  "readyToImportCount": zod.number().int(),
+  "importedCount": zod.number().int(),
+  "alreadyMappedCount": zod.number().int(),
+  "unreviewedItemCount": zod.number().int(),
+  "unreviewedSupplierLinkCount": zod.number().int(),
+  "missingImportedCount": zod.number().int(),
+  "temporaryCategoryId": zod.number().int().nullable()
+})
+
+
+export const ImportAdminSupplierTaxonomyLegacyItemsBody = zod.object({
+  "confirmed": zod.boolean()
+})
+
+export const ImportAdminSupplierTaxonomyLegacyItemsResponse = zod.object({
+  "added": zod.number().int(),
+  "skippedDuplicates": zod.number().int(),
+  "alreadyMapped": zod.number().int(),
+  "summary": zod.object({
+  "sourceItemCount": zod.number().int(),
+  "duplicateCount": zod.number().int(),
+  "readyToImportCount": zod.number().int(),
+  "importedCount": zod.number().int(),
+  "alreadyMappedCount": zod.number().int(),
+  "unreviewedItemCount": zod.number().int(),
+  "unreviewedSupplierLinkCount": zod.number().int(),
+  "missingImportedCount": zod.number().int(),
+  "temporaryCategoryId": zod.number().int().nullable()
+})
+})
+
+
 export const ListAdminSupplierTaxonomyLegacyReviewResponseItem = zod.object({
   "legacyId": zod.number().int(),
   "legacyName": zod.string(),

@@ -501,13 +501,41 @@ paths:
             text/csv:
               schema: { type: string }
         "401": { description: Admin login required }
+  /admin/supplier-taxonomy/legacy-import:
+    get:
+      operationId: previewAdminSupplierTaxonomyLegacyImport
+      tags: [admin]
+      responses:
+        "200":
+          description: Preview old item leaves, duplicate names, and unresolved supplier links without changing records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportSummary" }
+        "401": { description: Admin login required }
+    post:
+      operationId: importAdminSupplierTaxonomyLegacyItems
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportConfirmation" }
+      responses:
+        "200":
+          description: Imported only new item names into an inactive temporary section; preserved old records and skipped duplicates
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportResult" }
+        "400": { description: Explicit confirmation required }
+        "401": { description: Admin login required }
+        "500": { description: Import failed and was rolled back }
   /admin/supplier-taxonomy/legacy-review:
     get:
       operationId: listAdminSupplierTaxonomyLegacyReview
       tags: [admin]
       responses:
         "200":
-          description: Legacy supplier categories and exact-name-only suggestions, with all unresolved entries left unassigned
+          description: Legacy item leaves and exact-name-only suggestions, with group headings excluded
           content:
             application/json:
               schema:
@@ -1814,6 +1842,32 @@ components:
         suggestedItemId: { type: ["integer", "null"] }
         mappedItemId: { type: ["integer", "null"] }
         reviewedAt: { type: ["string", "null"] }
+    SupplierTaxonomyLegacyImportSummary:
+      type: object
+      required: [sourceItemCount, duplicateCount, readyToImportCount, importedCount, alreadyMappedCount, unreviewedItemCount, unreviewedSupplierLinkCount, missingImportedCount, temporaryCategoryId]
+      properties:
+        sourceItemCount: { type: integer }
+        duplicateCount: { type: integer }
+        readyToImportCount: { type: integer }
+        importedCount: { type: integer }
+        alreadyMappedCount: { type: integer }
+        unreviewedItemCount: { type: integer }
+        unreviewedSupplierLinkCount: { type: integer }
+        missingImportedCount: { type: integer }
+        temporaryCategoryId: { type: ["integer", "null"] }
+    SupplierTaxonomyLegacyImportConfirmation:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean }
+    SupplierTaxonomyLegacyImportResult:
+      type: object
+      required: [added, skippedDuplicates, alreadyMapped, summary]
+      properties:
+        added: { type: integer }
+        skippedDuplicates: { type: integer }
+        alreadyMapped: { type: integer }
+        summary: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportSummary" }
     SupplierTaxonomyLegacyMappingInput:
       type: object
       required: [itemId, confirmed]

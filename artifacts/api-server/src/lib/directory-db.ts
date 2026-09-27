@@ -255,6 +255,16 @@ directoryDb.exec(`
     taxonomy_item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
     reviewed_at TEXT NOT NULL
   );
+  -- A per-source import marker prevents a removed imported item from reappearing
+  -- on a later import. Old records remain intact until a separate reviewed cutover.
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_legacy_imports (
+    legacy_item_category_id INTEGER PRIMARY KEY,
+    taxonomy_item_id INTEGER REFERENCES supplier_taxonomy_items(id) ON DELETE SET NULL,
+    outcome TEXT NOT NULL CHECK (outcome IN ('imported', 'duplicate', 'already_mapped')),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_legacy_imports_outcome
+    ON supplier_taxonomy_legacy_imports(outcome, taxonomy_item_id);
   CREATE TABLE IF NOT EXISTS supplier_taxonomy_audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     admin_id INTEGER REFERENCES admin_credentials(id),

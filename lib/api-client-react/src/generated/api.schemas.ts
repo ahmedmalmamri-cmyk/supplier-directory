@@ -348,6 +348,30 @@ export interface SupplierTaxonomyLegacyReview {
   reviewedAt: string | null;
 }
 
+export interface SupplierTaxonomyLegacyImportSummary {
+  sourceItemCount: number;
+  duplicateCount: number;
+  readyToImportCount: number;
+  importedCount: number;
+  alreadyMappedCount: number;
+  unreviewedItemCount: number;
+  unreviewedSupplierLinkCount: number;
+  missingImportedCount: number;
+  /** @nullable */
+  temporaryCategoryId: number | null;
+}
+
+export interface SupplierTaxonomyLegacyImportConfirmation {
+  confirmed: boolean;
+}
+
+export interface SupplierTaxonomyLegacyImportResult {
+  added: number;
+  skippedDuplicates: number;
+  alreadyMapped: number;
+  summary: SupplierTaxonomyLegacyImportSummary;
+}
+
 export interface SupplierTaxonomyLegacyMappingInput {
   /** @minimum 1 */
   itemId: number;

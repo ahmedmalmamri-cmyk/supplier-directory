@@ -26,3 +26,9 @@ Multi-section membership in the proposed tree is distinct from the legacy direct
 **Why:** The two classification systems have similar terminology but different identities and review status. Silently using the proposed tree for legacy suppliers would bypass the owner's requirement to review the old associations first.
 
 **How to apply:** When extending item browsing or supplier matching, resolve proposed-tree memberships within that tree only; do not infer new supplier or public-directory associations from the additional sections. A proposed section's removal must never erase the underlying item or its supplier associations.
+
+Old item names without an exact match in the proposed tree belong in an inactive temporary "unclassified items" section until their real destinations are reviewed; duplicate items must not be created. Keep the legacy classification source intact throughout this staging period.
+
+**Why:** The owner explicitly chose a temporary section rather than guessing a destination from the old groups. The old hierarchy mixes headings and items, so inferring new sections from similar-sounding groups risks misclassification and premature public visibility.
+
+**How to apply:** Treat this as a staging import, not approval to expose the new tree or delete old categories. Ensure existing-item supplier links are reviewed and the public directory is deliberately switched before considering legacy cleanup.

@@ -21,6 +21,8 @@ import {
   ExportAdminSupplierTaxonomyItemsCsvResponse,
   GetAdminSupplierTaxonomyAuditResponse,
   GetAdminSupplierTaxonomyTreeResponse,
+  ImportAdminSupplierTaxonomyLegacyItemsBody,
+  ImportAdminSupplierTaxonomyLegacyItemsResponse,
   ListAdminSupplierTaxonomyItemsQueryParams,
   ListAdminSupplierTaxonomyItemsResponse,
   ListAdminSupplierTaxonomyLegacyReviewResponse,
@@ -30,6 +32,7 @@ import {
   MoveAdminSupplierTaxonomyNodeBody,
   MoveAdminSupplierTaxonomyNodeParams,
   MoveAdminSupplierTaxonomyNodeResponse,
+  PreviewAdminSupplierTaxonomyLegacyImportResponse,
   ReorderAdminSupplierTaxonomyNodesBody,
   ReorderAdminSupplierTaxonomyNodesResponse,
   SetAdminSupplierTaxonomyItemSuppliersBody,
@@ -43,6 +46,7 @@ import {
   UpdateAdminSupplierTaxonomyNodeResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { importLegacyTaxonomyItems, previewLegacyTaxonomyImport } from "../lib/legacy-taxonomy-import";
 import { authenticatedAdminId, requireAdmin } from "../lib/admin-auth";
 import {
   csvCell,
@@ -954,9 +958,43 @@ router.put("/admin/supplier-taxonomy/items/:id/suppliers", (req, res): void => {
   res.json(SetAdminSupplierTaxonomyItemSuppliersResponse.parse({ itemId: params.data.id, supplierIds }));
 });
 
+router.get("/admin/supplier-taxonomy/legacy-import", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  res.json(PreviewAdminSupplierTaxonomyLegacyImportResponse.parse(previewLegacyTaxonomyImport(directoryDb)));
+});
+
+router.post("/admin/supplier-taxonomy/legacy-import", (req, res): void => {
+  if (!requireAdmin(req, res)) return;
+  const parsed = ImportAdminSupplierTaxonomyLegacyItemsBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.confirmed) {
+    res.status(400).json({ error: "تأكيد نقل الأصناف غير المكررة مطلوب." });
+    return;
+  }
+  try {
+    const result = importLegacyTaxonomyItems(directoryDb, new Date().toISOString());
+    if (result.added || result.skippedDuplicates || result.alreadyMapped) {
+      audit(req, "legacy-import", "item", null, {
+        added: result.added,
+        skippedDuplicates: result.skippedDuplicates,
+        alreadyMapped: result.alreadyMapped,
+        sourcePreserved: true,
+        publicDirectoryUnchanged: true,
+      });
+    }
+    res.json(ImportAdminSupplierTaxonomyLegacyItemsResponse.parse(result));
+  } catch (error) {
+    req.log.error({ err: error }, "Could not import unique legacy taxonomy items");
+    res.status(500).json({ error: "تعذر نقل الأصناف؛ لم تُحفظ أي تغييرات من هذه المحاولة." });
+  }
+});
+
 router.get("/admin/supplier-taxonomy/legacy-review", (req, res): void => {
   if (!requireAdmin(req, res)) return;
-  const rows = directoryDb.prepare("SELECT id FROM item_categories ORDER BY id").all() as Array<{ id: number }>;
+  const rows = directoryDb.prepare(`
+    SELECT c.id FROM item_categories c
+    WHERE NOT EXISTS (SELECT 1 FROM item_categories child WHERE child.parent_id = c.id)
+    ORDER BY c.id
+  `).all() as Array<{ id: number }>;
   res.json(ListAdminSupplierTaxonomyLegacyReviewResponse.parse(rows.map(({ id }) => itemReviewRow(id))));
 });
 

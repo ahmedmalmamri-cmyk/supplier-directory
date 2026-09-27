@@ -113,6 +113,9 @@ import type {
   SupplierTaxonomyItemUpdate,
   SupplierTaxonomyItemsBulkInput,
   SupplierTaxonomyItemsBulkResponse,
+  SupplierTaxonomyLegacyImportConfirmation,
+  SupplierTaxonomyLegacyImportResult,
+  SupplierTaxonomyLegacyImportSummary,
   SupplierTaxonomyLegacyMappingInput,
   SupplierTaxonomyLegacyReview,
   SupplierTaxonomyMoveInput,
@@ -2249,6 +2252,159 @@ export function useExportAdminSupplierTaxonomyItemsCsv<TData = Awaited<ReturnTyp
 
 
 
+
+export const getPreviewAdminSupplierTaxonomyLegacyImportUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/legacy-import`
+}
+
+export const previewAdminSupplierTaxonomyLegacyImport = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyLegacyImportSummary> => {
+
+  return customFetch<SupplierTaxonomyLegacyImportSummary>(getPreviewAdminSupplierTaxonomyLegacyImportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewAdminSupplierTaxonomyLegacyImportQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/legacy-import`
+    ] as const;
+    }
+
+
+export const getPreviewAdminSupplierTaxonomyLegacyImportQueryOptions = <TData = Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewAdminSupplierTaxonomyLegacyImportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>> = ({ signal }) => previewAdminSupplierTaxonomyLegacyImport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviewAdminSupplierTaxonomyLegacyImportQueryResult = NonNullable<Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>>
+export type PreviewAdminSupplierTaxonomyLegacyImportQueryError = ErrorType<void>
+
+
+
+export function usePreviewAdminSupplierTaxonomyLegacyImport<TData = Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewAdminSupplierTaxonomyLegacyImport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviewAdminSupplierTaxonomyLegacyImportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportAdminSupplierTaxonomyLegacyItemsUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/legacy-import`
+}
+
+export const importAdminSupplierTaxonomyLegacyItems = async (supplierTaxonomyLegacyImportConfirmation: SupplierTaxonomyLegacyImportConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyLegacyImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyLegacyImportResult>(getImportAdminSupplierTaxonomyLegacyItemsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyLegacyImportConfirmation)
+  }
+);}
+
+
+
+
+
+export const getImportAdminSupplierTaxonomyLegacyItemsMutationKey = () => ['importAdminSupplierTaxonomyLegacyItems'] as const;
+
+export const getImportAdminSupplierTaxonomyLegacyItemsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>, TError,ImportAdminSupplierTaxonomyLegacyItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>, TError,ImportAdminSupplierTaxonomyLegacyItemsMutationVariables, TContext> => {
+
+const mutationKey = getImportAdminSupplierTaxonomyLegacyItemsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>, ImportAdminSupplierTaxonomyLegacyItemsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importAdminSupplierTaxonomyLegacyItems(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportAdminSupplierTaxonomyLegacyItemsMutationResult = NonNullable<Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>>
+    export type ImportAdminSupplierTaxonomyLegacyItemsMutationBody = BodyType<SupplierTaxonomyLegacyImportConfirmation>
+    export type ImportAdminSupplierTaxonomyLegacyItemsMutationError = ErrorType<void>
+    export type ImportAdminSupplierTaxonomyLegacyItemsMutationVariables = {data: BodyType<SupplierTaxonomyLegacyImportConfirmation>}
+
+    export const useImportAdminSupplierTaxonomyLegacyItems = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>, TError,ImportAdminSupplierTaxonomyLegacyItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importAdminSupplierTaxonomyLegacyItems>>,
+        TError,
+        ImportAdminSupplierTaxonomyLegacyItemsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportAdminSupplierTaxonomyLegacyItemsMutationOptions(options));
+    }
 
 export const getListAdminSupplierTaxonomyLegacyReviewUrl = () => {
 
