@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ArrowUpLeft, Search } from "lucide-react";
 import { Link } from "wouter";
 import { getListGroupsQueryKey, getListItemCategoriesQueryKey, useListGroups, useListItemCategories, type Group, type ItemCategory } from "@workspace/api-client-react";
-import { getItemCategoryIcon } from "@/lib/item-category-icons";
+import { getGroupIcon } from "@/lib/group-icons";
 
 // Kept for the legacy admin category editor; public browsing is driven by /api/groups.
 export const ROOT_GROUPS = [
@@ -79,7 +79,7 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
     {term && <div className="absolute inset-x-0 top-full z-20 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-warm-lg" role="region" aria-label="نتائج بحث التصنيفات">
       {matches.length || matchingGroups.length ? <>
         {matchingGroups.map((group) => {
-          const Icon = getItemCategoryIcon(group.icon);
+          const Icon = getGroupIcon(group);
            return <Link key={`group-${group.id}`} href={groupPath(group, groups)} data-testid={`link-group-search-${group.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
              <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{group.name}</strong><span className="text-xs text-muted-foreground">{groupParentId(group) === null ? "مجموعة رئيسية" : `${groups.find((item) => item.id === groupParentId(group))?.name ?? "مجموعة"} / ${group.name}`}</span></span>
@@ -97,7 +97,7 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
   </div>;
 }
 export function RootCard({ category }: { category: Group; categories?: TaxonomyCategory[] }) {
-  const Icon = getItemCategoryIcon(category.icon);
+  const Icon = getGroupIcon(category);
   return <Link href={`/category/${category.slug}`} data-testid={`card-home-category-${category.id}`} className="group flex min-h-40 flex-col items-center justify-center rounded-2xl border border-border bg-card px-3 py-4 text-center text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-accent/50 hover:shadow-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-48 sm:py-6">
     <Icon className="mb-3 h-12 w-12 text-primary sm:mb-4 sm:h-16 sm:w-16" strokeWidth={1.5} aria-hidden="true" />
     <strong className="text-base font-bold leading-6 sm:text-lg sm:leading-7">{category.name}</strong>

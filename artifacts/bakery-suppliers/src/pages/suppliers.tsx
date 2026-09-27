@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // We'll create this
 import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/SupplierFilterControls";
 import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
-import { getItemCategoryIcon } from "@/lib/item-category-icons";
+import { getGroupIcon } from "@/lib/group-icons";
 import { trackEvent } from "@/lib/analytics";
 
 export default function SuppliersPage() {
@@ -124,7 +124,7 @@ export default function SuppliersPage() {
           ) : (
              <div>
                {selectedTaxonomyCategory && <p className="mb-4 rounded-xl bg-primary/5 px-4 py-3 text-sm">تتصفح موردي <Link href={categoryPath(selectedTaxonomyCategory, itemCategories, groups)} className="font-bold text-primary underline">{selectedTaxonomyCategory.name}</Link></p>}
-               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{categoryRoots.map((item) => { const Icon = getItemCategoryIcon(item.icon); return <Link key={item.id} href={`/category/${item.slug}`} data-testid={`link-supplier-category-${item.id}`} className="flex min-h-14 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold transition-colors hover:border-primary/50 hover:text-primary"><Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{item.name}</Link>; })}</div>
+               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{categoryRoots.map((item) => { const Icon = getGroupIcon(item); return <Link key={item.id} href={`/category/${item.slug}`} data-testid={`link-supplier-category-${item.id}`} className="flex min-h-14 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold transition-colors hover:border-primary/50 hover:text-primary"><Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />{item.name}</Link>; })}</div>
              </div>
           )}
         </section>
