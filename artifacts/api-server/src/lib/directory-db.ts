@@ -7,6 +7,7 @@ import {
 } from "./item-category-aliases";
 import { itemCategorySlugBase } from "./item-category-slugs";
 import { newItemCategoryNames } from "./new-item-category-names";
+import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -2350,6 +2351,56 @@ if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?")
     directoryDb.prepare(
       "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
     ).run(supplierTaxonomyProposalMigration, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const suppliedTaxonomyItemsMigration = "supplier-taxonomy-supplied-items-2026-09-27";
+const allSuppliedNames = suppliedTaxonomyItems.flatMap(({ names }) => names.map((name) => name.trim()));
+if (allSuppliedNames.some((name) => !name) || new Set(allSuppliedNames).size !== allSuppliedNames.length) {
+  throw new Error("Cannot import supplied items: an item name is blank or repeated in the supplied list");
+}
+for (const { root, branch, names } of suppliedTaxonomyItems) {
+  // Each group has its own marker, so deleting an imported item later will not
+  // bring it back merely because another group has not yet been reviewed.
+  const migrationName = `${suppliedTaxonomyItemsMigration}:${root}/${branch}`;
+  if (directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(migrationName)) continue;
+  const category = directoryDb.prepare(`
+    SELECT child.id
+    FROM supplier_taxonomy_nodes child
+    JOIN supplier_taxonomy_nodes parent ON parent.id = child.parent_id
+    WHERE child.name = ? AND parent.name = ? AND parent.parent_id IS NULL
+    ORDER BY child.id LIMIT 1
+  `).get(branch, root) as { id: number } | undefined;
+  if (!category) {
+    console.warn(`Supplier item import pending review: category ${root} / ${branch} no longer exists`);
+    continue;
+  }
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN");
+  try {
+    let added = 0;
+    let skipped = 0;
+    const insert = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_taxonomy_items
+        (name, category_id, is_active, notes, created_at, updated_at)
+      VALUES (?, ?, 1, NULL, ?, ?)
+    `);
+    for (const name of names) {
+      const result = insert.run(name.trim(), category.id, now, now);
+      if (Number(result.changes) === 1) added++;
+      else skipped++;
+    }
+    directoryDb.prepare(`
+      INSERT INTO supplier_taxonomy_audit_log
+        (admin_id, action, entity_id, entity_type, details, created_at)
+      VALUES (NULL, 'system-import', NULL, 'item', ?, ?)
+    `).run(JSON.stringify({ added, skipped, source: "owner-supplied-list", root, branch }), now);
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
+      .run(migrationName, now);
     directoryDb.exec("COMMIT");
   } catch (error) {
     directoryDb.exec("ROLLBACK");
