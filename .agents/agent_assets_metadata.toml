@@ -616,3 +616,17 @@ mtime_ms = 1790484511685
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/aa718f98-57f4-41ec-a6a2-882bcfd46427/77196cfe-611c-4999-aa6f-3f36fb7a69e3"
 storage_version_token = "1790484536182629"
 content_type = "image/png"
+
+[[outputs]]
+id = "CnDPIds6KATrqXrqAlpne"
+uri = "file://reports/legacy-item-classification-proposal.csv"
+type = "table"
+title = "مقترح توزيع ١٥٣ صنفاً"
+description = "وجهة مقترحة ومستوى الثقة وسبب التصنيف لكل صنف؛ الأصناف لم تُفعّل بعد."
+logical_id = "9ee09e6c-2495-49b2-b7e2-5fe61cc544a9"
+content_hash = "sha256:b4f352f7112579bba127ce06c5e6544b169393645315aa7114ccb369394d5276"
+size = 28974
+mtime_ms = 1790510465561
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/9ee09e6c-2495-49b2-b7e2-5fe61cc544a9/8e1ab70d-3e60-4be3-9d02-8aac13d0adbf"
+storage_version_token = "1790510516098652"
+content_type = "text/csv"
