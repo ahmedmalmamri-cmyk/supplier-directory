@@ -87,9 +87,7 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
           </Link>;
         })}
         {matches.map((category) => {
-        const Icon = getItemCategoryIcon(category.icon);
-        return <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`link-category-search-${category.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+        return <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`link-category-search-${category.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
            <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{category.name}</strong><span className="block truncate text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</span></span>
           <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </Link>;

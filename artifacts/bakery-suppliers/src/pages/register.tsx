@@ -1,5 +1,4 @@
 import { MainLayout } from "@/components/layout/MainLayout";
-import { CategoryIconValue } from "@/components/category-special-icons";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { trackEvent } from "@/lib/analytics";
@@ -21,7 +20,7 @@ type BuyerForm = {
   fullName: string; phone: string; email: string; password: string; city: string; businessType: string;
   businessName: string; otherBusinessType: string; isOwner: boolean | null; jobTitle: string; newsletterWeekly: boolean; buyersGroup: boolean;
 };
-type RegistrationCategory = { value: string; label: string; icon: string; description?: string; children?: RegistrationCategory[] };
+type RegistrationCategory = { value: string; label: string; description?: string; children?: RegistrationCategory[] };
 type RegistrationCategoryGroup = { label: string; items: RegistrationCategory[] };
 
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
@@ -39,7 +38,6 @@ const readyMixOptions = [
   {
     value: "خليط الكيك",
     label: "خليط الكيك",
-    icon: "🍰",
     flavors: [
       { label: "فانيليا", value: "خليط الكيك - فانيليا" },
       { label: "شوكولاتة", value: "خليط الكيك - شوكولاتة" },
@@ -51,26 +49,24 @@ const readyMixOptions = [
   {
     value: "خليط الكب كيك",
     label: "خليط الكب كيك",
-    icon: "🧁",
     flavors: [
       { label: "شوكولاتة", value: "خليط الكب كيك - شوكولاتة" },
       { label: "فانيليا", value: "خليط الكب كيك - فانيليا" },
     ],
   },
-  { value: "خليط البراوني", label: "خليط البراوني", icon: "🍫", flavors: [] },
+  { value: "خليط البراوني", label: "خليط البراوني", flavors: [] },
   {
     value: "خليط المافن",
     label: "خليط المافن",
-    icon: "🧁",
     flavors: [
       { label: "شوكولاتة", value: "خليط المافن - شوكولاتة" },
       { label: "فانيليا", value: "خليط المافن - فانيليا" },
     ],
   },
-  { value: "خليط البان كيك", label: "خليط البان كيك", icon: "🥞", flavors: [] },
-  { value: "خليط الوافل", label: "خليط الوافل", icon: "🧇", flavors: [] },
-  { value: "خليط البسكويت", label: "خليط البسكويت", icon: "🍪", flavors: [] },
-  { value: "خليط الكرواسون", label: "خليط الكرواسون", icon: "🥐", flavors: [] },
+  { value: "خليط البان كيك", label: "خليط البان كيك", flavors: [] },
+  { value: "خليط الوافل", label: "خليط الوافل", flavors: [] },
+  { value: "خليط البسكويت", label: "خليط البسكويت", flavors: [] },
+  { value: "خليط الكرواسون", label: "خليط الكرواسون", flavors: [] },
 ];
 const legacyCategoryAliases: Record<string, string> = {
   "دقيق وخبز": "دقيق",
@@ -113,7 +109,6 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
     const makeCategory = (category: NonNullable<typeof itemCategories>[number]): RegistrationCategory => ({
       value: category.name,
       label: category.name,
-      icon: category.icon,
       ...(category.description ? { description: category.description } : {}),
       children: activeCategories
         .filter((child) => child.parentId === category.id)
@@ -404,7 +399,6 @@ function RegistrationCategoryOption({
           onChange={(event) => onToggle(category.value, event.target.checked)}
           className="h-4 w-4 accent-primary"
         />
-        <span aria-hidden="true" className="text-xl"><CategoryIconValue icon={category.icon} /></span>
         <span className="min-w-0">
           <span className="block">{category.label}</span>
           {category.description && <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{category.description}</span>}
@@ -523,7 +517,6 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
                       onChange={(event) => toggleCategory(option.value, event.target.checked)}
                       className="h-4 w-4 accent-primary"
                     />
-                    <span aria-hidden="true" className="text-lg"><CategoryIconValue icon={option.icon} /></span>
                     <span>{option.label}</span>
                   </label>
                   {isSelected && option.flavors.length > 0 && (
