@@ -27,8 +27,13 @@ export function isAdminAuthenticated(req: Request) {
     timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
+export function authenticatedAdminId(req: Request): number | null {
+  // Admin credentials are a singleton row (id 1) in this application.
+  return isAdminAuthenticated(req) ? 1 : null;
+}
+
 export function requireAdmin(req: Request, res: Response) {
-  if (isAdminAuthenticated(req)) return true;
+  if (authenticatedAdminId(req) !== null) return true;
   res.status(401).json({ error: "تسجيل دخول المدير مطلوب" });
   return false;
 }

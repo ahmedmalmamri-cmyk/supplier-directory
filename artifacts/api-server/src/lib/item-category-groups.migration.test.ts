@@ -164,6 +164,67 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
       outfile: migrationEntry,
     });
     const { directoryDb } = await import(pathToFileURL(migrationEntry).href);
+    const proposedRoots = directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_nodes WHERE parent_id IS NULL
+    `).get() as { count: number };
+    const proposedItems = directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_nodes
+    `).get() as { count: number };
+    const proposalMappings = directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_legacy_item_mappings
+    `).get() as { count: number };
+    const proposedRootRows = directoryDb.prepare(`
+      SELECT id, name FROM supplier_taxonomy_nodes WHERE parent_id IS NULL ORDER BY display_order, id
+    `).all();
+    const duplicateCakeReady = directoryDb.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_nodes WHERE name = 'كيك جاهز'
+    `).get() as { count: number };
+    const proposedChildren = directoryDb.prepare(`
+      SELECT parent.name AS parentName, child.name
+      FROM supplier_taxonomy_nodes child
+      JOIN supplier_taxonomy_nodes parent ON parent.id = child.parent_id
+      ORDER BY parent.display_order, child.display_order, child.id
+    `).all();
+    assert.equal(proposedRoots.count, 6);
+    assert.equal(proposedItems.count, 32);
+    assert.equal(proposalMappings.count, 0, "legacy entries must remain unassigned until reviewed");
+    assert.deepEqual(proposedRootRows, [
+      { id: 1, name: "مستلزمات الكيك" },
+      { id: 2, name: "مستلزمات التغليف" },
+      { id: 3, name: "المواد الأولية" },
+      { id: 4, name: "معدات المخابز" },
+      { id: 5, name: "النظافة والسلامة" },
+      { id: 6, name: "كيك جاهز" },
+    ]);
+    assert.equal(duplicateCakeReady.count, 2, "category sections may repeat labels at different levels");
+    assert.deepEqual(proposedChildren, [
+      { parentName: "مستلزمات الكيك", name: "حشوات الكيك" },
+      { parentName: "مستلزمات الكيك", name: "خلطات الكيك" },
+      { parentName: "مستلزمات الكيك", name: "كريمة وتزيين" },
+      { parentName: "مستلزمات الكيك", name: "قوالب وأدوات تشكيل" },
+      { parentName: "مستلزمات الكيك", name: "كيك جاهز" },
+      { parentName: "مستلزمات التغليف", name: "علب الكيك" },
+      { parentName: "مستلزمات التغليف", name: "أكياس التغليف" },
+      { parentName: "مستلزمات التغليف", name: "أوراق التغليف" },
+      { parentName: "مستلزمات التغليف", name: "ملصقات وأربطة" },
+      { parentName: "مستلزمات التغليف", name: "حافظات التوصيل" },
+      { parentName: "المواد الأولية", name: "دقيق وسكر" },
+      { parentName: "المواد الأولية", name: "زيوت ودهون" },
+      { parentName: "المواد الأولية", name: "بيض وألبان" },
+      { parentName: "المواد الأولية", name: "مواد رافعة ونكهات" },
+      { parentName: "المواد الأولية", name: "مكسرات وإضافات" },
+      { parentName: "معدات المخابز", name: "معدات الخلط والعجن" },
+      { parentName: "معدات المخابز", name: "معدات التشكيل" },
+      { parentName: "معدات المخابز", name: "معدات الخبز" },
+      { parentName: "معدات المخابز", name: "معدات التجهيز والتبريد" },
+      { parentName: "النظافة والسلامة", name: "منظفات غذائية" },
+      { parentName: "النظافة والسلامة", name: "أدوات تعقيم" },
+      { parentName: "النظافة والسلامة", name: "مستلزمات وقاية شخصية" },
+      { parentName: "كيك جاهز", name: "كيك أرمكو" },
+      { parentName: "كيك جاهز", name: "كيك شركات أخرى" },
+      { parentName: "كيك جاهز", name: "كب كيك جاهز" },
+      { parentName: "كيك جاهز", name: "دونات جاهز" },
+    ]);
     const groups = directoryDb.prepare(`
       SELECT id, name, slug, parent_id AS parentId FROM groups ORDER BY id
     `).all().map((row: Record<string, unknown>) => ({ ...row }));

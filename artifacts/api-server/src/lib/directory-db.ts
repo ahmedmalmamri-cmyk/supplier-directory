@@ -190,6 +190,65 @@ directoryDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_item_category_aliases_item_category
     ON item_category_aliases (item_category_id, alias);
+  -- Independent proposed supplier taxonomy. Do not replace the legacy groups,
+  -- item_categories, or their supplier/product references during rollout.
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_nodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER REFERENCES supplier_taxonomy_nodes(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT '📦',
+    description TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  DROP INDEX IF EXISTS idx_supplier_taxonomy_node_name;
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_node_name
+    ON supplier_taxonomy_nodes(name);
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_parent_order
+    ON supplier_taxonomy_nodes(parent_id, display_order, id);
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_supplier_links (
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    node_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (supplier_id, node_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_links_node
+    ON supplier_taxonomy_supplier_links(node_id, supplier_id);
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL COLLATE BINARY UNIQUE,
+    category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE RESTRICT,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_items_category_active
+    ON supplier_taxonomy_items(category_id, is_active, name);
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_item_suppliers (
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (supplier_id, item_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_item_suppliers_item
+    ON supplier_taxonomy_item_suppliers(item_id, supplier_id);
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_legacy_item_mappings (
+    legacy_item_category_id INTEGER PRIMARY KEY,
+    taxonomy_item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    reviewed_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS supplier_taxonomy_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER REFERENCES admin_credentials(id),
+    action TEXT NOT NULL,
+    entity_id INTEGER,
+    entity_type TEXT NOT NULL DEFAULT 'category',
+    details TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS buyer_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     request_code TEXT NOT NULL UNIQUE,
@@ -342,6 +401,15 @@ directoryDb.exec(`
     applied_at TEXT NOT NULL
   );
 `);
+
+const taxonomyAuditColumns = directoryDb.prepare("PRAGMA table_info(supplier_taxonomy_audit_log)")
+  .all() as Array<{ name: string }>;
+if (!taxonomyAuditColumns.some((column) => column.name === "admin_id")) {
+  directoryDb.exec("ALTER TABLE supplier_taxonomy_audit_log ADD COLUMN admin_id INTEGER REFERENCES admin_credentials(id)");
+}
+if (!taxonomyAuditColumns.some((column) => column.name === "entity_type")) {
+  directoryDb.exec("ALTER TABLE supplier_taxonomy_audit_log ADD COLUMN entity_type TEXT NOT NULL DEFAULT 'category'");
+}
 
 const requestUnitMigrationName = "requests-unit-box-v1";
 const requestUnitMigration = directoryDb
@@ -2116,3 +2184,175 @@ export function refreshSupplierRatings(supplierId?: number) {
 }
 
 refreshSupplierRatings();
+
+const supplierTaxonomyProposalMigration = "supplier-taxonomy-proposal-v2-items";
+if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?")
+  .get(supplierTaxonomyProposalMigration)) {
+  const now = new Date().toISOString();
+  const migrationAddedNodeIds: number[] = [];
+  const migrationUpdatedRootIds: number[] = [];
+  const migrationDeletedNodeIds: number[] = [];
+  const proposal = [
+    ["مستلزمات الكيك", "🍰", [
+      ["حشوات الكيك", "🍓"], ["خلطات الكيك", "🧁"], ["كريمة وتزيين", "🎨"],
+      ["قوالب وأدوات تشكيل", "🎂"], ["كيك جاهز", "🍰"],
+    ]],
+    ["مستلزمات التغليف", "📦", [
+      ["علب الكيك", "📦"], ["أكياس التغليف", "🛍️"], ["أوراق التغليف", "📄"],
+      ["ملصقات وأربطة", "🏷️"], ["حافظات التوصيل", "🧺"],
+    ]],
+    ["المواد الأولية", "🌾", [
+      ["دقيق وسكر", "🌾"], ["زيوت ودهون", "🫒"], ["بيض وألبان", "🥛"],
+      ["مواد رافعة ونكهات", "🧪"], ["مكسرات وإضافات", "🥜"],
+    ]],
+    ["معدات المخابز", "⚙️", [
+      ["معدات الخلط والعجن", "🥣"], ["معدات التشكيل", "🔧"],
+      ["معدات الخبز", "🔥"], ["معدات التجهيز والتبريد", "❄️"],
+    ]],
+    ["النظافة والسلامة", "🧼", [
+      ["منظفات غذائية", "🧴"], ["أدوات تعقيم", "🧽"], ["مستلزمات وقاية شخصية", "🧤"],
+    ]],
+    ["كيك جاهز", "🎂", [
+      ["كيك أرمكو", "🎂"], ["كيك شركات أخرى", "🍰"],
+      ["كب كيك جاهز", "🧁"], ["دونات جاهز", "🍩"],
+    ]],
+  ] as const;
+
+  directoryDb.exec("BEGIN");
+  try {
+  const previousSeedMigration = directoryDb.prepare(
+    "SELECT 1 FROM directory_migrations WHERE name = ?",
+  ).get("supplier-taxonomy-proposal-v1");
+  if (previousSeedMigration) {
+    // The v1 proposal was wrong. Remove only the exact untouched 21-node seed,
+    // never admin-edited categories, newly added descendants, or linked data.
+    const oldSeed = [
+      ["خلطات جاهزة", null, "🍰", 1],
+      ["حشوات وكريمات", null, "🍓", 2],
+      ["أدوات تزيين", null, "🎨", 3],
+      ["قوالب كيك", null, "🎂", 4],
+      ["ورق وقواعد", null, "📄", 5],
+      ["مواد خام ومتنوعات", null, "🧴", 6],
+    ] as Array<[string, number | null, string, number]>;
+    const oldChildren: Record<string, Array<[string, string, number]>> = {
+      "خلطات جاهزة": [["خلطات كيك", "🧁", 1]],
+      "أدوات تزيين": [
+        ["رؤوس تزيين", "🎨", 1], ["ورق ذهب", "✨", 2], ["لولو كرات", "⚪", 3],
+        ["فرمسلي", "🌈", 4], ["حبر طابعة", "🖨️", 5], ["رشات لولو", "✨", 6],
+      ],
+      "قوالب كيك": [
+        ["قوالب كيك دائرية", "🎂", 1], ["قوالب كيك مربعة", "🎂", 2], ["قوالب كيك مستطيلة", "🎂", 3],
+      ],
+      "ورق وقواعد": [
+        ["ورق كيك", "📄", 1], ["قواعد كيك", "📄", 2], ["ورق زبدة", "📄", 3],
+        ["ورق سكر", "📄", 4], ["ورق ويفر", "📄", 5],
+      ],
+    };
+    const expected = new Map<string, { parentName: string | null; icon: string; order: number }>();
+    for (const [name, , icon, order] of oldSeed) expected.set(name, { parentName: null, icon, order });
+    for (const [parentName, children] of Object.entries(oldChildren)) {
+      for (const [name, icon, order] of children) expected.set(name, { parentName, icon, order });
+    }
+    const oldRows = directoryDb.prepare(`
+      SELECT n.id, n.parent_id AS parentId, n.name, n.icon, n.description,
+        n.display_order AS displayOrder, n.is_active AS isActive,
+        n.created_at AS createdAt, n.updated_at AS updatedAt,
+        p.name AS parentName
+      FROM supplier_taxonomy_nodes n
+      LEFT JOIN supplier_taxonomy_nodes p ON p.id = n.parent_id
+    `).all() as Array<{
+      id: number; parentId: number | null; name: string; icon: string; description: string | null;
+      displayOrder: number; isActive: number; createdAt: string; updatedAt: string; parentName: string | null;
+    }>;
+    const hasLegacyNodeMappingsTable = Boolean(directoryDb.prepare(`
+      SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'supplier_taxonomy_legacy_mappings'
+    `).get());
+    const isUnmodifiedSeedNode = (row: (typeof oldRows)[number], seed: { parentName: string | null; icon: string; order: number }) => {
+      return row.parentName === seed.parentName && row.icon === seed.icon &&
+        row.description === null && row.displayOrder === seed.order && row.isActive === 1 &&
+        row.createdAt === row.updatedAt &&
+        !directoryDb.prepare(`
+          SELECT 1 FROM supplier_taxonomy_audit_log
+          WHERE entity_id = ? AND entity_type = 'category'
+        `).get(row.id) &&
+        !directoryDb.prepare("SELECT 1 FROM supplier_taxonomy_supplier_links WHERE node_id = ?").get(row.id) &&
+        (!hasLegacyNodeMappingsTable ||
+          !directoryDb.prepare("SELECT 1 FROM supplier_taxonomy_legacy_mappings WHERE taxonomy_node_id = ?").get(row.id)) &&
+        !directoryDb.prepare("SELECT 1 FROM supplier_taxonomy_items WHERE category_id = ?").get(row.id) &&
+        !directoryDb.prepare("SELECT 1 FROM supplier_taxonomy_nodes WHERE parent_id = ?").get(row.id);
+    };
+    for (const [rootIndex, [rootName]] of oldSeed.entries()) {
+      const root = oldRows.find((row) => row.parentId === null && row.name === rootName);
+      if (!root) continue;
+      const rootSeed = expected.get(rootName)!;
+      const childRows = oldRows.filter((row) => row.parentId === root.id);
+      const childSeeds = oldChildren[rootName] ?? [];
+      const childrenAreSeeded = childRows.length === childSeeds.length &&
+        childSeeds.every(([name, icon, order]) => {
+          const child = childRows.find((row) => row.name === name);
+          const seed = expected.get(name)!;
+          return Boolean(child && child.icon === icon && isUnmodifiedSeedNode(child, seed));
+        });
+      const targetName = proposal[rootIndex][0];
+      const targetRootExists = directoryDb.prepare(`
+        SELECT id FROM supplier_taxonomy_nodes
+        WHERE parent_id IS NULL AND name = ? AND id != ?
+      `).get(targetName, root.id);
+      if (!isUnmodifiedSeedNode(root, rootSeed) || !childrenAreSeeded || targetRootExists) continue;
+      if (childRows.length > 0) {
+        directoryDb.prepare(`DELETE FROM supplier_taxonomy_nodes WHERE id IN (${childRows.map(() => "?").join(",")})`)
+          .run(...childRows.map((row) => row.id));
+        migrationDeletedNodeIds.push(...childRows.map((row) => row.id));
+      }
+      const [newName, newIcon] = proposal[rootIndex];
+      directoryDb.prepare(`
+        UPDATE supplier_taxonomy_nodes SET name = ?, icon = ?, display_order = ?, updated_at = ? WHERE id = ?
+      `).run(newName, newIcon, rootIndex + 1, now, root.id);
+      migrationUpdatedRootIds.push(root.id);
+    }
+  }
+
+    const addNode = directoryDb.prepare(`
+      INSERT INTO supplier_taxonomy_nodes
+        (parent_id, name, icon, display_order, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 1, ?, ?)
+    `);
+    for (const [rootOrder, [rootName, rootIcon, children]] of proposal.entries()) {
+      let root = directoryDb.prepare(`
+        SELECT id FROM supplier_taxonomy_nodes WHERE parent_id IS NULL AND name = ?
+      `).get(rootName) as { id: number } | undefined;
+      if (!root) {
+        const result = addNode.run(null, rootName, rootIcon, rootOrder + 1, now, now);
+        root = { id: Number(result.lastInsertRowid) };
+        migrationAddedNodeIds.push(root.id);
+      }
+      for (const [childOrder, [childName, childIcon]] of children.entries()) {
+        if (!directoryDb.prepare(`
+          SELECT 1 FROM supplier_taxonomy_nodes WHERE parent_id = ? AND name = ?
+        `).get(root.id, childName)) {
+          const result = addNode.run(root.id, childName, childIcon, childOrder + 1, now, now);
+          migrationAddedNodeIds.push(Number(result.lastInsertRowid));
+        }
+      }
+    }
+    if (migrationAddedNodeIds.length || migrationUpdatedRootIds.length || migrationDeletedNodeIds.length) {
+      directoryDb.prepare(`
+        INSERT INTO supplier_taxonomy_audit_log
+          (admin_id, action, entity_id, entity_type, details, created_at)
+        VALUES (NULL, 'system-category-migration', NULL, 'category', ?, ?)
+      `).run(JSON.stringify({
+        migrationName: supplierTaxonomyProposalMigration,
+        addedNodeIds: migrationAddedNodeIds,
+        updatedRootIds: migrationUpdatedRootIds,
+        deletedNodeIds: migrationDeletedNodeIds,
+      }), now);
+    }
+    directoryDb.prepare(
+      "INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)",
+    ).run(supplierTaxonomyProposalMigration, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}

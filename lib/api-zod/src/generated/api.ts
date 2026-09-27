@@ -282,6 +282,440 @@ export const CreateAdminItemCategoryResponse = zod.object({
 }))
 
 
+export const GetAdminSupplierTaxonomyTreeResponseItem = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string().nullable(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "itemCount": zod.number().int(),
+  "children": zod.array(zod.unknown())
+})
+export const GetAdminSupplierTaxonomyTreeResponse = zod.array(GetAdminSupplierTaxonomyTreeResponseItem)
+
+
+export const GetAdminSupplierTaxonomyAuditResponseItem = zod.object({
+  "id": zod.number().int(),
+  "adminId": zod.number().int().nullable(),
+  "action": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.number().int().nullable(),
+  "details": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.coerce.date()
+})
+export const GetAdminSupplierTaxonomyAuditResponse = zod.array(GetAdminSupplierTaxonomyAuditResponseItem)
+
+
+export const createAdminSupplierTaxonomyNodeBodyNameMax = 100;
+
+export const createAdminSupplierTaxonomyNodeBodyIconMax = 24;
+
+export const createAdminSupplierTaxonomyNodeBodyDescriptionMax = 500;
+
+export const createAdminSupplierTaxonomyNodeBodyDisplayOrderMin = 0;
+
+
+
+export const CreateAdminSupplierTaxonomyNodeBody = zod.object({
+  "parentId": zod.number().int().nullish(),
+  "name": zod.string().min(1).max(createAdminSupplierTaxonomyNodeBodyNameMax),
+  "icon": zod.string().max(createAdminSupplierTaxonomyNodeBodyIconMax).optional(),
+  "description": zod.string().max(createAdminSupplierTaxonomyNodeBodyDescriptionMax).nullish(),
+  "displayOrder": zod.number().int().min(createAdminSupplierTaxonomyNodeBodyDisplayOrderMin).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAdminSupplierTaxonomyNodeResponse = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string().nullable(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "itemCount": zod.number().int(),
+  "children": zod.array(zod.unknown())
+})
+
+
+export const bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemNameMax = 100;
+
+export const bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemIconMax = 24;
+
+export const bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemDescriptionMax = 500;
+
+export const bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemDisplayOrderMin = 0;
+
+export const bulkCreateAdminSupplierTaxonomyNodesBodyNodesMax = 500;
+
+
+
+export const BulkCreateAdminSupplierTaxonomyNodesBody = zod.object({
+  "nodes": zod.array(zod.object({
+  "parentId": zod.number().int().nullish(),
+  "name": zod.string().min(1).max(bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemNameMax),
+  "icon": zod.string().max(bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemIconMax).optional(),
+  "description": zod.string().max(bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemDescriptionMax).nullish(),
+  "displayOrder": zod.number().int().min(bulkCreateAdminSupplierTaxonomyNodesBodyNodesItemDisplayOrderMin).optional(),
+  "isActive": zod.boolean().optional()
+})).min(1).max(bulkCreateAdminSupplierTaxonomyNodesBodyNodesMax)
+})
+
+export const BulkCreateAdminSupplierTaxonomyNodesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string().nullable(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "itemCount": zod.number().int(),
+  "children": zod.array(zod.unknown())
+})
+export const BulkCreateAdminSupplierTaxonomyNodesResponse = zod.array(BulkCreateAdminSupplierTaxonomyNodesResponseItem)
+
+
+
+
+
+export const UpdateAdminSupplierTaxonomyNodeParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateAdminSupplierTaxonomyNodeBodyNameMax = 100;
+
+export const updateAdminSupplierTaxonomyNodeBodyIconMax = 24;
+
+export const updateAdminSupplierTaxonomyNodeBodyDescriptionMax = 500;
+
+export const updateAdminSupplierTaxonomyNodeBodyDisplayOrderMin = 0;
+
+
+
+export const UpdateAdminSupplierTaxonomyNodeBody = zod.object({
+  "parentId": zod.number().int().nullish(),
+  "name": zod.string().min(1).max(updateAdminSupplierTaxonomyNodeBodyNameMax).optional(),
+  "icon": zod.string().max(updateAdminSupplierTaxonomyNodeBodyIconMax).optional(),
+  "description": zod.string().max(updateAdminSupplierTaxonomyNodeBodyDescriptionMax).nullish(),
+  "displayOrder": zod.number().int().min(updateAdminSupplierTaxonomyNodeBodyDisplayOrderMin).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminSupplierTaxonomyNodeResponse = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string().nullable(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "itemCount": zod.number().int(),
+  "children": zod.array(zod.unknown())
+})
+
+
+
+
+
+export const MoveAdminSupplierTaxonomyNodeParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const MoveAdminSupplierTaxonomyNodeBody = zod.object({
+  "parentId": zod.number().int().nullable()
+})
+
+export const MoveAdminSupplierTaxonomyNodeResponse = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string().nullable(),
+  "displayOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "itemCount": zod.number().int(),
+  "children": zod.array(zod.unknown())
+})
+
+
+
+
+
+export const DeleteAdminSupplierTaxonomyNodeParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const DeleteAdminSupplierTaxonomyNodeBody = zod.object({
+  "strategy": zod.enum(['cascade', 'transfer']),
+  "confirmed": zod.boolean(),
+  "confirmItems": zod.boolean().optional(),
+  "confirmSupplierLinks": zod.boolean().optional(),
+  "transferToNodeId": zod.number().int().min(1).optional()
+})
+
+export const DeleteAdminSupplierTaxonomyNodeResponse = zod.object({
+  "success": zod.boolean(),
+  "deletedNodeCount": zod.number().int(),
+  "transferredItemCount": zod.number().int()
+})
+
+
+
+
+
+export const ReorderAdminSupplierTaxonomyNodesBody = zod.object({
+  "parentId": zod.number().int().nullable(),
+  "orderedIds": zod.array(zod.number().int().min(1))
+})
+
+export const ReorderAdminSupplierTaxonomyNodesResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+
+export const listAdminSupplierTaxonomyItemsQueryQMax = 100;
+
+export const listAdminSupplierTaxonomyItemsQueryStatusDefault = `all`;
+
+export const ListAdminSupplierTaxonomyItemsQueryParams = zod.object({
+  "categoryId": zod.coerce.number().int().min(1).optional(),
+  "q": zod.coerce.string().max(listAdminSupplierTaxonomyItemsQueryQMax).optional(),
+  "status": zod.enum(['all', 'active', 'inactive']).default(listAdminSupplierTaxonomyItemsQueryStatusDefault)
+})
+
+export const ListAdminSupplierTaxonomyItemsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryPath": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "supplierCount": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminSupplierTaxonomyItemsResponse = zod.array(ListAdminSupplierTaxonomyItemsResponseItem)
+
+
+export const createAdminSupplierTaxonomyItemBodyNameMax = 120;
+
+
+export const createAdminSupplierTaxonomyItemBodyNotesMax = 500;
+
+
+
+export const CreateAdminSupplierTaxonomyItemBody = zod.object({
+  "name": zod.string().min(1).max(createAdminSupplierTaxonomyItemBodyNameMax),
+  "categoryId": zod.number().int().min(1),
+  "notes": zod.string().max(createAdminSupplierTaxonomyItemBodyNotesMax).nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAdminSupplierTaxonomyItemResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryPath": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "supplierCount": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNameMax = 120;
+
+
+export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNotesMax = 500;
+
+export const bulkCreateAdminSupplierTaxonomyItemsBodyItemsMax = 1000;
+
+
+
+export const BulkCreateAdminSupplierTaxonomyItemsBody = zod.object({
+  "items": zod.array(zod.object({
+  "name": zod.string().min(1).max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNameMax),
+  "categoryId": zod.number().int().min(1),
+  "notes": zod.string().max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsItemNotesMax).nullish(),
+  "isActive": zod.boolean().optional()
+})).min(1).max(bulkCreateAdminSupplierTaxonomyItemsBodyItemsMax)
+})
+
+export const BulkCreateAdminSupplierTaxonomyItemsResponse = zod.object({
+  "added": zod.number().int(),
+  "skipped": zod.number().int(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryPath": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "supplierCount": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+
+
+
+export const UpdateAdminSupplierTaxonomyItemParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateAdminSupplierTaxonomyItemBodyNameMax = 120;
+
+
+export const updateAdminSupplierTaxonomyItemBodyNotesMax = 500;
+
+
+
+export const UpdateAdminSupplierTaxonomyItemBody = zod.object({
+  "name": zod.string().min(1).max(updateAdminSupplierTaxonomyItemBodyNameMax).optional(),
+  "categoryId": zod.number().int().min(1).optional(),
+  "notes": zod.string().max(updateAdminSupplierTaxonomyItemBodyNotesMax).nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminSupplierTaxonomyItemResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryPath": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "supplierCount": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const MoveAdminSupplierTaxonomyItemParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const MoveAdminSupplierTaxonomyItemBody = zod.object({
+  "categoryId": zod.number().int().min(1)
+})
+
+export const MoveAdminSupplierTaxonomyItemResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryPath": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "supplierCount": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const DeleteAdminSupplierTaxonomyItemParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteAdminSupplierTaxonomyItemBody = zod.object({
+  "confirmed": zod.boolean()
+})
+
+export const DeleteAdminSupplierTaxonomyItemResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+
+
+
+export const SetAdminSupplierTaxonomyItemSuppliersParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const SetAdminSupplierTaxonomyItemSuppliersBody = zod.object({
+  "supplierIds": zod.array(zod.number().int().min(1)),
+  "confirmed": zod.boolean()
+})
+
+export const SetAdminSupplierTaxonomyItemSuppliersResponse = zod.object({
+  "itemId": zod.number().int(),
+  "supplierIds": zod.array(zod.number().int())
+})
+
+
+export const ExportAdminSupplierTaxonomyItemsCsvResponse = zod.unknown()
+
+
+export const ListAdminSupplierTaxonomyLegacyReviewResponseItem = zod.object({
+  "legacyId": zod.number().int(),
+  "legacyName": zod.string(),
+  "legacyGroupName": zod.string(),
+  "legacyParentId": zod.number().int().nullable(),
+  "supplierCount": zod.number().int(),
+  "suggestedItemId": zod.number().int().nullable(),
+  "mappedItemId": zod.number().int().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+export const ListAdminSupplierTaxonomyLegacyReviewResponse = zod.array(ListAdminSupplierTaxonomyLegacyReviewResponseItem)
+
+
+
+
+
+export const ApplyAdminSupplierTaxonomyLegacyMappingParams = zod.object({
+  "legacyId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ApplyAdminSupplierTaxonomyLegacyMappingBody = zod.object({
+  "itemId": zod.number().int().min(1),
+  "confirmed": zod.boolean()
+})
+
+export const ApplyAdminSupplierTaxonomyLegacyMappingResponse = zod.object({
+  "legacyId": zod.number().int(),
+  "legacyName": zod.string(),
+  "legacyGroupName": zod.string(),
+  "legacyParentId": zod.number().int().nullable(),
+  "supplierCount": zod.number().int(),
+  "suggestedItemId": zod.number().int().nullable(),
+  "mappedItemId": zod.number().int().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+
+
+export const ExportAdminSupplierTaxonomyCsvResponse = zod.unknown()
+
+
 export const GetAdminItemCategoryImportReportResponse = zod.object({
   "added": zod.number().int(),
   "skipped": zod.number().int(),

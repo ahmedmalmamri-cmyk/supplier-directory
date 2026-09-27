@@ -185,6 +185,367 @@ paths:
               schema: { $ref: "#/components/schemas/AdminItemCategory" }
         "400": { description: Invalid category or duplicate name }
         "401": { description: Admin login required }
+  /admin/supplier-taxonomy/tree:
+    get:
+      operationId: getAdminSupplierTaxonomyTree
+      tags: [admin]
+      responses:
+        "200":
+          description: Proposed independent supplier taxonomy tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/audit:
+    get:
+      operationId: getAdminSupplierTaxonomyAudit
+      tags: [admin]
+      responses:
+        "200":
+          description: Latest 200 audited taxonomy changes without credentials or personally identifiable information
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyAuditEntry" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/nodes:
+    post:
+      operationId: createAdminSupplierTaxonomyNode
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyNodeInput" }
+      responses:
+        "201":
+          description: Created taxonomy node
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid node or parent }
+        "401": { description: Admin login required }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/bulk:
+    post:
+      operationId: bulkCreateAdminSupplierTaxonomyNodes
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyBulkInput" }
+      responses:
+        "201":
+          description: Created nodes atomically
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid nodes or parent }
+        "401": { description: Admin login required }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/{id}:
+    patch:
+      operationId: updateAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyNodeUpdate" }
+      responses:
+        "200":
+          description: Updated node
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid node or cyclic move }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/{id}/move:
+    post:
+      operationId: moveAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyMoveInput" }
+      responses:
+        "200":
+          description: Moved node, preserving supplier links
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Cyclic move or invalid parent }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+  /admin/supplier-taxonomy/nodes/{id}/delete:
+    post:
+      operationId: deleteAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteInput" }
+      responses:
+        "200":
+          description: Deleted the selected category, transferring its direct subdivisions/items when strategy is transfer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteResponse" }
+        "400": { description: Missing confirmation or invalid transfer target }
+        "409": { description: Transfer would create duplicate sibling subdivisions or cascade deletion lacks explicit confirmations }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+  /admin/supplier-taxonomy/order:
+    put:
+      operationId: reorderAdminSupplierTaxonomyNodes
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyOrderInput" }
+      responses:
+        "200":
+          description: Updated sibling display order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Invalid sibling order }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/items:
+    get:
+      operationId: listAdminSupplierTaxonomyItems
+      tags: [admin]
+      parameters:
+        - name: categoryId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, active, inactive], default: all }
+      responses:
+        "200":
+          description: Items with category path, optionally searched or filtered
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminSupplierTaxonomyItem
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemInput" }
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid item or category }
+        "401": { description: Admin login required }
+        "409": { description: Trimmed exact-case item name already exists }
+  /admin/supplier-taxonomy/items/bulk:
+    post:
+      operationId: bulkCreateAdminSupplierTaxonomyItems
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemsBulkInput" }
+      responses:
+        "201":
+          description: Created new items and skipped duplicate names
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItemsBulkResponse" }
+        "400": { description: Invalid items or category }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/items/{id}:
+    patch:
+      operationId: updateAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemUpdate" }
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid item or category }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+        "409": { description: Trimmed exact-case item name already exists }
+  /admin/supplier-taxonomy/items/{id}/move:
+    post:
+      operationId: moveAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemMoveInput" }
+      responses:
+        "200":
+          description: Moved item without changing its stable ID or supplier links
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid destination category }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+  /admin/supplier-taxonomy/items/{id}/delete:
+    post:
+      operationId: deleteAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemDeleteInput" }
+      responses:
+        "200":
+          description: Deleted confirmed item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Explicit confirmation required }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+  /admin/supplier-taxonomy/items/{id}/suppliers:
+    put:
+      operationId: setAdminSupplierTaxonomyItemSuppliers
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemSuppliersInput" }
+      responses:
+        "200":
+          description: Replaced item supplier links after explicit confirmation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItemSuppliersResponse" }
+        "400": { description: Invalid supplier list or missing confirmation }
+        "401": { description: Admin login required }
+        "404": { description: Item or supplier not found }
+  /admin/supplier-taxonomy/items/export.csv:
+    get:
+      operationId: exportAdminSupplierTaxonomyItemsCsv
+      tags: [admin]
+      responses:
+        "200":
+          description: Item list with category paths and supplier links in UTF-8 CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/legacy-review:
+    get:
+      operationId: listAdminSupplierTaxonomyLegacyReview
+      tags: [admin]
+      responses:
+        "200":
+          description: Legacy supplier categories and exact-name-only suggestions, with all unresolved entries left unassigned
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyLegacyReview" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/legacy-review/{legacyId}/apply:
+    post:
+      operationId: applyAdminSupplierTaxonomyLegacyMapping
+      tags: [admin]
+      parameters:
+        - in: path
+          name: legacyId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyMappingInput" }
+      responses:
+        "200":
+          description: Explicitly confirmed mapping and copied supplier links; legacy records remain unchanged and reviewed mappings cannot be redirected implicitly
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyReview" }
+        "400": { description: Mapping confirmation is required }
+        "401": { description: Admin login required }
+        "404": { description: Legacy category or taxonomy item not found }
+        "409": { description: Legacy item already maps to a different taxonomy item and requires explicit correction }
+  /admin/supplier-taxonomy/export.csv:
+    get:
+      operationId: exportAdminSupplierTaxonomyCsv
+      tags: [admin]
+      responses:
+        "200":
+          description: Taxonomy nodes and linked suppliers as UTF-8 CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { description: Admin login required }
   /admin/item-categories/import-report:
     get:
       operationId: getAdminItemCategoryImportReport
@@ -1353,6 +1714,185 @@ components:
           properties:
             supplierCount: { type: integer }
             notes: { type: ["string", "null"], maxLength: 500 }
+    SupplierTaxonomyNode:
+      type: object
+      required: [id, parentId, name, icon, description, displayOrder, isActive, itemCount, children]
+      properties:
+        id: { type: integer }
+        parentId: { type: ["integer", "null"] }
+        name: { type: string }
+        icon: { type: string }
+        description: { type: ["string", "null"] }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
+        itemCount: { type: integer }
+        children:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+    SupplierTaxonomyAuditEntry:
+      type: object
+      required: [id, adminId, action, entityType, entityId, details, createdAt]
+      properties:
+        id: { type: integer }
+        adminId: { type: ["integer", "null"] }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: ["integer", "null"] }
+        details:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+    SupplierTaxonomyNodeInput:
+      type: object
+      required: [name]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    SupplierTaxonomyBulkInput:
+      type: object
+      required: [nodes]
+      properties:
+        nodes:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/SupplierTaxonomyNodeInput" }
+    SupplierTaxonomyNodeUpdate:
+      type: object
+      properties:
+        parentId: { type: ["integer", "null"] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    SupplierTaxonomyMoveInput:
+      type: object
+      required: [parentId]
+      properties:
+        parentId: { type: ["integer", "null"] }
+    SupplierTaxonomyDeleteInput:
+      type: object
+      required: [strategy, confirmed]
+      properties:
+        strategy: { type: string, enum: [cascade, transfer] }
+        confirmed: { type: boolean }
+        confirmItems: { type: boolean }
+        confirmSupplierLinks: { type: boolean }
+        transferToNodeId: { type: integer, minimum: 1 }
+    SupplierTaxonomyDeleteResponse:
+      type: object
+      required: [success, deletedNodeCount, transferredItemCount]
+      properties:
+        success: { type: boolean }
+        deletedNodeCount: { type: integer }
+        transferredItemCount: { type: integer }
+    SupplierTaxonomyOrderInput:
+      type: object
+      required: [parentId, orderedIds]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        orderedIds:
+          type: array
+          items: { type: integer, minimum: 1 }
+    SupplierTaxonomyLegacyReview:
+      type: object
+      required: [legacyId, legacyName, legacyGroupName, legacyParentId, supplierCount, suggestedItemId, mappedItemId, reviewedAt]
+      properties:
+        legacyId: { type: integer }
+        legacyName: { type: string }
+        legacyGroupName: { type: string }
+        legacyParentId: { type: ["integer", "null"] }
+        supplierCount: { type: integer }
+        suggestedItemId: { type: ["integer", "null"] }
+        mappedItemId: { type: ["integer", "null"] }
+        reviewedAt: { type: ["string", "null"] }
+    SupplierTaxonomyLegacyMappingInput:
+      type: object
+      required: [itemId, confirmed]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        confirmed: { type: boolean }
+    SupplierTaxonomyItem:
+      type: object
+      required: [id, name, categoryId, categoryPath, isActive, notes, supplierCount, supplierIds, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        categoryId: { type: integer }
+        categoryPath: { type: string }
+        isActive: { type: boolean }
+        notes: { type: ["string", "null"] }
+        supplierCount: { type: integer }
+        supplierIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SupplierTaxonomyItemInput:
+      type: object
+      required: [name, categoryId]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        categoryId: { type: integer, minimum: 1 }
+        notes: { type: ["string", "null"], maxLength: 500 }
+        isActive: { type: boolean }
+    SupplierTaxonomyItemsBulkInput:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItemInput" }
+    SupplierTaxonomyItemsBulkResponse:
+      type: object
+      required: [added, skipped, items]
+      properties:
+        added: { type: integer }
+        skipped: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+    SupplierTaxonomyItemUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        categoryId: { type: integer, minimum: 1 }
+        notes: { type: ["string", "null"], maxLength: 500 }
+        isActive: { type: boolean }
+    SupplierTaxonomyItemMoveInput:
+      type: object
+      required: [categoryId]
+      properties:
+        categoryId: { type: integer, minimum: 1 }
+    SupplierTaxonomyItemDeleteInput:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean }
+    SupplierTaxonomyItemSuppliersInput:
+      type: object
+      required: [supplierIds, confirmed]
+      properties:
+        supplierIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        confirmed: { type: boolean }
+    SupplierTaxonomyItemSuppliersResponse:
+      type: object
+      required: [itemId, supplierIds]
+      properties:
+        itemId: { type: integer }
+        supplierIds:
+          type: array
+          items: { type: integer }
     ItemCategoryImportReport:
       type: object
       required: [added, skipped, failed, appliedAt]

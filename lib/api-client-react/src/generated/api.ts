@@ -65,6 +65,7 @@ import type {
   ItemCategoryTagsInput,
   ItemCategoryTransferInput,
   ItemCategoryUpdate,
+  ListAdminSupplierTaxonomyItemsParams,
   ListBuyerInvitationsParams,
   ListRequestsParams,
   ListSupplierInvitationsParams,
@@ -98,7 +99,27 @@ import type {
   SupplierLoginInput,
   SupplierRequestContactResponse,
   SupplierRequestOfferInput,
-  SupplierSourceStats
+  SupplierSourceStats,
+  SupplierTaxonomyAuditEntry,
+  SupplierTaxonomyBulkInput,
+  SupplierTaxonomyDeleteInput,
+  SupplierTaxonomyDeleteResponse,
+  SupplierTaxonomyItem,
+  SupplierTaxonomyItemDeleteInput,
+  SupplierTaxonomyItemInput,
+  SupplierTaxonomyItemMoveInput,
+  SupplierTaxonomyItemSuppliersInput,
+  SupplierTaxonomyItemSuppliersResponse,
+  SupplierTaxonomyItemUpdate,
+  SupplierTaxonomyItemsBulkInput,
+  SupplierTaxonomyItemsBulkResponse,
+  SupplierTaxonomyLegacyMappingInput,
+  SupplierTaxonomyLegacyReview,
+  SupplierTaxonomyMoveInput,
+  SupplierTaxonomyNode,
+  SupplierTaxonomyNodeInput,
+  SupplierTaxonomyNodeUpdate,
+  SupplierTaxonomyOrderInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -946,6 +967,1513 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateAdminItemCategoryMutationOptions(options));
     }
+
+export const getGetAdminSupplierTaxonomyTreeUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/tree`
+}
+
+export const getAdminSupplierTaxonomyTree = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyNode[]> => {
+
+  return customFetch<SupplierTaxonomyNode[]>(getGetAdminSupplierTaxonomyTreeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminSupplierTaxonomyTreeQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/tree`
+    ] as const;
+    }
+
+
+export const getGetAdminSupplierTaxonomyTreeQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSupplierTaxonomyTreeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>> = ({ signal }) => getAdminSupplierTaxonomyTree({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminSupplierTaxonomyTreeQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>>
+export type GetAdminSupplierTaxonomyTreeQueryError = ErrorType<void>
+
+
+
+export function useGetAdminSupplierTaxonomyTree<TData = Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyTree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminSupplierTaxonomyTreeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminSupplierTaxonomyAuditUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/audit`
+}
+
+export const getAdminSupplierTaxonomyAudit = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyAuditEntry[]> => {
+
+  return customFetch<SupplierTaxonomyAuditEntry[]>(getGetAdminSupplierTaxonomyAuditUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminSupplierTaxonomyAuditQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/audit`
+    ] as const;
+    }
+
+
+export const getGetAdminSupplierTaxonomyAuditQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSupplierTaxonomyAuditQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>> = ({ signal }) => getAdminSupplierTaxonomyAudit({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminSupplierTaxonomyAuditQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>>
+export type GetAdminSupplierTaxonomyAuditQueryError = ErrorType<void>
+
+
+
+export function useGetAdminSupplierTaxonomyAudit<TData = Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSupplierTaxonomyAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminSupplierTaxonomyAuditQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminSupplierTaxonomyNodeUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/nodes`
+}
+
+export const createAdminSupplierTaxonomyNode = async (supplierTaxonomyNodeInput: SupplierTaxonomyNodeInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyNode> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyNode>(getCreateAdminSupplierTaxonomyNodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyNodeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSupplierTaxonomyNodeMutationKey = () => ['createAdminSupplierTaxonomyNode'] as const;
+
+export const getCreateAdminSupplierTaxonomyNodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>, TError,CreateAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>, TError,CreateAdminSupplierTaxonomyNodeMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSupplierTaxonomyNodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>, CreateAdminSupplierTaxonomyNodeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSupplierTaxonomyNode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSupplierTaxonomyNodeMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>>
+    export type CreateAdminSupplierTaxonomyNodeMutationBody = BodyType<SupplierTaxonomyNodeInput>
+    export type CreateAdminSupplierTaxonomyNodeMutationError = ErrorType<void>
+    export type CreateAdminSupplierTaxonomyNodeMutationVariables = {data: BodyType<SupplierTaxonomyNodeInput>}
+
+    export const useCreateAdminSupplierTaxonomyNode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>, TError,CreateAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSupplierTaxonomyNode>>,
+        TError,
+        CreateAdminSupplierTaxonomyNodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSupplierTaxonomyNodeMutationOptions(options));
+    }
+
+export const getBulkCreateAdminSupplierTaxonomyNodesUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/nodes/bulk`
+}
+
+export const bulkCreateAdminSupplierTaxonomyNodes = async (supplierTaxonomyBulkInput: SupplierTaxonomyBulkInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyNode[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyNode[]>(getBulkCreateAdminSupplierTaxonomyNodesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyBulkInput)
+  }
+);}
+
+
+
+
+
+export const getBulkCreateAdminSupplierTaxonomyNodesMutationKey = () => ['bulkCreateAdminSupplierTaxonomyNodes'] as const;
+
+export const getBulkCreateAdminSupplierTaxonomyNodesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>, TError,BulkCreateAdminSupplierTaxonomyNodesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>, TError,BulkCreateAdminSupplierTaxonomyNodesMutationVariables, TContext> => {
+
+const mutationKey = getBulkCreateAdminSupplierTaxonomyNodesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>, BulkCreateAdminSupplierTaxonomyNodesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkCreateAdminSupplierTaxonomyNodes(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkCreateAdminSupplierTaxonomyNodesMutationResult = NonNullable<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>>
+    export type BulkCreateAdminSupplierTaxonomyNodesMutationBody = BodyType<SupplierTaxonomyBulkInput>
+    export type BulkCreateAdminSupplierTaxonomyNodesMutationError = ErrorType<void>
+    export type BulkCreateAdminSupplierTaxonomyNodesMutationVariables = {data: BodyType<SupplierTaxonomyBulkInput>}
+
+    export const useBulkCreateAdminSupplierTaxonomyNodes = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>, TError,BulkCreateAdminSupplierTaxonomyNodesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyNodes>>,
+        TError,
+        BulkCreateAdminSupplierTaxonomyNodesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBulkCreateAdminSupplierTaxonomyNodesMutationOptions(options));
+    }
+
+export const getUpdateAdminSupplierTaxonomyNodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/nodes/${id}`
+}
+
+export const updateAdminSupplierTaxonomyNode = async (id: number,
+    supplierTaxonomyNodeUpdate: SupplierTaxonomyNodeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyNode> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyNode>(getUpdateAdminSupplierTaxonomyNodeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyNodeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupplierTaxonomyNodeMutationKey = () => ['updateAdminSupplierTaxonomyNode'] as const;
+
+export const getUpdateAdminSupplierTaxonomyNodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>, TError,UpdateAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>, TError,UpdateAdminSupplierTaxonomyNodeMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupplierTaxonomyNodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>, UpdateAdminSupplierTaxonomyNodeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminSupplierTaxonomyNode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupplierTaxonomyNodeMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>>
+    export type UpdateAdminSupplierTaxonomyNodeMutationBody = BodyType<SupplierTaxonomyNodeUpdate>
+    export type UpdateAdminSupplierTaxonomyNodeMutationError = ErrorType<void>
+    export type UpdateAdminSupplierTaxonomyNodeMutationVariables = {id: number;data: BodyType<SupplierTaxonomyNodeUpdate>}
+
+    export const useUpdateAdminSupplierTaxonomyNode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>, TError,UpdateAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupplierTaxonomyNode>>,
+        TError,
+        UpdateAdminSupplierTaxonomyNodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupplierTaxonomyNodeMutationOptions(options));
+    }
+
+export const getMoveAdminSupplierTaxonomyNodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/nodes/${id}/move`
+}
+
+export const moveAdminSupplierTaxonomyNode = async (id: number,
+    supplierTaxonomyMoveInput: SupplierTaxonomyMoveInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyNode> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyNode>(getMoveAdminSupplierTaxonomyNodeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyMoveInput)
+  }
+);}
+
+
+
+
+
+export const getMoveAdminSupplierTaxonomyNodeMutationKey = () => ['moveAdminSupplierTaxonomyNode'] as const;
+
+export const getMoveAdminSupplierTaxonomyNodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>, TError,MoveAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>, TError,MoveAdminSupplierTaxonomyNodeMutationVariables, TContext> => {
+
+const mutationKey = getMoveAdminSupplierTaxonomyNodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>, MoveAdminSupplierTaxonomyNodeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  moveAdminSupplierTaxonomyNode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MoveAdminSupplierTaxonomyNodeMutationResult = NonNullable<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>>
+    export type MoveAdminSupplierTaxonomyNodeMutationBody = BodyType<SupplierTaxonomyMoveInput>
+    export type MoveAdminSupplierTaxonomyNodeMutationError = ErrorType<void>
+    export type MoveAdminSupplierTaxonomyNodeMutationVariables = {id: number;data: BodyType<SupplierTaxonomyMoveInput>}
+
+    export const useMoveAdminSupplierTaxonomyNode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>, TError,MoveAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof moveAdminSupplierTaxonomyNode>>,
+        TError,
+        MoveAdminSupplierTaxonomyNodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMoveAdminSupplierTaxonomyNodeMutationOptions(options));
+    }
+
+export const getDeleteAdminSupplierTaxonomyNodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/nodes/${id}/delete`
+}
+
+export const deleteAdminSupplierTaxonomyNode = async (id: number,
+    supplierTaxonomyDeleteInput: SupplierTaxonomyDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyDeleteResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyDeleteResponse>(getDeleteAdminSupplierTaxonomyNodeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminSupplierTaxonomyNodeMutationKey = () => ['deleteAdminSupplierTaxonomyNode'] as const;
+
+export const getDeleteAdminSupplierTaxonomyNodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>, TError,DeleteAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>, TError,DeleteAdminSupplierTaxonomyNodeMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminSupplierTaxonomyNodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>, DeleteAdminSupplierTaxonomyNodeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteAdminSupplierTaxonomyNode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminSupplierTaxonomyNodeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>>
+    export type DeleteAdminSupplierTaxonomyNodeMutationBody = BodyType<SupplierTaxonomyDeleteInput>
+    export type DeleteAdminSupplierTaxonomyNodeMutationError = ErrorType<void>
+    export type DeleteAdminSupplierTaxonomyNodeMutationVariables = {id: number;data: BodyType<SupplierTaxonomyDeleteInput>}
+
+    export const useDeleteAdminSupplierTaxonomyNode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>, TError,DeleteAdminSupplierTaxonomyNodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyNode>>,
+        TError,
+        DeleteAdminSupplierTaxonomyNodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminSupplierTaxonomyNodeMutationOptions(options));
+    }
+
+export const getReorderAdminSupplierTaxonomyNodesUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/order`
+}
+
+export const reorderAdminSupplierTaxonomyNodes = async (supplierTaxonomyOrderInput: SupplierTaxonomyOrderInput, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BasicSuccessResponse>(getReorderAdminSupplierTaxonomyNodesUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyOrderInput)
+  }
+);}
+
+
+
+
+
+export const getReorderAdminSupplierTaxonomyNodesMutationKey = () => ['reorderAdminSupplierTaxonomyNodes'] as const;
+
+export const getReorderAdminSupplierTaxonomyNodesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>, TError,ReorderAdminSupplierTaxonomyNodesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>, TError,ReorderAdminSupplierTaxonomyNodesMutationVariables, TContext> => {
+
+const mutationKey = getReorderAdminSupplierTaxonomyNodesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>, ReorderAdminSupplierTaxonomyNodesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  reorderAdminSupplierTaxonomyNodes(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderAdminSupplierTaxonomyNodesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>>
+    export type ReorderAdminSupplierTaxonomyNodesMutationBody = BodyType<SupplierTaxonomyOrderInput>
+    export type ReorderAdminSupplierTaxonomyNodesMutationError = ErrorType<void>
+    export type ReorderAdminSupplierTaxonomyNodesMutationVariables = {data: BodyType<SupplierTaxonomyOrderInput>}
+
+    export const useReorderAdminSupplierTaxonomyNodes = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>, TError,ReorderAdminSupplierTaxonomyNodesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderAdminSupplierTaxonomyNodes>>,
+        TError,
+        ReorderAdminSupplierTaxonomyNodesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReorderAdminSupplierTaxonomyNodesMutationOptions(options));
+    }
+
+export const getListAdminSupplierTaxonomyItemsUrl = (params?: ListAdminSupplierTaxonomyItemsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/supplier-taxonomy/items?${stringifiedParams}` : `/api/admin/supplier-taxonomy/items`
+}
+
+export const listAdminSupplierTaxonomyItems = async (params?: ListAdminSupplierTaxonomyItemsParams, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItem[]> => {
+
+  return customFetch<SupplierTaxonomyItem[]>(getListAdminSupplierTaxonomyItemsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSupplierTaxonomyItemsQueryKey = (params?: ListAdminSupplierTaxonomyItemsParams,) => {
+    return [
+    `/api/admin/supplier-taxonomy/items`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminSupplierTaxonomyItemsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>, TError = ErrorType<void>>(params?: ListAdminSupplierTaxonomyItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSupplierTaxonomyItemsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>> = ({ signal }) => listAdminSupplierTaxonomyItems(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSupplierTaxonomyItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>>
+export type ListAdminSupplierTaxonomyItemsQueryError = ErrorType<void>
+
+
+
+export function useListAdminSupplierTaxonomyItems<TData = Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>, TError = ErrorType<void>>(
+ params?: ListAdminSupplierTaxonomyItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSupplierTaxonomyItemsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminSupplierTaxonomyItemUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items`
+}
+
+export const createAdminSupplierTaxonomyItem = async (supplierTaxonomyItemInput: SupplierTaxonomyItemInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyItem>(getCreateAdminSupplierTaxonomyItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSupplierTaxonomyItemMutationKey = () => ['createAdminSupplierTaxonomyItem'] as const;
+
+export const getCreateAdminSupplierTaxonomyItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>, TError,CreateAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>, TError,CreateAdminSupplierTaxonomyItemMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSupplierTaxonomyItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>, CreateAdminSupplierTaxonomyItemMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSupplierTaxonomyItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSupplierTaxonomyItemMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>>
+    export type CreateAdminSupplierTaxonomyItemMutationBody = BodyType<SupplierTaxonomyItemInput>
+    export type CreateAdminSupplierTaxonomyItemMutationError = ErrorType<void>
+    export type CreateAdminSupplierTaxonomyItemMutationVariables = {data: BodyType<SupplierTaxonomyItemInput>}
+
+    export const useCreateAdminSupplierTaxonomyItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>, TError,CreateAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSupplierTaxonomyItem>>,
+        TError,
+        CreateAdminSupplierTaxonomyItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSupplierTaxonomyItemMutationOptions(options));
+    }
+
+export const getBulkCreateAdminSupplierTaxonomyItemsUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/bulk`
+}
+
+export const bulkCreateAdminSupplierTaxonomyItems = async (supplierTaxonomyItemsBulkInput: SupplierTaxonomyItemsBulkInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItemsBulkResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyItemsBulkResponse>(getBulkCreateAdminSupplierTaxonomyItemsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemsBulkInput)
+  }
+);}
+
+
+
+
+
+export const getBulkCreateAdminSupplierTaxonomyItemsMutationKey = () => ['bulkCreateAdminSupplierTaxonomyItems'] as const;
+
+export const getBulkCreateAdminSupplierTaxonomyItemsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>, TError,BulkCreateAdminSupplierTaxonomyItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>, TError,BulkCreateAdminSupplierTaxonomyItemsMutationVariables, TContext> => {
+
+const mutationKey = getBulkCreateAdminSupplierTaxonomyItemsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>, BulkCreateAdminSupplierTaxonomyItemsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkCreateAdminSupplierTaxonomyItems(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkCreateAdminSupplierTaxonomyItemsMutationResult = NonNullable<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>>
+    export type BulkCreateAdminSupplierTaxonomyItemsMutationBody = BodyType<SupplierTaxonomyItemsBulkInput>
+    export type BulkCreateAdminSupplierTaxonomyItemsMutationError = ErrorType<void>
+    export type BulkCreateAdminSupplierTaxonomyItemsMutationVariables = {data: BodyType<SupplierTaxonomyItemsBulkInput>}
+
+    export const useBulkCreateAdminSupplierTaxonomyItems = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>, TError,BulkCreateAdminSupplierTaxonomyItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkCreateAdminSupplierTaxonomyItems>>,
+        TError,
+        BulkCreateAdminSupplierTaxonomyItemsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBulkCreateAdminSupplierTaxonomyItemsMutationOptions(options));
+    }
+
+export const getUpdateAdminSupplierTaxonomyItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/${id}`
+}
+
+export const updateAdminSupplierTaxonomyItem = async (id: number,
+    supplierTaxonomyItemUpdate: SupplierTaxonomyItemUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyItem>(getUpdateAdminSupplierTaxonomyItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupplierTaxonomyItemMutationKey = () => ['updateAdminSupplierTaxonomyItem'] as const;
+
+export const getUpdateAdminSupplierTaxonomyItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>, TError,UpdateAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>, TError,UpdateAdminSupplierTaxonomyItemMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupplierTaxonomyItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>, UpdateAdminSupplierTaxonomyItemMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminSupplierTaxonomyItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupplierTaxonomyItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>>
+    export type UpdateAdminSupplierTaxonomyItemMutationBody = BodyType<SupplierTaxonomyItemUpdate>
+    export type UpdateAdminSupplierTaxonomyItemMutationError = ErrorType<void>
+    export type UpdateAdminSupplierTaxonomyItemMutationVariables = {id: number;data: BodyType<SupplierTaxonomyItemUpdate>}
+
+    export const useUpdateAdminSupplierTaxonomyItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>, TError,UpdateAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupplierTaxonomyItem>>,
+        TError,
+        UpdateAdminSupplierTaxonomyItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupplierTaxonomyItemMutationOptions(options));
+    }
+
+export const getMoveAdminSupplierTaxonomyItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/${id}/move`
+}
+
+export const moveAdminSupplierTaxonomyItem = async (id: number,
+    supplierTaxonomyItemMoveInput: SupplierTaxonomyItemMoveInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyItem>(getMoveAdminSupplierTaxonomyItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemMoveInput)
+  }
+);}
+
+
+
+
+
+export const getMoveAdminSupplierTaxonomyItemMutationKey = () => ['moveAdminSupplierTaxonomyItem'] as const;
+
+export const getMoveAdminSupplierTaxonomyItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>, TError,MoveAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>, TError,MoveAdminSupplierTaxonomyItemMutationVariables, TContext> => {
+
+const mutationKey = getMoveAdminSupplierTaxonomyItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>, MoveAdminSupplierTaxonomyItemMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  moveAdminSupplierTaxonomyItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MoveAdminSupplierTaxonomyItemMutationResult = NonNullable<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>>
+    export type MoveAdminSupplierTaxonomyItemMutationBody = BodyType<SupplierTaxonomyItemMoveInput>
+    export type MoveAdminSupplierTaxonomyItemMutationError = ErrorType<void>
+    export type MoveAdminSupplierTaxonomyItemMutationVariables = {id: number;data: BodyType<SupplierTaxonomyItemMoveInput>}
+
+    export const useMoveAdminSupplierTaxonomyItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>, TError,MoveAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof moveAdminSupplierTaxonomyItem>>,
+        TError,
+        MoveAdminSupplierTaxonomyItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMoveAdminSupplierTaxonomyItemMutationOptions(options));
+    }
+
+export const getDeleteAdminSupplierTaxonomyItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/${id}/delete`
+}
+
+export const deleteAdminSupplierTaxonomyItem = async (id: number,
+    supplierTaxonomyItemDeleteInput: SupplierTaxonomyItemDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BasicSuccessResponse>(getDeleteAdminSupplierTaxonomyItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminSupplierTaxonomyItemMutationKey = () => ['deleteAdminSupplierTaxonomyItem'] as const;
+
+export const getDeleteAdminSupplierTaxonomyItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>, TError,DeleteAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>, TError,DeleteAdminSupplierTaxonomyItemMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminSupplierTaxonomyItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>, DeleteAdminSupplierTaxonomyItemMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteAdminSupplierTaxonomyItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminSupplierTaxonomyItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>>
+    export type DeleteAdminSupplierTaxonomyItemMutationBody = BodyType<SupplierTaxonomyItemDeleteInput>
+    export type DeleteAdminSupplierTaxonomyItemMutationError = ErrorType<void>
+    export type DeleteAdminSupplierTaxonomyItemMutationVariables = {id: number;data: BodyType<SupplierTaxonomyItemDeleteInput>}
+
+    export const useDeleteAdminSupplierTaxonomyItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>, TError,DeleteAdminSupplierTaxonomyItemMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminSupplierTaxonomyItem>>,
+        TError,
+        DeleteAdminSupplierTaxonomyItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminSupplierTaxonomyItemMutationOptions(options));
+    }
+
+export const getSetAdminSupplierTaxonomyItemSuppliersUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/${id}/suppliers`
+}
+
+export const setAdminSupplierTaxonomyItemSuppliers = async (id: number,
+    supplierTaxonomyItemSuppliersInput: SupplierTaxonomyItemSuppliersInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyItemSuppliersResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyItemSuppliersResponse>(getSetAdminSupplierTaxonomyItemSuppliersUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyItemSuppliersInput)
+  }
+);}
+
+
+
+
+
+export const getSetAdminSupplierTaxonomyItemSuppliersMutationKey = () => ['setAdminSupplierTaxonomyItemSuppliers'] as const;
+
+export const getSetAdminSupplierTaxonomyItemSuppliersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>, TError,SetAdminSupplierTaxonomyItemSuppliersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>, TError,SetAdminSupplierTaxonomyItemSuppliersMutationVariables, TContext> => {
+
+const mutationKey = getSetAdminSupplierTaxonomyItemSuppliersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>, SetAdminSupplierTaxonomyItemSuppliersMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setAdminSupplierTaxonomyItemSuppliers(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetAdminSupplierTaxonomyItemSuppliersMutationResult = NonNullable<Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>>
+    export type SetAdminSupplierTaxonomyItemSuppliersMutationBody = BodyType<SupplierTaxonomyItemSuppliersInput>
+    export type SetAdminSupplierTaxonomyItemSuppliersMutationError = ErrorType<void>
+    export type SetAdminSupplierTaxonomyItemSuppliersMutationVariables = {id: number;data: BodyType<SupplierTaxonomyItemSuppliersInput>}
+
+    export const useSetAdminSupplierTaxonomyItemSuppliers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>, TError,SetAdminSupplierTaxonomyItemSuppliersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setAdminSupplierTaxonomyItemSuppliers>>,
+        TError,
+        SetAdminSupplierTaxonomyItemSuppliersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetAdminSupplierTaxonomyItemSuppliersMutationOptions(options));
+    }
+
+export const getExportAdminSupplierTaxonomyItemsCsvUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/items/export.csv`
+}
+
+export const exportAdminSupplierTaxonomyItemsCsv = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getExportAdminSupplierTaxonomyItemsCsvUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportAdminSupplierTaxonomyItemsCsvQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/items/export.csv`
+    ] as const;
+    }
+
+
+export const getExportAdminSupplierTaxonomyItemsCsvQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportAdminSupplierTaxonomyItemsCsvQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>> = ({ signal }) => exportAdminSupplierTaxonomyItemsCsv({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportAdminSupplierTaxonomyItemsCsvQueryResult = NonNullable<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>>
+export type ExportAdminSupplierTaxonomyItemsCsvQueryError = ErrorType<void>
+
+
+
+export function useExportAdminSupplierTaxonomyItemsCsv<TData = Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyItemsCsv>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportAdminSupplierTaxonomyItemsCsvQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminSupplierTaxonomyLegacyReviewUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/legacy-review`
+}
+
+export const listAdminSupplierTaxonomyLegacyReview = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyLegacyReview[]> => {
+
+  return customFetch<SupplierTaxonomyLegacyReview[]>(getListAdminSupplierTaxonomyLegacyReviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSupplierTaxonomyLegacyReviewQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/legacy-review`
+    ] as const;
+    }
+
+
+export const getListAdminSupplierTaxonomyLegacyReviewQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSupplierTaxonomyLegacyReviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>> = ({ signal }) => listAdminSupplierTaxonomyLegacyReview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSupplierTaxonomyLegacyReviewQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>>
+export type ListAdminSupplierTaxonomyLegacyReviewQueryError = ErrorType<void>
+
+
+
+export function useListAdminSupplierTaxonomyLegacyReview<TData = Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupplierTaxonomyLegacyReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSupplierTaxonomyLegacyReviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApplyAdminSupplierTaxonomyLegacyMappingUrl = (legacyId: number,) => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/legacy-review/${legacyId}/apply`
+}
+
+export const applyAdminSupplierTaxonomyLegacyMapping = async (legacyId: number,
+    supplierTaxonomyLegacyMappingInput: SupplierTaxonomyLegacyMappingInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierTaxonomyLegacyReview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierTaxonomyLegacyReview>(getApplyAdminSupplierTaxonomyLegacyMappingUrl(legacyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierTaxonomyLegacyMappingInput)
+  }
+);}
+
+
+
+
+
+export const getApplyAdminSupplierTaxonomyLegacyMappingMutationKey = () => ['applyAdminSupplierTaxonomyLegacyMapping'] as const;
+
+export const getApplyAdminSupplierTaxonomyLegacyMappingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>, TError,ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>, TError,ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables, TContext> => {
+
+const mutationKey = getApplyAdminSupplierTaxonomyLegacyMappingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>, ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables> = (props) => {
+          const {legacyId,data} = props ?? {};
+
+          return  applyAdminSupplierTaxonomyLegacyMapping(legacyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyAdminSupplierTaxonomyLegacyMappingMutationResult = NonNullable<Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>>
+    export type ApplyAdminSupplierTaxonomyLegacyMappingMutationBody = BodyType<SupplierTaxonomyLegacyMappingInput>
+    export type ApplyAdminSupplierTaxonomyLegacyMappingMutationError = ErrorType<void>
+    export type ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables = {legacyId: number;data: BodyType<SupplierTaxonomyLegacyMappingInput>}
+
+    export const useApplyAdminSupplierTaxonomyLegacyMapping = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>, TError,ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applyAdminSupplierTaxonomyLegacyMapping>>,
+        TError,
+        ApplyAdminSupplierTaxonomyLegacyMappingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApplyAdminSupplierTaxonomyLegacyMappingMutationOptions(options));
+    }
+
+export const getExportAdminSupplierTaxonomyCsvUrl = () => {
+
+
+
+
+  return `/api/admin/supplier-taxonomy/export.csv`
+}
+
+export const exportAdminSupplierTaxonomyCsv = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getExportAdminSupplierTaxonomyCsvUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportAdminSupplierTaxonomyCsvQueryKey = () => {
+    return [
+    `/api/admin/supplier-taxonomy/export.csv`
+    ] as const;
+    }
+
+
+export const getExportAdminSupplierTaxonomyCsvQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportAdminSupplierTaxonomyCsvQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>> = ({ signal }) => exportAdminSupplierTaxonomyCsv({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportAdminSupplierTaxonomyCsvQueryResult = NonNullable<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>>
+export type ExportAdminSupplierTaxonomyCsvQueryError = ErrorType<void>
+
+
+
+export function useExportAdminSupplierTaxonomyCsv<TData = Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminSupplierTaxonomyCsv>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportAdminSupplierTaxonomyCsvQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminItemCategoryImportReportUrl = () => {
 

@@ -221,6 +221,218 @@ export type AdminItemCategory = ItemCategory & ({
   notes: string | null;
 });
 
+export interface SupplierTaxonomyNode {
+  id: number;
+  /** @nullable */
+  parentId: number | null;
+  name: string;
+  icon: string;
+  /** @nullable */
+  description: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  itemCount: number;
+  children: SupplierTaxonomyNode[];
+}
+
+export type SupplierTaxonomyAuditEntryDetails = { [key: string]: unknown };
+
+export interface SupplierTaxonomyAuditEntry {
+  id: number;
+  /** @nullable */
+  adminId: number | null;
+  action: string;
+  entityType: string;
+  /** @nullable */
+  entityId: number | null;
+  details: SupplierTaxonomyAuditEntryDetails;
+  createdAt: string;
+}
+
+export interface SupplierTaxonomyNodeInput {
+  /** @nullable */
+  parentId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 24 */
+  icon?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  /** @minimum 0 */
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface SupplierTaxonomyBulkInput {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  nodes: SupplierTaxonomyNodeInput[];
+}
+
+export interface SupplierTaxonomyNodeUpdate {
+  /** @nullable */
+  parentId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /** @maxLength 24 */
+  icon?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  /** @minimum 0 */
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface SupplierTaxonomyMoveInput {
+  /** @nullable */
+  parentId: number | null;
+}
+
+export type SupplierTaxonomyDeleteInputStrategy = typeof SupplierTaxonomyDeleteInputStrategy[keyof typeof SupplierTaxonomyDeleteInputStrategy];
+
+
+export const SupplierTaxonomyDeleteInputStrategy = {
+  cascade: 'cascade',
+  transfer: 'transfer',
+} as const;
+
+export interface SupplierTaxonomyDeleteInput {
+  strategy: SupplierTaxonomyDeleteInputStrategy;
+  confirmed: boolean;
+  confirmItems?: boolean;
+  confirmSupplierLinks?: boolean;
+  /** @minimum 1 */
+  transferToNodeId?: number;
+}
+
+export interface SupplierTaxonomyDeleteResponse {
+  success: boolean;
+  deletedNodeCount: number;
+  transferredItemCount: number;
+}
+
+export interface SupplierTaxonomyOrderInput {
+  /** @nullable */
+  parentId: number | null;
+  /** @items.minimum 1 */
+  orderedIds: number[];
+}
+
+export interface SupplierTaxonomyLegacyReview {
+  legacyId: number;
+  legacyName: string;
+  legacyGroupName: string;
+  /** @nullable */
+  legacyParentId: number | null;
+  supplierCount: number;
+  /** @nullable */
+  suggestedItemId: number | null;
+  /** @nullable */
+  mappedItemId: number | null;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export interface SupplierTaxonomyLegacyMappingInput {
+  /** @minimum 1 */
+  itemId: number;
+  confirmed: boolean;
+}
+
+export interface SupplierTaxonomyItem {
+  id: number;
+  name: string;
+  categoryId: number;
+  categoryPath: string;
+  isActive: boolean;
+  /** @nullable */
+  notes: string | null;
+  supplierCount: number;
+  supplierIds: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierTaxonomyItemInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @minimum 1 */
+  categoryId: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface SupplierTaxonomyItemsBulkInput {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  items: SupplierTaxonomyItemInput[];
+}
+
+export interface SupplierTaxonomyItemsBulkResponse {
+  added: number;
+  skipped: number;
+  items: SupplierTaxonomyItem[];
+}
+
+export interface SupplierTaxonomyItemUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  /** @minimum 1 */
+  categoryId?: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface SupplierTaxonomyItemMoveInput {
+  /** @minimum 1 */
+  categoryId: number;
+}
+
+export interface SupplierTaxonomyItemDeleteInput {
+  confirmed: boolean;
+}
+
+export interface SupplierTaxonomyItemSuppliersInput {
+  /** @items.minimum 1 */
+  supplierIds: number[];
+  confirmed: boolean;
+}
+
+export interface SupplierTaxonomyItemSuppliersResponse {
+  itemId: number;
+  supplierIds: number[];
+}
+
 export interface ItemCategoryImportReport {
   added: number;
   skipped: number;
@@ -1054,6 +1266,27 @@ city?: string;
  */
 q?: string;
 };
+
+export type ListAdminSupplierTaxonomyItemsParams = {
+/**
+ * @minimum 1
+ */
+categoryId?: number;
+/**
+ * @maxLength 100
+ */
+q?: string;
+status?: ListAdminSupplierTaxonomyItemsStatus;
+};
+
+export type ListAdminSupplierTaxonomyItemsStatus = typeof ListAdminSupplierTaxonomyItemsStatus[keyof typeof ListAdminSupplierTaxonomyItemsStatus];
+
+
+export const ListAdminSupplierTaxonomyItemsStatus = {
+  all: 'all',
+  active: 'active',
+  inactive: 'inactive',
+} as const;
 
 export type SearchDirectoryParams = {
 q?: string;
