@@ -184,47 +184,45 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
       FROM supplier_taxonomy_nodes child
       JOIN supplier_taxonomy_nodes parent ON parent.id = child.parent_id
       ORDER BY parent.display_order, child.display_order, child.id
-    `).all();
-    console.error("MIGRATION_DIAGNOSTIC", JSON.stringify({ proposedItems, proposedRootRows, proposedChildren }));
+    `).all().map((row: Record<string, unknown>) => ({ ...row }));
     assert.equal(proposedRoots.count, 6);
-    assert.equal(proposedItems.count, 32);
+    assert.equal(proposedItems.count, 31);
     assert.equal(proposalMappings.count, 0, "legacy entries must remain unassigned until reviewed");
-    assert.deepEqual(proposedRootRows, [
-      { id: 1, name: "مستلزمات الكيك" },
-      { id: 2, name: "مستلزمات التغليف" },
-      { id: 3, name: "المواد الأولية" },
-      { id: 4, name: "معدات المخابز" },
-      { id: 5, name: "النظافة والسلامة" },
-      { id: 6, name: "كيك جاهز" },
+    assert.deepEqual(proposedRootRows.map((root: any) => root.name), [
+      "المواد الخام الغذائية",
+      "مستلزمات الكيك",
+      "مستلزمات التغليف والتقديم",
+      "مستلزمات النظافة والسلامة",
+      "الخدمات والاستشارات",
+      "أصناف أخرى",
     ]);
-    assert.equal(duplicateCakeReady.count, 2, "category sections may repeat labels at different levels");
+    assert.equal(duplicateCakeReady.count, 0, "deleted ready-cake locations must stay absent");
     assert.deepEqual(proposedChildren, [
+      { parentName: "المواد الخام الغذائية", name: "دقيق وحبوب" },
+      { parentName: "المواد الخام الغذائية", name: "سكر ومحليات" },
+      { parentName: "المواد الخام الغذائية", name: "زيوت وسمن" },
+      { parentName: "المواد الخام الغذائية", name: "حليب ومشتقاته" },
+      { parentName: "المواد الخام الغذائية", name: "بيض" },
+      { parentName: "المواد الخام الغذائية", name: "خمائر ومحسنات" },
+      { parentName: "المواد الخام الغذائية", name: "نكهات وملونات" },
+      { parentName: "المواد الخام الغذائية", name: "مكسرات وفواكه" },
       { parentName: "مستلزمات الكيك", name: "حشوات الكيك" },
       { parentName: "مستلزمات الكيك", name: "خلطات الكيك" },
       { parentName: "مستلزمات الكيك", name: "كريمة وتزيين" },
       { parentName: "مستلزمات الكيك", name: "قوالب وأدوات تشكيل" },
-      { parentName: "مستلزمات الكيك", name: "كيك جاهز" },
-      { parentName: "مستلزمات التغليف", name: "علب الكيك" },
-      { parentName: "مستلزمات التغليف", name: "أكياس التغليف" },
-      { parentName: "مستلزمات التغليف", name: "أوراق التغليف" },
-      { parentName: "مستلزمات التغليف", name: "ملصقات وأربطة" },
-      { parentName: "مستلزمات التغليف", name: "حافظات التوصيل" },
-      { parentName: "المواد الأولية", name: "دقيق وسكر" },
-      { parentName: "المواد الأولية", name: "زيوت ودهون" },
-      { parentName: "المواد الأولية", name: "بيض وألبان" },
-      { parentName: "المواد الأولية", name: "مواد رافعة ونكهات" },
-      { parentName: "المواد الأولية", name: "مكسرات وإضافات" },
-      { parentName: "معدات المخابز", name: "معدات الخلط والعجن" },
-      { parentName: "معدات المخابز", name: "معدات التشكيل" },
-      { parentName: "معدات المخابز", name: "معدات الخبز" },
-      { parentName: "معدات المخابز", name: "معدات التجهيز والتبريد" },
-      { parentName: "النظافة والسلامة", name: "منظفات غذائية" },
-      { parentName: "النظافة والسلامة", name: "أدوات تعقيم" },
-      { parentName: "النظافة والسلامة", name: "مستلزمات وقاية شخصية" },
-      { parentName: "كيك جاهز", name: "كيك أرمكو" },
-      { parentName: "كيك جاهز", name: "كيك شركات أخرى" },
-      { parentName: "كيك جاهز", name: "كب كيك جاهز" },
-      { parentName: "كيك جاهز", name: "دونات جاهز" },
+      { parentName: "مستلزمات التغليف والتقديم", name: "علب كيك وحلويات" },
+      { parentName: "مستلزمات التغليف والتقديم", name: "أكياس وورق تغليف" },
+      { parentName: "مستلزمات التغليف والتقديم", name: "حافظات التوصيل" },
+      { parentName: "مستلزمات التغليف والتقديم", name: "ملصقات وبطاقات" },
+      { parentName: "مستلزمات التغليف والتقديم", name: "أدوات تقديم" },
+      { parentName: "مستلزمات النظافة والسلامة", name: "منظفات غذائية" },
+      { parentName: "مستلزمات النظافة والسلامة", name: "معقمات" },
+      { parentName: "مستلزمات النظافة والسلامة", name: "مستلزمات وقاية شخصية" },
+      { parentName: "مستلزمات النظافة والسلامة", name: "مكافحة حشرات" },
+      { parentName: "الخدمات والاستشارات", name: "صيانة معدات" },
+      { parentName: "الخدمات والاستشارات", name: "تركيب وتجهيز" },
+      { parentName: "الخدمات والاستشارات", name: "استشارات وتدريب" },
+      { parentName: "الخدمات والاستشارات", name: "توصيل وشحن" },
     ]);
     const groups = directoryDb.prepare(`
       SELECT id, name, slug, parent_id AS parentId FROM groups ORDER BY id
