@@ -15,11 +15,11 @@ For owner-supplied item imports, do not assume every initially proposed branch s
 
 **How to apply:** Keep an independent completion marker per supplied group so deferred groups can be placed after clarification without reintroducing previously imported items that the admin later deletes. Report pending destinations to the user.
 
-The owner's later four-root taxonomy direction supersedes the earlier choice to place Aramco ready-cake names under the cake-supplies mixing branch. The cake-supplies branch is now retired; do not recreate it to satisfy the old choice.
+The owner clarified that «مستلزمات الكيك» must be restored as the second public root after «المواد الخام الغذائية», with the four branches that existed immediately before its removal and their previous item placements. The earlier choice to put existing Aramco cake names under «خلطات الكيك» still applies.
 
-**Why:** The new request explicitly removed replaced categories and directed items without a clear home to a temporary review root. Cake mixes and finished-cake names do not clearly match the eight new food-ingredient branches.
+**Why:** A four-root reorganization had incorrectly removed cake supplies. The owner explicitly corrected that interpretation. «كيك جاهز» had been deleted by an admin before the removal, so restoring the prior distribution does not recreate that branch or deleted items.
 
-**How to apply:** Leave uncertain cake names staged for review, rather than silently interpreting them as flour or flavorings.
+**How to apply:** Preserve the former cake branch destinations for existing items; do not reimport previously deleted names, add a ready-cake branch, or silently override subsequent admin edits. Keep equipment staged, not under cake.
 
 Multi-section membership is distinct from a supplier's explicit item links. Retain a single synchronized primary section for each item even when it appears in additional sections.
 
@@ -27,9 +27,9 @@ Multi-section membership is distinct from a supplier's explicit item links. Reta
 
 **How to apply:** Resolve section membership within the current tree only, and maintain supplier links explicitly. A section's removal must never erase the underlying item or its supplier associations.
 
-The temporary "unclassified items" section used in an earlier rollout was not a permanent public grouping. For the newer four-root tree, the owner specifically requested a new inactive «أصناف أخرى» review root for equipment and unclear placements.
+The temporary "unclassified items" section used in an earlier rollout was not a permanent public grouping. In the reorganized tree with cake supplies restored, «أصناف أخرى» remains an inactive review root for equipment and other unclear placements.
 
-**Why:** Removing the equipment section and combining mixed old branches makes a confident destination impossible for some items. Preserving them in a non-public review area protects their IDs and supplier links without misrepresenting what suppliers sell.
+**Why:** Removing the equipment section and combining mixed old branches makes a confident destination impossible for some items. Restoring cake supplies resolves only the items whose previous cake placement is known.
 
 **How to apply:** Keep staged items visible to admins but hidden from the public directory; wait for explicit review before activating or assigning them to the four approved roots. Do not reintroduce retired headings as public items.
 
