@@ -173,8 +173,9 @@ export const approvedLegacyItemAssignments: readonly ApprovedLegacyItemAssignmen
     });
   }));
 
-const APPROVED_IMPORTED_ITEM_COUNT = 153;
-const EXPECTED_DUPLICATE_ITEM_COUNT = 127;
+const APPROVED_ASSIGNMENT_NAME_COUNT = 153;
+const EXPECTED_IMPORTED_MARKER_COUNT = 152;
+const EXPECTED_DUPLICATE_ITEM_COUNT = 128;
 
 type LegacyLeaf = { id: number; name: string };
 type ImportMarker = {
@@ -220,9 +221,9 @@ function assertUniqueApprovedNames(): void {
     }
     sourceNames.add(sourceName);
   }
-  if (approvedLegacyItemAssignments.length !== APPROVED_IMPORTED_ITEM_COUNT) {
+  if (approvedLegacyItemAssignments.length !== APPROVED_ASSIGNMENT_NAME_COUNT) {
     throw new Error(
-      `Expected ${APPROVED_IMPORTED_ITEM_COUNT} approved assignments; found ${approvedLegacyItemAssignments.length}`,
+      `Expected ${APPROVED_ASSIGNMENT_NAME_COUNT} approved assignments; found ${approvedLegacyItemAssignments.length}`,
     );
   }
 }
@@ -267,9 +268,9 @@ export function applyApprovedLegacyItemAssignments(
     const duplicateMarkers = markers.filter(
       (marker) => marker.outcome === "duplicate" || marker.outcome === "already_mapped",
     );
-    if (importedMarkers.length !== APPROVED_IMPORTED_ITEM_COUNT) {
+    if (importedMarkers.length !== EXPECTED_IMPORTED_MARKER_COUNT) {
       throw new Error(
-        `Expected ${APPROVED_IMPORTED_ITEM_COUNT} imported markers; found ${importedMarkers.length}`,
+        `Expected ${EXPECTED_IMPORTED_MARKER_COUNT} imported markers; found ${importedMarkers.length}`,
       );
     }
     if (duplicateMarkers.length !== EXPECTED_DUPLICATE_ITEM_COUNT) {
@@ -331,23 +332,44 @@ export function applyApprovedLegacyItemAssignments(
       return destination;
     };
 
-    const importedAssignments = approvedLegacyItemAssignments.map((assignment) => {
+    const previousMappings = database.prepare(`
+      SELECT taxonomy_item_id AS itemId
+      FROM supplier_taxonomy_legacy_item_mappings
+      WHERE legacy_item_category_id = ?
+    `);
+    const importedAssignments = approvedLegacyItemAssignments.flatMap((assignment) => {
       const leaf = findUniqueLeaf(assignment.oldItemName);
       const marker = markerByLegacyId.get(leaf.id);
-      if (!marker || marker.outcome !== "imported" || marker.taxonomyItemId === null) {
+      if (!marker) {
         throw new Error(`Old item "${assignment.oldItemName}" is not marked as imported`);
       }
       if (normalizedName(leaf.name) !== normalizedName(assignment.oldItemName)) {
         throw new Error(`The old source name changed for "${assignment.oldItemName}"`);
+      }
+      if (marker.outcome === "already_mapped" && marker.taxonomyItemId !== null) {
+        const previous = previousMappings.get(leaf.id) as { itemId: number } | undefined;
+        const reviewedItem = taxonomyItems.find((candidate) => candidate.id === marker.taxonomyItemId);
+        const canonicalAssignment = reviewedItem
+          ? approvedLegacyItemAssignments.find((candidate) =>
+            normalizedName(candidate.oldItemName) === normalizedName(reviewedItem.name))
+          : undefined;
+        if (!previous || previous.itemId !== marker.taxonomyItemId || !reviewedItem ||
+          !canonicalAssignment || canonicalAssignment.destinationNodeName !== assignment.destinationNodeName) {
+          throw new Error(`The reviewed alias mapping for "${assignment.oldItemName}" is incomplete or inconsistent`);
+        }
+        return [];
+      }
+      if (marker.outcome !== "imported" || marker.taxonomyItemId === null) {
+        throw new Error(`Old item "${assignment.oldItemName}" is not marked as imported`);
       }
       const item = findUniqueTaxonomyItem(assignment.oldItemName);
       if (item.id !== marker.taxonomyItemId) {
         throw new Error(`The import marker for "${assignment.oldItemName}" points to a different taxonomy item`);
       }
       const destination = findActiveDestination(assignment.destinationNodeName);
-      return { legacyId: leaf.id, marker, item, destination };
+      return [{ legacyId: leaf.id, marker, item, destination }];
     });
-    if (new Set(importedAssignments.map((entry) => entry.legacyId)).size !== APPROVED_IMPORTED_ITEM_COUNT) {
+    if (new Set(importedAssignments.map((entry) => entry.legacyId)).size !== EXPECTED_IMPORTED_MARKER_COUNT) {
       throw new Error("Approved assignments do not cover distinct old source leaves");
     }
     if (importedAssignments.length !== importedMarkers.length) {
@@ -386,11 +408,6 @@ export function applyApprovedLegacyItemAssignments(
       return { legacyId: leaf.id, marker, item, hadMapping: !!priorMapping };
     });
 
-    const previousMappings = database.prepare(`
-      SELECT taxonomy_item_id AS itemId
-      FROM supplier_taxonomy_legacy_item_mappings
-      WHERE legacy_item_category_id = ?
-    `);
     for (const { legacyId, item, destination } of importedAssignments) {
       const previous = previousMappings.get(legacyId) as { itemId: number } | undefined;
       if (previous && previous.itemId !== item.id) {

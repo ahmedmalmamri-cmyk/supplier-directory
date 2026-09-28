@@ -12,9 +12,11 @@ function createDatabase(): DatabaseSync {
     INSERT INTO supplier_taxonomy_nodes VALUES (1), (2), (3);
     CREATE TABLE supplier_taxonomy_items (
       id INTEGER PRIMARY KEY, name TEXT NOT NULL, category_id INTEGER NOT NULL,
+      notes TEXT, updated_at TEXT,
       FOREIGN KEY (category_id) REFERENCES supplier_taxonomy_nodes(id)
     );
-    INSERT INTO supplier_taxonomy_items VALUES (1, 'سكر أبيض', 2), (2, 'سكر', 1);
+    INSERT INTO supplier_taxonomy_items (id, name, category_id) VALUES
+      (1, 'سكر أبيض', 2), (2, 'سكر', 1);
     CREATE TABLE items_categories (
       item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
       category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id),
@@ -80,5 +82,65 @@ test("merges the reviewed sugar duplicate without losing item or legacy links", 
   assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
   assert.equal((db.prepare("SELECT COUNT(*) AS count FROM directory_migrations")
     .get() as { count: number }).count, 1);
+  db.close();
+});
+
+test("merges all four newly approved aliases and preserves linked records", async () => {
+  const { mergeReviewedAdditionalDuplicates } = await import("./merge-reviewed-sugar-duplicate.ts");
+  const db = createDatabase();
+  const pairs = [
+    { source: "زيت نباتي", target: "زيت", sourceId: 3, targetId: 4, legacyId: 300 },
+    { source: "سمن نباتي", target: "سمن", sourceId: 5, targetId: 6, legacyId: 301 },
+    { source: "فانيليا بودرة", target: "فانيليا", sourceId: 7, targetId: 8, legacyId: 302 },
+    { source: "ورق زبدة بني", target: "ورق زبدة", sourceId: 9, targetId: 10, legacyId: 303 },
+  ];
+  for (const [index, pair] of pairs.entries()) {
+    db.prepare(`
+      INSERT INTO supplier_taxonomy_items (id, name, category_id, notes)
+      VALUES (?, ?, 1, ?), (?, ?, 1, NULL)
+    `).run(
+      pair.sourceId, pair.source, index === 0 ? "ملاحظة محفوظة" : null,
+      pair.targetId, pair.target,
+    );
+    db.prepare("INSERT INTO items_categories VALUES (?, 1, 1, 'primary'), (?, 3, 0, 'additional'), (?, 1, 1, 'primary')")
+      .run(pair.sourceId, pair.sourceId, pair.targetId);
+    const supplierId = 30 + index;
+    db.prepare("INSERT INTO supplier_taxonomy_item_suppliers VALUES (?, ?, 'source'), (?, ?, 'target')")
+      .run(supplierId, pair.sourceId, supplierId, pair.targetId);
+    db.prepare("INSERT INTO requests (id, category_id) VALUES (?, ?)").run(10 + index, pair.sourceId);
+    db.prepare("INSERT INTO item_availability_inquiries (id, item_id) VALUES (?, ?)")
+      .run(10 + index, pair.sourceId);
+    db.prepare("INSERT INTO supplier_taxonomy_legacy_item_mappings VALUES (?, ?, 'source')")
+      .run(pair.legacyId, pair.sourceId);
+    db.prepare("INSERT INTO supplier_taxonomy_legacy_imports VALUES (?, ?, 'imported', 'source')")
+      .run(pair.legacyId, pair.sourceId);
+  }
+
+  mergeReviewedAdditionalDuplicates(db);
+  mergeReviewedAdditionalDuplicates(db);
+
+  for (const [index, pair] of pairs.entries()) {
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM supplier_taxonomy_items WHERE name = ?")
+      .get(pair.source) as { count: number }).count, 0);
+    assert.equal((db.prepare("SELECT id FROM supplier_taxonomy_items WHERE name = ?")
+      .get(pair.target) as { id: number }).id, pair.targetId);
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM supplier_taxonomy_item_suppliers WHERE item_id = ?")
+      .get(pair.targetId) as { count: number }).count, 1);
+    assert.equal((db.prepare("SELECT category_id FROM requests WHERE id = ?")
+      .get(10 + index) as { category_id: number }).category_id, pair.targetId);
+    assert.equal((db.prepare("SELECT item_id FROM item_availability_inquiries WHERE id = ?")
+      .get(10 + index) as { item_id: number }).item_id, pair.targetId);
+    assert.equal((db.prepare("SELECT taxonomy_item_id FROM supplier_taxonomy_legacy_item_mappings WHERE legacy_item_category_id = ?")
+      .get(pair.legacyId) as { taxonomy_item_id: number }).taxonomy_item_id, pair.targetId);
+    assert.equal((db.prepare("SELECT taxonomy_item_id || ':' || outcome AS result FROM supplier_taxonomy_legacy_imports WHERE legacy_item_category_id = ?")
+      .get(pair.legacyId) as { result: string }).result, `${pair.targetId}:already_mapped`);
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM items_categories WHERE item_id = ? AND category_id = 3 AND is_primary = 0")
+      .get(pair.targetId) as { count: number }).count, 1);
+  }
+  assert.equal((db.prepare("SELECT notes FROM supplier_taxonomy_items WHERE id = 4")
+    .get() as { notes: string }).notes, "ملاحظة محفوظة");
+  assert.equal((db.prepare("SELECT COUNT(*) AS count FROM directory_migrations")
+    .get() as { count: number }).count, 4);
+  assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
   db.close();
 });

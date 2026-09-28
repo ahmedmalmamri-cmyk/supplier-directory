@@ -6,6 +6,8 @@ import {
   approvedLegacyItemAssignments,
 } from "./approved-legacy-item-assignments.ts";
 
+const mergedAliasName = "سمن نباتي";
+
 function createDatabase(): DatabaseSync {
   const database = new DatabaseSync(":memory:");
   database.exec(`
@@ -100,15 +102,30 @@ function createDatabase(): DatabaseSync {
     VALUES (?, ?, 'original')
   `);
 
+  const mergedAliasIndex = approvedLegacyItemAssignments.findIndex(
+    assignment => assignment.oldItemName === mergedAliasName,
+  );
+  const canonicalIndex = approvedLegacyItemAssignments.findIndex(
+    assignment => assignment.oldItemName === "سمن",
+  );
+  if (mergedAliasIndex < 0 || canonicalIndex < 0) {
+    throw new Error("The approved fixture must contain the reviewed ghee alias and canonical name");
+  }
+
   for (let index = 0; index < approvedLegacyItemAssignments.length; index++) {
     const assignment = approvedLegacyItemAssignments[index];
     const id = index + 1;
     insertOldItem.run(id, assignment.oldItemName);
+    if (assignment.oldItemName === mergedAliasName) continue;
     insertTaxonomyItem.run(id, assignment.oldItemName, temporaryNodeId, 0);
     insertPrimaryMembership.run(id, temporaryNodeId);
     insertMarker.run(id, id, "imported");
     insertMapping.run(id, id);
   }
+  const mergedAliasLegacyId = mergedAliasIndex + 1;
+  const canonicalItemId = canonicalIndex + 1;
+  insertMarker.run(mergedAliasLegacyId, canonicalItemId, "already_mapped");
+  insertMapping.run(mergedAliasLegacyId, canonicalItemId);
 
   const existingNodeId = [...nodeIdByName.values()][0];
   for (let index = 0; index < 127; index++) {
@@ -141,18 +158,18 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
   const first = applyApprovedLegacyItemAssignments(database, "approved-at");
   assert.deepEqual(first, {
     sourceItemCount: 280,
-    importedItemCount: 153,
-    importedItemsUpdated: 153,
+    importedItemCount: 152,
+    importedItemsUpdated: 152,
     importedItemsAlreadyAssigned: 0,
-    duplicateItemCount: 127,
+    duplicateItemCount: 128,
     duplicateMappingsAdded: 127,
-    duplicateMappingsAlreadyReviewed: 0,
+    duplicateMappingsAlreadyReviewed: 1,
   });
   const activeItems = database.prepare(`
     SELECT COUNT(*) AS count FROM supplier_taxonomy_items
     WHERE id BETWEEN 1 AND 153 AND is_active = 1
   `).get() as { count: number };
-  assert.equal(activeItems.count, 153);
+  assert.equal(activeItems.count, 152);
   const primaryLinks = database.prepare(`
     SELECT i.name AS itemName, n.name AS nodeName, ic.is_primary AS isPrimary
     FROM supplier_taxonomy_items i
@@ -161,12 +178,15 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
     WHERE ic.is_primary = 1
     ORDER BY i.id
   `).all() as Array<{ itemName: string; nodeName: string; isPrimary: number }>;
-  assert.equal(primaryLinks.length, 280);
+  assert.equal(primaryLinks.length, 279);
+  let primaryLinkIndex = 0;
   for (let index = 0; index < approvedLegacyItemAssignments.length; index++) {
     const assignment = approvedLegacyItemAssignments[index];
-    assert.equal(primaryLinks[index].itemName, assignment.oldItemName);
-    assert.equal(primaryLinks[index].nodeName, assignment.destinationNodeName);
-    assert.equal(primaryLinks[index].isPrimary, 1);
+    if (assignment.oldItemName === mergedAliasName) continue;
+    assert.equal(primaryLinks[primaryLinkIndex].itemName, assignment.oldItemName);
+    assert.equal(primaryLinks[primaryLinkIndex].nodeName, assignment.destinationNodeName);
+    assert.equal(primaryLinks[primaryLinkIndex].isPrimary, 1);
+    primaryLinkIndex++;
   }
   assert.deepEqual(
     database.prepare(`
@@ -193,12 +213,12 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
   );
   assert.deepEqual(applyApprovedLegacyItemAssignments(database, "approved-again"), {
     sourceItemCount: 280,
-    importedItemCount: 153,
+    importedItemCount: 152,
     importedItemsUpdated: 0,
-    importedItemsAlreadyAssigned: 153,
-    duplicateItemCount: 127,
+    importedItemsAlreadyAssigned: 152,
+    duplicateItemCount: 128,
     duplicateMappingsAdded: 0,
-    duplicateMappingsAlreadyReviewed: 127,
+    duplicateMappingsAlreadyReviewed: 128,
   });
   database.close();
 });
@@ -236,8 +256,8 @@ test("a reviewed duplicate remains mapped when its old taxonomy item is merged i
   database.prepare("DELETE FROM supplier_taxonomy_items WHERE id = 2001").run();
 
   const repeated = applyApprovedLegacyItemAssignments(database, "approved-again");
-  assert.equal(repeated.duplicateItemCount, 127);
-  assert.equal(repeated.duplicateMappingsAlreadyReviewed, 127);
+  assert.equal(repeated.duplicateItemCount, 128);
+  assert.equal(repeated.duplicateMappingsAlreadyReviewed, 128);
   assert.equal(
     (database.prepare(`
       SELECT taxonomy_item_id AS itemId
