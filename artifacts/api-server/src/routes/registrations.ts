@@ -204,7 +204,8 @@ router.get("/invites/:token", (req, res): void => {
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
-  const categoryRows = getActiveSupplierTaxonomyChoiceRows();
+  const categoryRows = getActiveSupplierTaxonomyChoiceRows()
+    .filter((row) => row.slug.startsWith("taxonomy-node-"));
   const supplierCounts = itemCategorySupplierCounts(categoryRows);
   const categories = categoryRows.map((row) => ({
     ...row,
@@ -223,7 +224,7 @@ router.get("/invites/:token", (req, res): void => {
     alreadyCompleted: Boolean(supplier.inviteCompletedAt),
     cities,
     categories,
-    readyMixSubtypes: inviteReadyMixSubtypes,
+    readyMixSubtypes: [],
   });
 });
 

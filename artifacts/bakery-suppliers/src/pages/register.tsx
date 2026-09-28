@@ -2,7 +2,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useBuyerAuth } from "@/lib/buyer-auth";
 import { trackEvent } from "@/lib/analytics";
-import { useListItemCategories } from "@workspace/api-client-react";
+import { useListGroups } from "@workspace/api-client-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Building2, CakeSlice, CheckCircle2, ChevronDown, ChevronLeft, Coffee, Eye, EyeOff, Factory, FileUp, Hotel, ShoppingCart, Sprout, Store, UserPlus, Utensils, Wheat } from "lucide-react";
@@ -34,52 +34,6 @@ const buyerBusinessTypes = [
   { value: "فندق", icon: Hotel },
   { value: "آخر", icon: Building2 },
 ];
-const readyMixOptions = [
-  {
-    value: "خليط الكيك",
-    label: "خليط الكيك",
-    flavors: [
-      { label: "فانيليا", value: "خليط الكيك - فانيليا" },
-      { label: "شوكولاتة", value: "خليط الكيك - شوكولاتة" },
-      { label: "ريد فيلفت", value: "خليط ريد فيلفت" },
-      { label: "ليمون", value: "خليط الكيك - ليمون" },
-      { label: "برتقال", value: "خليط الكيك - برتقال" },
-    ],
-  },
-  {
-    value: "خليط الكب كيك",
-    label: "خليط الكب كيك",
-    flavors: [
-      { label: "شوكولاتة", value: "خليط الكب كيك - شوكولاتة" },
-      { label: "فانيليا", value: "خليط الكب كيك - فانيليا" },
-    ],
-  },
-  { value: "خليط البراوني", label: "خليط البراوني", flavors: [] },
-  {
-    value: "خليط المافن",
-    label: "خليط المافن",
-    flavors: [
-      { label: "شوكولاتة", value: "خليط المافن - شوكولاتة" },
-      { label: "فانيليا", value: "خليط المافن - فانيليا" },
-    ],
-  },
-  { value: "خليط البان كيك", label: "خليط البان كيك", flavors: [] },
-  { value: "خليط الوافل", label: "خليط الوافل", flavors: [] },
-  { value: "خليط البسكويت", label: "خليط البسكويت", flavors: [] },
-  { value: "خليط الكرواسون", label: "خليط الكرواسون", flavors: [] },
-];
-const legacyCategoryAliases: Record<string, string> = {
-  "دقيق وخبز": "دقيق",
-  "سكر ومحليات": "سكر",
-  زبدة: "زبدة ودهون",
-  "دهون وزبدة": "زبدة ودهون",
-  شوكولاتة: "شوكولاتة وكاكاو",
-  كاكاو: "شوكولاتة وكاكاو",
-  "عبوات وتغليف": "علب وتغليف",
-  "معدات وأدوات": "معدات وأفران",
-  خمائر: "خمائر ومحسنات",
-};
-
 const emptySupplier: SupplierForm = {
   businessName: "", contactPerson: "", businessType: "", phone: "", whatsapp: "", sameWhatsapp: true,
   email: "", website: "", city: "", address: "", deliversToOtherCities: false, otherCities: "",
@@ -102,28 +56,24 @@ const emptyBuyer: BuyerForm = {
 };
 
 export default function RegisterPage({ defaultType }: { defaultType?: RegistrationType } = {}) {
-  const { data: itemCategories, isLoading: isLoadingItemCategories, error: itemCategoriesError } = useListItemCategories();
+  const { data: taxonomyGroups, isLoading: isLoadingGroups, error: groupsError } = useListGroups();
   const categoryGroups = useMemo<RegistrationCategoryGroup[]>(() => {
-    const groups = new Map<string, RegistrationCategoryGroup>();
-    const activeCategories = (itemCategories ?? []).filter((category) => category.isActive);
-    const makeCategory = (category: NonNullable<typeof itemCategories>[number]): RegistrationCategory => ({
-      value: category.name,
-      label: category.name,
-      ...(category.description ? { description: category.description } : {}),
-      children: activeCategories
-        .filter((child) => child.parentId === category.id)
-        .map(makeCategory),
-    });
-    for (const category of activeCategories.filter((item) => item.parentId === null)) {
-      const group = groups.get(category.groupName) ?? { label: category.groupName, items: [] };
-      group.items.push({
-        ...makeCategory(category),
-        ...(category.name === "خلطات جاهزة" ? { description: "خلطات الكيك والحلويات الجاهزة" } : {}),
-      });
-      groups.set(category.groupName, group);
-    }
-    return [...groups.values()];
-  }, [itemCategories]);
+    const active = (taxonomyGroups ?? []).filter((node) => node.isActive);
+    return active
+      .filter((node) => node.parentId === null)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((root) => ({
+        label: root.name,
+        items: [{
+          value: root.name,
+          label: root.name,
+          children: active
+            .filter((node) => node.parentId === root.id)
+            .sort((a, b) => a.displayOrder - b.displayOrder)
+            .map((node) => ({ value: node.name, label: node.name })),
+        }],
+      }));
+  }, [taxonomyGroups]);
   const requestedType = new URLSearchParams(window.location.search).get("type");
   const initialType = defaultType ?? (requestedType === "supplier" || requestedType === "buyer" ? requestedType : null);
   const [type, setType] = useState<RegistrationType | null>(initialType);
@@ -133,7 +83,6 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
     return {
       ...draft,
       categories: [...new Set(categories
-        .map((category) => legacyCategoryAliases[category] ?? category)
         .filter((category) => category !== "أخرى"))],
     };
   });
@@ -144,21 +93,17 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
   const { refresh } = useBuyerAuth();
 
   useEffect(() => {
-    if (!itemCategories) return;
-    const allowedCategories = new Set([
-      ...itemCategories.map((category) => category.name),
-      ...readyMixOptions.flatMap((option) => [option.value, ...option.flavors.map((flavor) => flavor.value)]),
-    ]);
+    if (!taxonomyGroups) return;
+    const allowedCategories = new Set(taxonomyGroups.filter((node) => node.isActive).map((node) => node.name));
     setSupplier((current) => {
       const categories = [...new Set(current.categories
-        .map((category) => legacyCategoryAliases[category] ?? category)
         .filter((category) => allowedCategories.has(category)))];
       return categories.length === current.categories.length &&
         categories.every((category, index) => category === current.categories[index])
         ? current
         : { ...current, categories };
     });
-  }, [itemCategories]);
+  }, [taxonomyGroups]);
 
   useEffect(() => saveDraft("supplier", supplier), [supplier]);
   useEffect(() => saveDraft("buyer", buyer), [buyer]);
@@ -186,8 +131,8 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
           <SupplierWizard
             form={supplier}
             categoryGroups={categoryGroups}
-            categoriesLoading={isLoadingItemCategories}
-            categoriesError={Boolean(itemCategoriesError)}
+            categoriesLoading={isLoadingGroups}
+            categoriesError={Boolean(groupsError)}
             error={error}
             isSubmitting={isSubmitting}
             onChange={updateSupplier}
@@ -256,8 +201,8 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
       <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         <button type="button" onClick={() => onSelect("supplier")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><Sprout className="w-8 h-8" /></div>
-          <h3 className="text-2xl font-bold mb-3">أنا مورد أو موزع للمواد الأولية</h3>
-          <p className="text-muted-foreground text-lg">أريد عرض منتجاتي في الدليل</p>
+          <h3 className="text-2xl font-bold mb-3">أنا مورد أو مقدم خدمات للمخابز</h3>
+          <p className="text-muted-foreground text-lg">أريد عرض أصنافي أو خدماتي في الدليل</p>
              <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">سجّل كمورد <ChevronLeft className="w-5 h-5" /></span>
         </button>
         <button type="button" onClick={() => onSelect("buyer")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
@@ -428,14 +373,6 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
   onNext: () => void;
 }) {
   const selectedCount = selected.length;
-  const [flavorSearch, setFlavorSearch] = useState("");
-  const normalizedFlavorSearch = flavorSearch.trim().toLocaleLowerCase("ar");
-  const hasSelectedMix = readyMixOptions.some((option) => selected.includes(option.value));
-  const hasMatchingFlavor = readyMixOptions.some((option) =>
-    selected.includes(option.value) && option.flavors.some((flavor) =>
-      !normalizedFlavorSearch || flavor.label.toLocaleLowerCase("ar").includes(normalizedFlavorSearch)
-    )
-  );
   const toggleCategory = (value: string, checked: boolean) => {
     if (checked) {
       onChange([...new Set([...selected, value])]);
@@ -445,21 +382,12 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
     const parentCategory = flattenRegistrationCategories(groups.flatMap((group) => group.items))
       .find((item) => item.value === value);
     flattenRegistrationCategories(parentCategory?.children ?? []).forEach((child) => removedValues.add(child.value));
-    if (value === "خلطات جاهزة") {
-      readyMixOptions.forEach((option) => {
-        removedValues.add(option.value);
-        option.flavors.forEach((flavor) => removedValues.add(flavor.value));
-      });
-    } else {
-      const selectedMix = readyMixOptions.find((option) => option.value === value);
-      selectedMix?.flavors.forEach((flavor) => removedValues.add(flavor.value));
-    }
     onChange(selected.filter((item) => !removedValues.has(item)));
   };
   return (
     <div>
-      <h2 className="text-2xl font-extrabold">ما الذي تبيعه؟</h2>
-      <p className="mt-1 text-sm text-muted-foreground">اختر كل الأصناف التي توفرها فعلياً، ثم اكتب تفاصيل المنتجات والأنواع في الخطوة التالية.</p>
+      <h2 className="text-2xl font-extrabold">ما الذي توفره؟</h2>
+      <p className="mt-1 text-sm text-muted-foreground">اختر الأصناف أو الخدمات التي توفرها فعلياً، ثم اكتب التفاصيل في الخطوة التالية.</p>
       {isLoading ? (
         <p className="mt-5 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
       ) : hasError ? (
@@ -486,65 +414,6 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
             );
           })}
         </div>
-      )}
-      {selected.includes("خلطات جاهزة") && (
-        <section className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" aria-labelledby="ready-mix-options-title">
-          <h3 id="ready-mix-options-title" className="font-extrabold">الأصناف الفرعية (اختيارية)</h3>
-          <p className="mt-1 text-sm text-muted-foreground">حدد الخلطات والنكهات التي توفرها. يمكنك تركها دون تحديد.</p>
-          <label className="mt-4 block text-sm font-semibold" htmlFor="ready-mix-flavor-search">ابحث عن نكهة</label>
-          <input
-            id="ready-mix-flavor-search"
-            data-testid="input-ready-mix-flavor-search"
-            type="search"
-            value={flavorSearch}
-            onChange={(event) => setFlavorSearch(event.target.value)}
-            placeholder="مثال: ريد فيلفت"
-            className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-          {!hasSelectedMix && (
-            <p className="mt-2 text-xs text-muted-foreground">اختر خليطاً فرعياً أولاً لعرض نكهاته وتصفية النتائج.</p>
-          )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {readyMixOptions.map((option) => {
-              const isSelected = selected.includes(option.value);
-              return (
-                <div key={option.value} className="rounded-xl border bg-card p-3">
-                  <label className="flex cursor-pointer items-center gap-2 font-bold">
-                    <input
-                      type="checkbox"
-                      data-testid={`checkbox-ready-mix-${option.value}`}
-                      checked={isSelected}
-                      onChange={(event) => toggleCategory(option.value, event.target.checked)}
-                      className="h-4 w-4 accent-primary"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                  {isSelected && option.flavors.length > 0 && (
-                    <div className="mt-3 space-y-2 border-r-2 border-primary/20 pr-4">
-                      {option.flavors.filter((flavor) =>
-                        !normalizedFlavorSearch || flavor.label.toLocaleLowerCase("ar").includes(normalizedFlavorSearch)
-                      ).map((flavor) => (
-                        <label key={flavor.value} className="flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            data-testid={`checkbox-ready-mix-flavor-${flavor.value}`}
-                            checked={selected.includes(flavor.value)}
-                            onChange={(event) => toggleCategory(flavor.value, event.target.checked)}
-                            className="h-4 w-4 accent-primary"
-                          />
-                          <span>{flavor.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {normalizedFlavorSearch && hasSelectedMix && !hasMatchingFlavor && (
-            <p className="mt-3 text-sm text-muted-foreground" role="status">لا توجد نكهات مطابقة للخلطات المحددة.</p>
-          )}
-        </section>
       )}
       <p className="mt-4 rounded-xl bg-muted/30 px-4 py-3 text-sm font-bold" aria-live="polite">
         {selectedCount

@@ -11,6 +11,7 @@ import { migrateRequestsCategoryToSupplierTaxonomy } from "./requests-taxonomy-c
 import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items";
 import { isLegacyItemCategoriesRetired } from "./retire-legacy-item-categories";
 import { ensureSupplierOnboardingSchema } from "./supplier-onboarding-schema";
+import { applyFourRootSupplierTaxonomy, correctStagedFoodColorings, stageDecoratingBags } from "./supplier-taxonomy-four-roots";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -2570,3 +2571,6 @@ if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").ge
 }
 
 migrateRequestsCategoryToSupplierTaxonomy(directoryDb);
+applyFourRootSupplierTaxonomy(directoryDb);
+correctStagedFoodColorings(directoryDb);
+stageDecoratingBags(directoryDb);
