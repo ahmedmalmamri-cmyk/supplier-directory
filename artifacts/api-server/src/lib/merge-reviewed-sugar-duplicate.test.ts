@@ -160,6 +160,39 @@ test("merges all six newly approved aliases and preserves linked records", async
   db.close();
 });
 
+test("does not merge when either reviewed item name is ambiguous", async () => {
+  const { mergeReviewedAdditionalDuplicates } = await import("./merge-reviewed-sugar-duplicate.ts");
+  for (const duplicateTarget of [false, true]) {
+    const db = createDatabase();
+    db.prepare(`
+      INSERT INTO supplier_taxonomy_items (id, name, category_id)
+      VALUES (3, 'سكر ناعم', 1)
+    `).run();
+    if (duplicateTarget) {
+      db.prepare(`
+        INSERT INTO supplier_taxonomy_items (id, name, category_id)
+        VALUES (4, 'سكر', 1)
+      `).run();
+    } else {
+      db.prepare(`
+        INSERT INTO supplier_taxonomy_items (id, name, category_id)
+        VALUES (4, 'سكر ناعم', 1)
+      `).run();
+    }
+
+    mergeReviewedAdditionalDuplicates(db);
+
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM supplier_taxonomy_items WHERE name = 'سكر ناعم'")
+      .get() as { count: number }).count, duplicateTarget ? 1 : 2);
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM supplier_taxonomy_items WHERE name = 'سكر'")
+      .get() as { count: number }).count, duplicateTarget ? 2 : 1);
+    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM directory_migrations")
+      .get() as { count: number }).count, 0);
+    assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
+    db.close();
+  }
+});
+
 test("fine and coarse sugar are not reintroduced by either catalog seed", () => {
   const seededNames: readonly string[] = [
     ...newItemCategoryNames,

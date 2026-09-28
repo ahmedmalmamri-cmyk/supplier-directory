@@ -73,12 +73,17 @@ export function mergeReviewedDuplicateItem(
       db.exec("COMMIT");
       return;
     }
-    const source = findItems.get(duplicateName) as ItemIdentity | undefined;
-    const target = findItems.get(canonicalName) as ItemIdentity | undefined;
-    if (!source || !target || source.id === target.id) {
+    // Recheck under the write lock: an administrator may have changed names
+    // after the initial preflight query but before this transaction began.
+    const lockedSourceMatches = findItems.all(duplicateName) as ItemIdentity[];
+    const lockedTargetMatches = findItems.all(canonicalName) as ItemIdentity[];
+    if (lockedSourceMatches.length !== 1 || lockedTargetMatches.length !== 1 ||
+      lockedSourceMatches[0].id === lockedTargetMatches[0].id) {
       db.exec("ROLLBACK");
       return;
     }
+    const source = lockedSourceMatches[0];
+    const target = lockedTargetMatches[0];
     const now = new Date().toISOString();
     const count = (table: string, column: string) => (db.prepare(
       `SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = ?`,
