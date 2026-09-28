@@ -15,6 +15,16 @@ const sugarWhiteMerge: ReviewedDuplicateItemMerge = {
 
 const additionallyApprovedMerges: readonly ReviewedDuplicateItemMerge[] = [
   {
+    migrationName: "merge-reviewed-fine-sugar-into-sugar",
+    duplicateName: "سكر ناعم",
+    canonicalName: "سكر",
+  },
+  {
+    migrationName: "merge-reviewed-coarse-sugar-into-sugar",
+    duplicateName: "سكر خشن",
+    canonicalName: "سكر",
+  },
+  {
     migrationName: "merge-reviewed-vegetable-oil-into-oil",
     duplicateName: "زيت نباتي",
     canonicalName: "زيت",
@@ -152,7 +162,7 @@ export function mergeReviewedSugarDuplicate(db: DatabaseSync): void {
   });
 }
 
-/** Apply the four additional item equivalences confirmed by the owner. */
+/** Apply the six additional item equivalences confirmed by the owner. */
 export function mergeReviewedAdditionalDuplicates(db: DatabaseSync): void {
   for (const merge of additionallyApprovedMerges) mergeReviewedDuplicateItem(db, merge);
 }

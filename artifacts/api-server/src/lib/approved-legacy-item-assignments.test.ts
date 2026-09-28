@@ -128,8 +128,22 @@ function createDatabase(): DatabaseSync {
   insertMapping.run(mergedAliasLegacyId, canonicalItemId);
 
   const existingNodeId = [...nodeIdByName.values()][0];
+  const sugarIndex = approvedLegacyItemAssignments.findIndex(
+    assignment => assignment.oldItemName === "سكر",
+  );
+  if (sugarIndex < 0) {
+    throw new Error("The approved fixture must contain the canonical sugar item");
+  }
+  const canonicalSugarId = sugarIndex + 1;
   for (let index = 0; index < 127; index++) {
     const duplicateLegacyId = 1001 + index;
+    if (index >= 125) {
+      const sugarAliasName = index === 125 ? "سكر ناعم" : "سكر خشن";
+      insertOldItem.run(duplicateLegacyId, sugarAliasName);
+      insertMarker.run(duplicateLegacyId, canonicalSugarId, "already_mapped");
+      insertMapping.run(duplicateLegacyId, canonicalSugarId);
+      continue;
+    }
     const duplicateItemId = 2001 + index;
     const duplicateName = `صنف موجود مسبقاً ${index + 1}`;
     insertOldItem.run(duplicateLegacyId, duplicateName);
@@ -162,8 +176,8 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
     importedItemsUpdated: 152,
     importedItemsAlreadyAssigned: 0,
     duplicateItemCount: 128,
-    duplicateMappingsAdded: 127,
-    duplicateMappingsAlreadyReviewed: 1,
+    duplicateMappingsAdded: 125,
+    duplicateMappingsAlreadyReviewed: 3,
   });
   const activeItems = database.prepare(`
     SELECT COUNT(*) AS count FROM supplier_taxonomy_items
@@ -178,7 +192,7 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
     WHERE ic.is_primary = 1
     ORDER BY i.id
   `).all() as Array<{ itemName: string; nodeName: string; isPrimary: number }>;
-  assert.equal(primaryLinks.length, 279);
+  assert.equal(primaryLinks.length, 277);
   let primaryLinkIndex = 0;
   for (let index = 0; index < approvedLegacyItemAssignments.length; index++) {
     const assignment = approvedLegacyItemAssignments[index];
@@ -201,6 +215,15 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
   `).get() as { legacyId: number; itemId: number };
   assert.equal(duplicateMapping.legacyId, 1001);
   assert.equal(duplicateMapping.itemId, 2001);
+  for (const legacyId of [1126, 1127]) {
+    assert.deepEqual(
+      database.prepare(`
+        SELECT taxonomy_item_id AS itemId, outcome
+        FROM supplier_taxonomy_legacy_imports WHERE legacy_item_category_id = ?
+      `).get(legacyId),
+      { itemId: canonicalSugarId, outcome: "already_mapped" },
+    );
+  }
   assert.equal(
     (database.prepare(
       "SELECT COUNT(*) AS count FROM supplier_taxonomy_item_suppliers WHERE supplier_id = 77",
