@@ -185,6 +185,7 @@ test("group taxonomy migration mirrors roots and preserves supplier mappings", a
       JOIN supplier_taxonomy_nodes parent ON parent.id = child.parent_id
       ORDER BY parent.display_order, child.display_order, child.id
     `).all();
+    console.error("MIGRATION_DIAGNOSTIC", JSON.stringify({ proposedItems, proposedRootRows, proposedChildren }));
     assert.equal(proposedRoots.count, 6);
     assert.equal(proposedItems.count, 32);
     assert.equal(proposalMappings.count, 0, "legacy entries must remain unassigned until reviewed");
