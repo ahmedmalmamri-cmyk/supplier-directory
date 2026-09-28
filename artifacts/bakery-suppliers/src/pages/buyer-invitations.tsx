@@ -97,18 +97,28 @@ export function BuyerInvitationsPanel() {
     const whatsappWindow = openWhatsApp ? window.open("about:blank", "_blank") : null;
     if (whatsappWindow) whatsappWindow.opener = null;
     linkMutation.mutate({ id: item.id }, {
-      onSuccess: (link) => {
-        void navigator.clipboard?.writeText(link.url);
+      onSuccess: async (link) => {
         if (openWhatsApp) {
           if (!whatsappWindow) {
             setError("تعذر فتح واتساب. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.");
+            refresh();
             return;
           }
           whatsappWindow.location.href = link.whatsappUrl;
           markSent.mutate({ id: item.id }, { onSuccess: refresh });
           setNotice("تم فتح واتساب. راجع الرسالة واضغط إرسال؛ لا يؤكد النظام التسليم.");
-        } else setNotice("تم نسخ رابط الدعوة الثابت.");
-        refresh();
+          refresh();
+          return;
+        }
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+          await navigator.clipboard.writeText(link.url);
+          setNotice("تم نسخ رابط الدعوة الثابت.");
+        } catch {
+          setError("تعذر نسخ رابط الدعوة. تحقق من صلاحية الحافظة ثم أعد المحاولة.");
+        } finally {
+          refresh();
+        }
       },
       onError: (err) => { whatsappWindow?.close(); setError(err instanceof Error ? err.message : "تعذر إنشاء الرابط."); },
     });
