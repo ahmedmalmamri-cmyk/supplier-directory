@@ -203,6 +203,51 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
   database.close();
 });
 
+test("a reviewed duplicate remains mapped when its old taxonomy item is merged into a differently named canonical item", () => {
+  const database = createDatabase();
+  applyApprovedLegacyItemAssignments(database, "approved-at");
+  const canonicalId = 3000;
+  const nodeId = database.prepare(
+    "SELECT id FROM supplier_taxonomy_nodes ORDER BY id LIMIT 1",
+  ).get() as { id: number };
+  database.prepare(`
+    INSERT INTO supplier_taxonomy_items (id, name, category_id, is_active, updated_at)
+    VALUES (?, 'اسم موحد', ?, 1, 'merged')
+  `).run(canonicalId, nodeId.id);
+  database.prepare(`
+    INSERT INTO items_categories (item_id, category_id, is_primary, created_at)
+    VALUES (?, ?, 1, 'merged')
+  `).run(canonicalId, nodeId.id);
+  database.prepare(`
+    UPDATE supplier_taxonomy_legacy_item_mappings
+    SET taxonomy_item_id = ? WHERE legacy_item_category_id = 1001
+  `).run(canonicalId);
+  database.prepare(`
+    UPDATE supplier_taxonomy_legacy_imports
+    SET taxonomy_item_id = ? WHERE legacy_item_category_id = 1001
+  `).run(canonicalId);
+  database.prepare(`
+    INSERT OR IGNORE INTO supplier_taxonomy_item_suppliers (supplier_id, item_id, created_at)
+    SELECT supplier_id, ?, created_at
+    FROM supplier_taxonomy_item_suppliers WHERE item_id = 2001
+  `).run(canonicalId);
+  database.prepare("DELETE FROM supplier_taxonomy_item_suppliers WHERE item_id = 2001").run();
+  database.prepare("DELETE FROM items_categories WHERE item_id = 2001").run();
+  database.prepare("DELETE FROM supplier_taxonomy_items WHERE id = 2001").run();
+
+  const repeated = applyApprovedLegacyItemAssignments(database, "approved-again");
+  assert.equal(repeated.duplicateItemCount, 127);
+  assert.equal(repeated.duplicateMappingsAlreadyReviewed, 127);
+  assert.equal(
+    (database.prepare(`
+      SELECT taxonomy_item_id AS itemId
+      FROM supplier_taxonomy_legacy_item_mappings WHERE legacy_item_category_id = 1001
+    `).get() as { itemId: number }).itemId,
+    canonicalId,
+  );
+  database.close();
+});
+
 test("a linked duplicate fails closed without changing sources or previously imported items", () => {
   const database = createDatabase();
   database.prepare(`

@@ -363,15 +363,23 @@ export function applyApprovedLegacyItemAssignments(
       if (existingLinks !== 0) {
         throw new Error(`Duplicate old item "${leaf.name}" has supplier links and cannot be mapped automatically`);
       }
-      const item = findUniqueTaxonomyItem(leaf.name);
-      if (marker.taxonomyItemId !== null && marker.taxonomyItemId !== item.id) {
-        throw new Error(`The duplicate marker for "${leaf.name}" points to a different taxonomy item`);
-      }
       const priorMapping = database.prepare(`
         SELECT taxonomy_item_id AS itemId
         FROM supplier_taxonomy_legacy_item_mappings
         WHERE legacy_item_category_id = ?
       `).get(leaf.id) as { itemId: number } | undefined;
+      // A reviewed duplicate may have been merged into a canonical item whose
+      // name differs from the old leaf. Honor that stable ID mapping on later
+      // runs instead of requiring the retired duplicate row to exist forever.
+      const item = priorMapping
+        ? taxonomyItems.find((candidate) => candidate.id === priorMapping.itemId)
+        : findUniqueTaxonomyItem(leaf.name);
+      if (!item) {
+        throw new Error(`The reviewed duplicate mapping for "${leaf.name}" points to a missing taxonomy item`);
+      }
+      if (marker.taxonomyItemId !== null && marker.taxonomyItemId !== item.id) {
+        throw new Error(`The duplicate marker for "${leaf.name}" points to a different taxonomy item`);
+      }
       if (priorMapping && priorMapping.itemId !== item.id) {
         throw new Error(`The reviewed duplicate mapping for "${leaf.name}" points to a different taxonomy item`);
       }

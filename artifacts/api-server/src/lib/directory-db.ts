@@ -13,6 +13,8 @@ import { isLegacyItemCategoriesRetired } from "./retire-legacy-item-categories";
 import { ensureSupplierOnboardingSchema } from "./supplier-onboarding-schema";
 import { applyFourRootSupplierTaxonomy, correctStagedFoodColorings, stageDecoratingBags } from "./supplier-taxonomy-four-roots";
 import { restoreCakeSupplierTaxonomy } from "./supplier-taxonomy-restore-cake";
+import { mergeReviewedSugarDuplicate } from "./merge-reviewed-sugar-duplicate";
+import { linkCakeBoxToMultipleSections } from "./link-cake-box-to-multiple-sections";
 
 const dataDir = path.resolve(process.cwd(), "data");
 mkdirSync(dataDir, { recursive: true });
@@ -2576,3 +2578,5 @@ applyFourRootSupplierTaxonomy(directoryDb);
 correctStagedFoodColorings(directoryDb);
 stageDecoratingBags(directoryDb);
 restoreCakeSupplierTaxonomy(directoryDb);
+mergeReviewedSugarDuplicate(directoryDb);
+linkCakeBoxToMultipleSections(directoryDb);

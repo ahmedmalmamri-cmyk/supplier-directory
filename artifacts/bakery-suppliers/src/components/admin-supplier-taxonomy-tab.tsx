@@ -156,8 +156,9 @@ export default function AdminSupplierTaxonomyTab() {
   const openNode = (node?: SupplierTaxonomyNode, parentId?: number) => { setNotice(null); setName(node?.name ?? ""); setIcon(node?.icon ?? ""); setDescription(node?.description ?? ""); setActive(node?.isActive ?? true); setDestination(String(parentId ?? node?.parentId ?? "")); setModal({ kind: "node", node, parentId }); };
   const openItem = (item?: SupplierTaxonomyItem) => {
     setNotice(null); setName(item?.name ?? ""); setNotes(item?.notes ?? ""); setActive(item?.isActive ?? true);
-    const ids = item?.categories.map(category => category.id) ?? (selectedId ? [selectedId] : []);
-    setChosenCategories(ids);
+    setChosenCategories(item?.categories
+      .filter(category => !category.isPrimary)
+      .map(category => category.id) ?? []);
     setPrimaryCategory(String(item?.categoryId ?? selectedId ?? ""));
     setModal({ kind: "item", item });
   };
@@ -211,11 +212,11 @@ export default function AdminSupplierTaxonomyTab() {
     const clean = name.trim();
     if (modal.kind === "node") { if (!clean) return; const data = { name: clean, icon: icon.trim(), description: description.trim() || null, isActive: active }; modal.node ? updateNode.mutate({ id: modal.node.id, data }) : createNode.mutate({ data: { ...data, parentId: destination ? Number(destination) : null } }); }
     if (modal.kind === "item") {
-      if (!clean || !primaryCategory || !chosenCategories.includes(Number(primaryCategory))) {
-        failed(new Error("اختر قسماً واحداً على الأقل وحدد القسم الأساسي من بينها.")); return;
+      if (!clean || !primaryCategory) {
+        failed(new Error("اختر القسم الرئيسي للصنف.")); return;
       }
       const data = { name: clean, notes: notes.trim() || null, isActive: active,
-        categoryIds: chosenCategories, primaryCategoryId: Number(primaryCategory) };
+        categoryIds: [Number(primaryCategory), ...chosenCategories], primaryCategoryId: Number(primaryCategory) };
       modal.item ? updateItem.mutate({ id: modal.item.id, data }) : createItem.mutate({ data });
     }
     if (modal.kind === "move-node") moveNode.mutate({ id: modal.node.id, data: { parentId: destination ? Number(destination) : null } });
@@ -328,31 +329,47 @@ export default function AdminSupplierTaxonomyTab() {
         {modal.kind === "delete-item" && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm">سيُحذف الصنف «{modal.item.name}». عدد الموردين المرتبطين به: <strong>{fmt(modal.item.supplierCount)}</strong>. تأكد من مراجعة الروابط قبل المتابعة.</div>}
         {modal.kind === "mapping" && <div className="rounded-xl border bg-secondary/30 p-3 text-sm">التصنيف القديم: <strong>{modal.legacy.legacyName}</strong> · {fmt(modal.legacy.supplierCount)} مورد<br/>الصنف الجديد: <strong>{items.find(i => i.id === Number(destination))?.name ?? "غير محدد"}</strong><p className="mt-2 text-xs text-muted-foreground">تأكيد الربط لا ينقل الدليل العام تلقائياً.</p></div>}
         {modal.kind === "node" && !modal.node && <label><span className={label}>القسم الأب (اختياري للقسم الرئيسي)</span><select data-testid="select-taxonomy-parent" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">قسم رئيسي</option>{flat.map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
-        {modal.kind === "item" && <fieldset className="space-y-2 rounded-xl border p-3">
-          <legend className="px-2 text-sm font-extrabold">الأقسام (يمكن اختيار أكثر من قسم)</legend>
-          <p className="text-xs text-muted-foreground">اختر الأقسام، ثم حدّد القسم الأساسي. لإزالة الصنف من قسم أزل اختياره هنا.</p>
-          <div className="max-h-52 space-y-2 overflow-y-auto">
-            {flat.map(({node, path}) => <div key={node.id} className="flex items-center gap-3 rounded-lg border p-2 text-sm">
-              <label className="flex min-w-0 flex-1 items-center gap-2">
-                <input type="checkbox" data-testid={`checkbox-taxonomy-category-${node.id}`} checked={chosenCategories.includes(node.id)}
-                  onChange={event => {
-                    setChosenCategories(current => event.target.checked ? [...current, node.id] : current.filter(id => id !== node.id));
-                    if (!event.target.checked && primaryCategory === String(node.id)) setPrimaryCategory("");
-                  }}/>
-                <span>{path}</span>
-              </label>
-              <label className="flex shrink-0 items-center gap-1 text-xs">
-                <input type="radio" name="primary-category" data-testid={`radio-taxonomy-primary-${node.id}`}
-                  disabled={!chosenCategories.includes(node.id)} checked={primaryCategory === String(node.id)}
-                  onChange={() => setPrimaryCategory(String(node.id))}/> أساسي
-              </label>
-            </div>)}
-          </div>
-        </fieldset>}
+        {modal.kind === "item" && <>
+          <label>
+            <span className={label}>القسم الرئيسي (إلزامي)</span>
+            <select
+              data-testid="select-taxonomy-primary-category"
+              className="taxonomy-field"
+              required
+              value={primaryCategory}
+              onChange={event => {
+                const nextPrimary = Number(event.target.value);
+                setPrimaryCategory(event.target.value);
+                setChosenCategories(current => current.filter(id => id !== nextPrimary));
+              }}
+            >
+              <option value="">اختر القسم الرئيسي</option>
+              {flat.map(({node, path}) => <option key={node.id} value={node.id}>{path}</option>)}
+            </select>
+          </label>
+          <fieldset className="space-y-2 rounded-xl border p-3">
+            <legend className="px-2 text-sm font-extrabold">أقسام إضافية (اختياري)</legend>
+            <p className="text-xs text-muted-foreground">يظهر الصنف في كل قسم تختاره، من دون إنشاء نسخة ثانية. القسم الرئيسي لا يُكرر هنا.</p>
+            <div className="max-h-52 space-y-2 overflow-y-auto">
+              {flat.filter(({node}) => String(node.id) !== primaryCategory).map(({node, path}) =>
+                <label key={node.id} className="flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-sm">
+                  <input
+                    type="checkbox"
+                    data-testid={`checkbox-taxonomy-additional-category-${node.id}`}
+                    checked={chosenCategories.includes(node.id)}
+                    onChange={event => setChosenCategories(current =>
+                      event.target.checked ? [...current, node.id] : current.filter(id => id !== node.id))}
+                  />
+                  <span>{path}</span>
+                </label>,
+              )}
+            </div>
+          </fieldset>
+        </>}
         {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الأساسي الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
         {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{flat.filter(n => n.node.id !== modal.node.id && !n.ancestors.includes(modal.node.id)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "delete-node" && deleteStrategy === "cascade" && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-legacy-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن روابط الموردين المباشرة بالأقسام المحذوفة ستُزال؛ لن تُحذف الأصناف أو روابط الموردين بالأصناف.</label>}
-        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && (!chosenCategories.length || !chosenCategories.includes(Number(primaryCategory)))) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && !primaryCategory) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
       </form>
     </div></div>}
   </section>;

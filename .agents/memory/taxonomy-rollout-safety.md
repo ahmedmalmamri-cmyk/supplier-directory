@@ -27,6 +27,12 @@ Multi-section membership is distinct from a supplier's explicit item links. Reta
 
 **How to apply:** Resolve section membership within the current tree only, and maintain supplier links explicitly. A section's removal must never erase the underlying item or its supplier associations.
 
+When merging a reviewed duplicate item, repoint legacy mappings and import markers to the canonical item before deleting the duplicate. Transfer supplier links, buyer references and valid secondary sections in the same transaction; the legacy importer must honor the stable canonical ID even if its name differs from the old source.
+
+**Why:** Old duplicate-source rows can remain referenced by review mappings and import markers. Deleting the item without moving those references loses history and can make later import validation fail.
+
+**How to apply:** Merge only explicitly reviewed duplicates, preserve the canonical primary section, exclude the duplicate's incorrect primary section, record an audit entry, and verify foreign keys before commit.
+
 The temporary "unclassified items" section used in an earlier rollout was not a permanent public grouping. In the reorganized tree with cake supplies restored, «أصناف أخرى» remains an inactive review root for equipment and other unclear placements.
 
 **Why:** Removing the equipment section and combining mixed old branches makes a confident destination impossible for some items. Restoring cake supplies resolves only the items whose previous cake placement is known.
