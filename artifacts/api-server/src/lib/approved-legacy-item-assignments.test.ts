@@ -135,13 +135,6 @@ function createDatabase(): DatabaseSync {
   insertMapping.run(mergedAliasLegacyId, canonicalItemId);
 
   const existingNodeId = [...nodeIdByName.values()][0];
-  const sugarIndex = approvedLegacyItemAssignments.findIndex(
-    assignment => assignment.oldItemName === "سكر",
-  );
-  if (sugarIndex < 0) {
-    throw new Error("The approved fixture must contain the canonical sugar item");
-  }
-  const canonicalSugarId = sugarIndex + 1;
   for (let index = 0; index < 127; index++) {
     const duplicateLegacyId = 1001 + index;
     if (index >= 125) {
