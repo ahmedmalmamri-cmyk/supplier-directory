@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { newItemCategoryNames } from "./new-item-category-names.ts";
 import { mergeReviewedSugarDuplicate } from "./merge-reviewed-sugar-duplicate.ts";
+import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items.ts";
 
 function createDatabase(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
@@ -85,10 +87,12 @@ test("merges the reviewed sugar duplicate without losing item or legacy links", 
   db.close();
 });
 
-test("merges all four newly approved aliases and preserves linked records", async () => {
+test("merges all six newly approved aliases and preserves linked records", async () => {
   const { mergeReviewedAdditionalDuplicates } = await import("./merge-reviewed-sugar-duplicate.ts");
   const db = createDatabase();
   const pairs = [
+    { source: "سكر ناعم", target: "سكر", sourceId: 11, targetId: 12, legacyId: 304 },
+    { source: "سكر خشن", target: "سكر", sourceId: 13, targetId: 14, legacyId: 305 },
     { source: "زيت نباتي", target: "زيت", sourceId: 3, targetId: 4, legacyId: 300 },
     { source: "سمن نباتي", target: "سمن", sourceId: 5, targetId: 6, legacyId: 301 },
     { source: "فانيليا بودرة", target: "فانيليا", sourceId: 7, targetId: 8, legacyId: 302 },
@@ -140,7 +144,16 @@ test("merges all four newly approved aliases and preserves linked records", asyn
   assert.equal((db.prepare("SELECT notes FROM supplier_taxonomy_items WHERE id = 4")
     .get() as { notes: string }).notes, "ملاحظة محفوظة");
   assert.equal((db.prepare("SELECT COUNT(*) AS count FROM directory_migrations")
-    .get() as { count: number }).count, 4);
+    .get() as { count: number }).count, 6);
   assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
   db.close();
+});
+
+test("fine and coarse sugar are not reintroduced by either catalog seed", () => {
+  const seededNames: readonly string[] = [
+    ...newItemCategoryNames,
+    ...suppliedTaxonomyItems.flatMap((section) => section.names),
+  ];
+  assert.equal(seededNames.includes("سكر ناعم"), false);
+  assert.equal(seededNames.includes("سكر خشن"), false);
 });
