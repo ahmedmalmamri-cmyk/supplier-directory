@@ -91,26 +91,31 @@ test("merges all six newly approved aliases and preserves linked records", async
   const { mergeReviewedAdditionalDuplicates } = await import("./merge-reviewed-sugar-duplicate.ts");
   const db = createDatabase();
   const pairs = [
-    { source: "سكر ناعم", target: "سكر", sourceId: 11, targetId: 12, legacyId: 304 },
-    { source: "سكر خشن", target: "سكر", sourceId: 13, targetId: 14, legacyId: 305 },
     { source: "زيت نباتي", target: "زيت", sourceId: 3, targetId: 4, legacyId: 300 },
     { source: "سمن نباتي", target: "سمن", sourceId: 5, targetId: 6, legacyId: 301 },
     { source: "فانيليا بودرة", target: "فانيليا", sourceId: 7, targetId: 8, legacyId: 302 },
     { source: "ورق زبدة بني", target: "ورق زبدة", sourceId: 9, targetId: 10, legacyId: 303 },
+    { source: "سكر ناعم", target: "سكر", sourceId: 11, targetId: 2, legacyId: 304 },
+    { source: "سكر خشن", target: "سكر", sourceId: 13, targetId: 2, legacyId: 305 },
   ];
   for (const [index, pair] of pairs.entries()) {
     db.prepare(`
       INSERT INTO supplier_taxonomy_items (id, name, category_id, notes)
-      VALUES (?, ?, 1, ?), (?, ?, 1, NULL)
-    `).run(
-      pair.sourceId, pair.source, index === 0 ? "ملاحظة محفوظة" : null,
-      pair.targetId, pair.target,
-    );
-    db.prepare("INSERT INTO items_categories VALUES (?, 1, 1, 'primary'), (?, 3, 0, 'additional'), (?, 1, 1, 'primary')")
-      .run(pair.sourceId, pair.sourceId, pair.targetId);
+      VALUES (?, ?, 1, ?)
+    `).run(pair.sourceId, pair.source, index === 0 ? "ملاحظة محفوظة" : null);
+    db.prepare("INSERT INTO items_categories VALUES (?, 1, 1, 'primary'), (?, 3, 0, 'additional')")
+      .run(pair.sourceId, pair.sourceId);
+    if (pair.targetId !== 2) {
+      db.prepare(`
+        INSERT INTO supplier_taxonomy_items (id, name, category_id, notes)
+        VALUES (?, ?, 1, NULL)
+      `).run(pair.targetId, pair.target);
+      db.prepare("INSERT INTO items_categories VALUES (?, 1, 1, 'primary')").run(pair.targetId);
+    }
     const supplierId = 30 + index;
+    const targetSupplierId = 80 + index;
     db.prepare("INSERT INTO supplier_taxonomy_item_suppliers VALUES (?, ?, 'source'), (?, ?, 'target')")
-      .run(supplierId, pair.sourceId, supplierId, pair.targetId);
+      .run(supplierId, pair.sourceId, targetSupplierId, pair.targetId);
     db.prepare("INSERT INTO requests (id, category_id) VALUES (?, ?)").run(10 + index, pair.sourceId);
     db.prepare("INSERT INTO item_availability_inquiries (id, item_id) VALUES (?, ?)")
       .run(10 + index, pair.sourceId);
@@ -128,8 +133,14 @@ test("merges all six newly approved aliases and preserves linked records", async
       .get(pair.source) as { count: number }).count, 0);
     assert.equal((db.prepare("SELECT id FROM supplier_taxonomy_items WHERE name = ?")
       .get(pair.target) as { id: number }).id, pair.targetId);
-    assert.equal((db.prepare("SELECT COUNT(*) AS count FROM supplier_taxonomy_item_suppliers WHERE item_id = ?")
-      .get(pair.targetId) as { count: number }).count, 1);
+    assert.equal((db.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_item_suppliers
+      WHERE item_id = ? AND supplier_id = ?
+    `).get(pair.targetId, 30 + index) as { count: number }).count, 1);
+    assert.equal((db.prepare(`
+      SELECT COUNT(*) AS count FROM supplier_taxonomy_item_suppliers
+      WHERE item_id = ? AND supplier_id = ?
+    `).get(pair.targetId, 80 + index) as { count: number }).count, 1);
     assert.equal((db.prepare("SELECT category_id FROM requests WHERE id = ?")
       .get(10 + index) as { category_id: number }).category_id, pair.targetId);
     assert.equal((db.prepare("SELECT item_id FROM item_availability_inquiries WHERE id = ?")

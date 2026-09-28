@@ -7,6 +7,13 @@ import {
 } from "./approved-legacy-item-assignments.ts";
 
 const mergedAliasName = "سمن نباتي";
+const canonicalSugarIndex = approvedLegacyItemAssignments.findIndex(
+  assignment => assignment.oldItemName === "سكر",
+);
+if (canonicalSugarIndex < 0) {
+  throw new Error("The approved fixture must contain the canonical sugar item");
+}
+const canonicalSugarId = canonicalSugarIndex + 1;
 
 function createDatabase(): DatabaseSync {
   const database = new DatabaseSync(":memory:");
@@ -216,13 +223,12 @@ test("approved assignments are idempotent, preserve sources and duplicate items,
   assert.equal(duplicateMapping.legacyId, 1001);
   assert.equal(duplicateMapping.itemId, 2001);
   for (const legacyId of [1126, 1127]) {
-    assert.deepEqual(
-      database.prepare(`
-        SELECT taxonomy_item_id AS itemId, outcome
-        FROM supplier_taxonomy_legacy_imports WHERE legacy_item_category_id = ?
-      `).get(legacyId),
-      { itemId: canonicalSugarId, outcome: "already_mapped" },
-    );
+    const marker = database.prepare(`
+      SELECT taxonomy_item_id AS itemId, outcome
+      FROM supplier_taxonomy_legacy_imports WHERE legacy_item_category_id = ?
+    `).get(legacyId) as { itemId: number; outcome: string };
+    assert.equal(marker.itemId, canonicalSugarId);
+    assert.equal(marker.outcome, "already_mapped");
   }
   assert.equal(
     (database.prepare(
