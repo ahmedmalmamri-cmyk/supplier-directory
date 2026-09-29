@@ -18,3 +18,4 @@
 - [Exact-item inquiries](exact-item-inquiries.md) — in-store availability checks need a specific brand/type; generic taxonomy matches candidates, not confirmed stock.
 - [Supplier offer category source](supplier-offer-category-source.md) — use linked item categories, not Google business categories, to describe supplier offerings.
 - [Taxonomy rollout safety](taxonomy-rollout-safety.md) — the approved supplier tree is public; do not reseed retired old categories or infer new supplier links from names.
+- [Deferred services section](deferred-services-section.md) — hide services and its children from product discovery without deleting data or precommitting to a paid tier.

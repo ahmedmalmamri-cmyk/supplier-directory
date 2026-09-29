@@ -1,4 +1,5 @@
 import { directoryDb } from "./directory-db";
+import { deferredServicesRootName } from "./public-supplier-taxonomy";
 
 export type SupplierTaxonomyNode = {
   id: number;
@@ -188,10 +189,34 @@ export function isActiveSupplierTaxonomySelection(name: string): boolean {
   return resolveActiveSupplierTaxonomySelections([name]).unresolved.length === 0;
 }
 
-export function getActiveSupplierTaxonomyChoiceRows(): PublicTaxonomyChoice[] {
+function visibleRegistrationNodeIds(nodes: SupplierTaxonomyNode[]): Set<number> {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const hiddenRoots = new Set(nodes
+    .filter((node) => node.parentId === null && node.name === deferredServicesRootName)
+    .map((node) => node.id));
+  return new Set(nodes.filter((node) => {
+    let current: SupplierTaxonomyNode | undefined = node;
+    while (current) {
+      if (hiddenRoots.has(current.id)) return false;
+      current = current.parentId === null ? undefined : nodeById.get(current.parentId);
+    }
+    return true;
+  }).map((node) => node.id));
+}
+
+export function isRegistrationSupplierTaxonomySelection(name: string): boolean {
+  const selection = resolveActiveSupplierTaxonomySelections([name]);
+  const visibleIds = visibleRegistrationNodeIds(getActiveSupplierTaxonomyNodes());
+  return selection.unresolved.length === 0 && selection.nodeIds.size > 0 &&
+    [...selection.nodeIds].every((id) => visibleIds.has(id));
+}
+
+export function getActiveSupplierTaxonomyChoiceRows(excludeDeferredServices = false): PublicTaxonomyChoice[] {
   const now = new Date().toISOString();
-  const nodes = getActiveSupplierTaxonomyNodes();
-  const items = getActiveSupplierTaxonomyItems();
+  const activeNodes = getActiveSupplierTaxonomyNodes();
+  const visibleIds = excludeDeferredServices ? visibleRegistrationNodeIds(activeNodes) : new Set(activeNodes.map((node) => node.id));
+  const nodes = activeNodes.filter((node) => visibleIds.has(node.id));
+  const items = getActiveSupplierTaxonomyItems().filter((item) => visibleIds.has(item.categoryId));
   const nodeIdForChoice = new Map(nodes.map((node) => [node.id, 1_000_000 + node.id]));
   const nodeRows = nodes.map((node, index) => ({
     id: nodeIdForChoice.get(node.id)!,

@@ -1,5 +1,8 @@
 import { directoryDb } from "./directory-db";
 
+export const deferredServicesRootName = "الخدمات والاستشارات";
+export const publicSupplierTaxonomyRootFilterSql = `AND name <> '${deferredServicesRootName}'`;
+
 export const publicSupplierTaxonomyCtes = `
   WITH RECURSIVE active_nodes (
     id, parentId, name, icon, description, displayOrder, createdAt, updatedAt, rootId
@@ -7,7 +10,7 @@ export const publicSupplierTaxonomyCtes = `
     SELECT id, parent_id, name, icon, description, display_order,
       created_at, updated_at, id
     FROM supplier_taxonomy_nodes
-    WHERE parent_id IS NULL AND is_active = 1
+    WHERE parent_id IS NULL AND is_active = 1 ${publicSupplierTaxonomyRootFilterSql}
     UNION ALL
     SELECT child.id, child.parent_id, child.name, child.icon, child.description,
       child.display_order, child.created_at, child.updated_at, parent.rootId

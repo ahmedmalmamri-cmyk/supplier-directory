@@ -201,8 +201,8 @@ function TypeChoice({ onSelect }: { onSelect: (type: RegistrationType) => void }
       <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         <button type="button" onClick={() => onSelect("supplier")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-105 transition-transform"><Sprout className="w-8 h-8" /></div>
-          <h3 className="text-2xl font-bold mb-3">أنا مورد أو مقدم خدمات للمخابز</h3>
-          <p className="text-muted-foreground text-lg">أريد عرض أصنافي أو خدماتي في الدليل</p>
+          <h3 className="text-2xl font-bold mb-3">أنا مورد منتجات للمخابز</h3>
+          <p className="text-muted-foreground text-lg">أريد عرض منتجاتي وأصنافي في الدليل</p>
              <span className="inline-flex items-center gap-2 text-primary font-bold mt-8">سجّل كمورد <ChevronLeft className="w-5 h-5" /></span>
         </button>
         <button type="button" onClick={() => onSelect("buyer")} className="text-right bg-card border-2 border-transparent hover:border-primary rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all group">
@@ -387,7 +387,7 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
   return (
     <div>
       <h2 className="text-2xl font-extrabold">ما الذي توفره؟</h2>
-      <p className="mt-1 text-sm text-muted-foreground">اختر الأصناف أو الخدمات التي توفرها فعلياً، ثم اكتب التفاصيل في الخطوة التالية.</p>
+      <p className="mt-1 text-sm text-muted-foreground">اختر الأصناف التي توفرها فعلياً، ثم اكتب التفاصيل في الخطوة التالية.</p>
       {isLoading ? (
         <p className="mt-5 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
       ) : hasError ? (

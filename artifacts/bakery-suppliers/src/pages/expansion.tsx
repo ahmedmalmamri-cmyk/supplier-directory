@@ -50,6 +50,12 @@ export default function ExpansionPage() {
             })}
           </div>
         </div>
+        <section className="mt-10 rounded-2xl border border-primary/20 bg-primary/5 p-6">
+          <h2 className="text-xl font-bold">ضمن خطة تطوير الدليل</h2>
+          <p className="mt-2 leading-7 text-muted-foreground">
+            نركّز حالياً على منتجات ومستلزمات المخابز والحلويات. قسم الخدمات والاستشارات قيد الدراسة كإضافة مستقبلية؛ لم نحدد له موعد إطلاق أو باقة مدفوعة.
+          </p>
+        </section>
       </div>
     </MainLayout>
   );

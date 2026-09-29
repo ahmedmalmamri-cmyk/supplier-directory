@@ -15,6 +15,7 @@ import { clearSupplierSession } from "../lib/supplier-auth";
 import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 import { isTestModeRequest } from "../lib/test-mode";
 import { buildRequestFilter, requestTaxonomyItemJoin } from "../lib/buyer-request-query";
+import { publicSupplierTaxonomyCtes } from "../lib/public-supplier-taxonomy";
 
 const router: IRouter = Router();
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
@@ -392,20 +393,11 @@ router.post("/requests", (req, res): void => {
 
   const input = parsed.data;
   const category = directoryDb.prepare(`
-    WITH RECURSIVE active_taxonomy_nodes(id) AS (
-      SELECT id
-      FROM supplier_taxonomy_nodes
-      WHERE parent_id IS NULL AND is_active = 1
-      UNION ALL
-      SELECT child.id
-      FROM supplier_taxonomy_nodes child
-      JOIN active_taxonomy_nodes parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
-    )
+    ${publicSupplierTaxonomyCtes}
     SELECT item.id, item.name
     FROM supplier_taxonomy_items item
     WHERE item.id = ? AND item.is_active = 1
-      AND item.category_id IN (SELECT id FROM active_taxonomy_nodes)
+      AND item.category_id IN (SELECT id FROM active_nodes)
   `).get(input.categoryId) as { id: number; name: string } | undefined;
   if (!category) {
     res.status(404).json({ error: "الصنف المحدد غير متاح." });

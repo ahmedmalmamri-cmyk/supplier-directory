@@ -29,6 +29,7 @@ import {
   streamInquiryPhoto,
 } from "../lib/item-inquiry-photo-storage";
 import { recordSupplierStat } from "../lib/supplier-stats";
+import { publicSupplierTaxonomyCtes } from "../lib/public-supplier-taxonomy";
 
 const router: IRouter = Router();
 const inquiryLifetimeMs = 14 * 24 * 60 * 60 * 1000;
@@ -193,20 +194,11 @@ function validateConfiguredCity(city: string): boolean {
 
 function getActiveTaxonomyItem(itemId: number): { id: number; name: string } | undefined {
   return directoryDb.prepare(`
-    WITH RECURSIVE active_taxonomy_nodes(id) AS (
-      SELECT id
-      FROM supplier_taxonomy_nodes
-      WHERE parent_id IS NULL AND is_active = 1
-      UNION ALL
-      SELECT child.id
-      FROM supplier_taxonomy_nodes child
-      JOIN active_taxonomy_nodes parent ON child.parent_id = parent.id
-      WHERE child.is_active = 1
-    )
+    ${publicSupplierTaxonomyCtes}
     SELECT item.id, item.name
     FROM supplier_taxonomy_items item
     WHERE item.id = ? AND item.is_active = 1
-      AND item.category_id IN (SELECT id FROM active_taxonomy_nodes)
+      AND item.category_id IN (SELECT id FROM active_nodes)
   `).get(itemId) as { id: number; name: string } | undefined;
 }
 

@@ -7,9 +7,7 @@ import { directoryDb } from "../lib/directory-db";
 import { itemCategorySupplierCounts } from "../lib/item-category-supplier-counts";
 import {
   getActiveSupplierTaxonomyChoiceRows,
-  getActiveSupplierTaxonomyItems,
-  getActiveSupplierTaxonomyNodes,
-  isActiveSupplierTaxonomySelection,
+  isRegistrationSupplierTaxonomySelection,
 } from "../lib/supplier-taxonomy-assignments";
 
 const router: IRouter = Router();
@@ -115,9 +113,8 @@ router.post("/supplier-requests", (req, res): void => {
   const submittedDescription = text(body.description);
   const description = submittedDescription || `مورد متخصص في توفير ${categories.join("، ")}.`;
   const allowedCategoryNames = new Set([
-    ...getActiveSupplierTaxonomyItems().map((item) => item.name),
-    ...getActiveSupplierTaxonomyNodes().map((node) => node.name),
-    ...categoryNames.filter(isActiveSupplierTaxonomySelection),
+    ...getActiveSupplierTaxonomyChoiceRows(true).map((item) => item.name),
+    ...categoryNames.filter(isRegistrationSupplierTaxonomySelection),
   ]);
   const deliversToOtherCities = body.deliversToOtherCities === true;
   const acceptedTerms = body.acceptedTerms === true;
@@ -128,7 +125,7 @@ router.post("/supplier-requests", (req, res): void => {
   if (!businessName || !contactPerson || !supplierBusinessTypes.includes(businessType) ||
       !phoneIsValid(phone) || !phoneIsValid(whatsapp) || !eastCities.includes(city) ||
        categories.length === 0 || categories.some((item) =>
-         !allowedCategoryNames.has(item) && !isActiveSupplierTaxonomySelection(item),
+         !allowedCategoryNames.has(item) && !isRegistrationSupplierTaxonomySelection(item),
        ) ||
        !availableItems || availableItems.length > 1500 ||
        wordCount(description) > 300 ||
@@ -204,7 +201,7 @@ router.get("/invites/:token", (req, res): void => {
   const citiesRow = directoryDb.prepare(
     "SELECT value FROM directory_settings WHERE key = 'available_cities'",
   ).get() as { value: string } | undefined;
-  const categoryRows = getActiveSupplierTaxonomyChoiceRows()
+  const categoryRows = getActiveSupplierTaxonomyChoiceRows(true)
     .filter((row) => row.slug.startsWith("taxonomy-node-"));
   const supplierCounts = itemCategorySupplierCounts(categoryRows);
   const categories = categoryRows.map((row) => ({
@@ -262,10 +259,10 @@ router.post("/invites/:token/complete", (req, res): void => {
   const businessName = parsed.data.businessName.trim();
   const city = parsed.data.city.trim();
   const whatsapp = normalizeSaudiPhone(parsed.data.whatsapp);
-  const categoryRows = getActiveSupplierTaxonomyChoiceRows();
+  const categoryRows = getActiveSupplierTaxonomyChoiceRows(true);
   const allowedCategories = new Set([
     ...categoryRows.map((row) => row.name),
-    ...inviteReadyMixSubtypes.filter(isActiveSupplierTaxonomySelection),
+    ...inviteReadyMixSubtypes.filter(isRegistrationSupplierTaxonomySelection),
   ]);
   const categories = [...new Set(parsed.data.categories.map((category) => category.trim()))];
   const citiesRow = directoryDb.prepare(
@@ -281,7 +278,7 @@ router.post("/invites/:token/complete", (req, res): void => {
   if (businessName.length < 2 || !/^05\d{8}$/.test(whatsapp) ||
       !allowedCities.includes(city) || categories.length === 0 ||
       categories.some((category) =>
-        !allowedCategories.has(category) && !isActiveSupplierTaxonomySelection(category),
+        !allowedCategories.has(category) && !isRegistrationSupplierTaxonomySelection(category),
       ) ||
       (otherCategory !== undefined && otherCategory.length > 100)) {
     res.status(400).json({ error: "تحقق من بيانات النشاط والمدينة والفئات المختارة." });
