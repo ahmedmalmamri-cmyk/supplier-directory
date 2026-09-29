@@ -43,6 +43,9 @@ function message(error: unknown) {
     const data = error.data;
     if (data && typeof data === "object" && "error" in data && typeof data.error === "string") return data.error;
   }
+  if (error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+    return "تعذّر الاتصال بالخادم، ولا يمكن تأكيد الحفظ. احتفظنا ببيانات النموذج؛ بعد عودة الاتصال تحقّق من قائمة الأصناف، ثم اضغط «حفظ التغييرات» مجدداً إذا لم يظهر الصنف.";
+  }
   return error instanceof Error ? error.message : "تعذر تنفيذ العملية. حاول مرة أخرى.";
 }
 function download(csv: string, filename: string) {
