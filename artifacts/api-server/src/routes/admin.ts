@@ -506,7 +506,7 @@ router.post("/admin/supplier-requests/:id/approve", (req, res): void => {
     directoryDb.exec("ROLLBACK");
     throw error;
   }
-  res.json({ success: true, message: "تمت الموافقة ونشر المورد في الدليل." });
+  res.json({ success: true, message: "تمت الموافقة على المورد. يظهر في بحث أصحاب الأعمال بعد إضافة عرض نشط لنوع معتمد في كتالوجه." });
 });
 
 router.post("/admin/supplier-requests/:id/activation-link", (req, res): void => {

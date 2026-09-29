@@ -240,7 +240,7 @@ function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { reque
         const pending = request.status === "pending" || request.status === "pending_review";
         const activation = activationLinks[request.id];
         const activationMessage = activation
-          ? `مرحباً ${request.contactPerson}، تمت الموافقة على ملف ${request.businessName} في دليل موردي المخابز والحلويات. أنشئ كلمة مرور حسابك من الرابط التالي خلال 48 ساعة. الرابط يعمل مرة واحدة فقط:\n${activation.url}`
+          ? `مرحباً ${request.contactPerson}، تمت الموافقة على ملف ${request.businessName} في دليل موردي المخابز والحلويات. أنشئ كلمة مرور حسابك من الرابط التالي خلال 48 ساعة. الرابط يعمل مرة واحدة فقط:\n${activation.url}\nبعد الدخول، افتح كتالوج التوريد وأضف عرضاً نشطاً لنوع فرعي معتمد حتى يظهر ملفك في بحث أصحاب الأعمال.`
           : "";
         const activationWhatsAppUrl = activation ? buildWhatsAppMessageUrl(request.whatsapp, activationMessage) : null;
         return (
@@ -260,7 +260,7 @@ function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { reque
               <div className="flex shrink-0 flex-wrap gap-2">
                 <button data-testid={`button-view-supplier-request-${request.id}`} type="button" onClick={() => onSelect(selected?.id === request.id ? null : request)} className="rounded-xl border px-3 py-2 text-sm font-bold hover:bg-muted"><FileText className="ml-1 inline h-4 w-4" /> عرض التفاصيل</button>
                 {pending && <>
-                  <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة ونشر المورد.")} className="rounded-xl bg-success px-3 py-2 text-sm font-bold text-success-foreground hover:bg-success/90"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
+                  <button data-testid={`button-approve-supplier-request-${request.id}`} type="button" onClick={() => void onAction(`/api/admin/supplier-requests/${request.id}/approve`, { method: "POST" }, "تمت الموافقة على المورد. يظهر في البحث بعد إضافة عرض نشط لنوع معتمد.")} className="rounded-xl bg-success px-3 py-2 text-sm font-bold text-success-foreground hover:bg-success/90"><CheckCircle2 className="ml-1 inline h-4 w-4" /> موافقة</button>
                   <button data-testid={`button-reject-supplier-request-${request.id}`} type="button" onClick={() => setRejectReason(rejectReason ? "" : " ")} className="rounded-xl border border-destructive/25 px-3 py-2 text-sm font-bold text-destructive hover:bg-destructive/10"><XCircle className="ml-1 inline h-4 w-4" /> رفض</button>
                 </>}
                 {request.status === "approved" && <button data-testid={`button-create-supplier-activation-link-${request.id}`} type="button" disabled={createActivationLink.isPending} onClick={() => generateActivationLink(request.id)} className="rounded-xl border border-primary/25 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/5 disabled:opacity-50">
@@ -268,6 +268,7 @@ function SupplierRequestsTab({ requests, selected, onSelect, onAction }: { reque
                 </button>}
               </div>
             </div>
+             {request.status === "approved" && <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm">الموافقة على الملف لا تكفي لظهوره في بحث المشترين. يجب أن يفعّل المورد دخوله ثم يضيف من كتالوج التوريد عرضاً نشطاً لنوع فرعي معتمد؛ الأنواع الجديدة المقترحة تحتاج موافقة الإدارة أولاً.</p>}
             {activationErrors[request.id] && <p data-testid={`status-supplier-activation-link-error-${request.id}`} role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{activationErrors[request.id]}</p>}
             {activation && <div data-testid={`card-supplier-activation-link-${request.id}`} className="mt-4 space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
                 <div>
