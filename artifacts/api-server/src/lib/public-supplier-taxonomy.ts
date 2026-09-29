@@ -103,6 +103,26 @@ export function listPublicSupplierTaxonomyItems() {
           ON supplier.id = link.supplier_id AND supplier.is_active = 1
         WHERE link.item_id = item.id
       ) AS supplierCount,
+       (
+         SELECT json_group_array(subGroupId)
+         FROM (
+           SELECT DISTINCT member.nodeId AS subGroupId
+           FROM active_item_nodes member
+           JOIN active_nodes memberNode ON memberNode.id = member.nodeId
+           WHERE member.itemId = item.id AND memberNode.parentId IS NOT NULL
+           ORDER BY member.nodeId
+         )
+       ) AS subGroupIdsJson,
+       (
+         SELECT json_group_array(groupId)
+         FROM (
+           SELECT DISTINCT member.nodeId AS groupId
+           FROM active_item_nodes member
+           JOIN active_nodes memberNode ON memberNode.id = member.nodeId
+           WHERE member.itemId = item.id AND memberNode.parentId IS NULL
+           ORDER BY member.nodeId
+         )
+       ) AS directGroupIdsJson,
       (
         SELECT json_group_array(taggedRootId)
         FROM (
@@ -136,6 +156,8 @@ export function listPublicSupplierTaxonomyItems() {
     createdAt: string;
     updatedAt: string;
     supplierCount: number;
+    subGroupIdsJson: string | null;
+    directGroupIdsJson: string | null;
     tagGroupIdsJson: string | null;
   }>;
 
@@ -148,6 +170,8 @@ export function listPublicSupplierTaxonomyItems() {
     parentId: row.parentId,
     primaryGroupId: row.primaryGroupId,
     subGroupId: row.subGroupId,
+    subGroupIds: row.subGroupIdsJson ? JSON.parse(row.subGroupIdsJson) as number[] : [],
+    directGroupIds: row.directGroupIdsJson ? JSON.parse(row.directGroupIdsJson) as number[] : [],
     tagGroupIds: row.tagGroupIdsJson ? JSON.parse(row.tagGroupIdsJson) as number[] : [],
     description: row.description,
     displayOnHome: Boolean(row.displayOnHome),

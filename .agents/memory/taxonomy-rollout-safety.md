@@ -44,3 +44,9 @@ Classification by a broad Arabic keyword needs a semantic check before publishin
 **Why:** Piping bags used to decorate cake were initially misread as packaging bags; one was also misread as a delivery carrier because its name said "thermal". Arabic plurals such as «ألوان» also need explicit recognition when classifying colorants.
 
 **How to apply:** Check item names in context, not only their generic nouns or incidental adjectives. Stage decorating tools when the approved tree has no production-tools branch; place clearly named food colorings under flavors/colorants.
+
+Keep the editable public taxonomy at two group levels (root and one subgroup) until the visitor's navigation supports deeper paths.
+
+**Why:** The admin tree can store arbitrary nesting, but a third-level group would have no working public route; allowing it in the editor would falsely imply its contents are browsable.
+
+**How to apply:** When adding category depth, extend public route resolution and group links before enabling deeper nesting in the admin editor. Preserve a single item identity across direct root and subgroup memberships.

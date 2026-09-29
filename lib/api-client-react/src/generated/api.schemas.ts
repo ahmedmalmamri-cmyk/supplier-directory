@@ -101,6 +101,10 @@ export interface ItemCategory {
      * @nullable
      */
   subGroupId: number | null;
+  /** All active subgroups containing this item, including additional section memberships. */
+  subGroupIds?: number[];
+  /** Root groups directly linked to this item; excludes membership inherited from a subgroup. */
+  directGroupIds?: number[];
   tagGroupIds: number[];
   /** @nullable */
   description: string | null;

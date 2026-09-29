@@ -1848,6 +1848,14 @@ components:
         parentId: { type: ["integer", "null"] }
         primaryGroupId: { type: ["integer", "null"] }
         subGroupId: { type: ["integer", "null"], description: "Optional subdivision within the primary group." }
+        subGroupIds:
+          type: array
+          description: "All active subgroups containing this item, including additional section memberships."
+          items: { type: integer }
+        directGroupIds:
+          type: array
+          description: "Root groups directly linked to this item; excludes membership inherited from a subgroup."
+          items: { type: integer }
         tagGroupIds:
           type: array
           items: { type: integer }

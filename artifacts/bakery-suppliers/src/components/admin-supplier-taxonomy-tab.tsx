@@ -1,9 +1,10 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronLeft, Download, FileText, Folder, FolderOpen, FolderTree, History, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronLeft, Download, FileText, Folder, FolderOpen, FolderTree, History, Layers3, Link2, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { getGroupIcon } from "@/lib/group-icons";
 import {
   useGetAdminSupplierTaxonomyTree, getGetAdminSupplierTaxonomyTreeQueryKey,
-  getListGroupsQueryKey, getListItemCategoriesQueryKey,
+  getListGroupsQueryKey, getListItemCategoriesQueryKey, useListGroups, useListItemCategories,
   useCreateAdminSupplierTaxonomyNode, useUpdateAdminSupplierTaxonomyNode, useMoveAdminSupplierTaxonomyNode, useDeleteAdminSupplierTaxonomyNode, useReorderAdminSupplierTaxonomyNodes,
   useListAdminSupplierTaxonomyItems, getListAdminSupplierTaxonomyItemsQueryKey,
   useCreateAdminSupplierTaxonomyItem, useBulkCreateAdminSupplierTaxonomyItems, useUpdateAdminSupplierTaxonomyItem, useMoveAdminSupplierTaxonomyItem, useDeleteAdminSupplierTaxonomyItem,
@@ -80,6 +81,8 @@ export default function AdminSupplierTaxonomyTab() {
     queryKey: getListAdminSupplierTaxonomyItemsQueryKey(),
     refetchInterval: query => query.state.status === "error" ? 10_000 : false,
   } });
+  const publicGroupsQuery = useListGroups({ query: { queryKey: getListGroupsQueryKey(), staleTime: 0 } });
+  const publicItemsQuery = useListItemCategories({ query: { queryKey: getListItemCategoriesQueryKey(), staleTime: 0 } });
   const reviewQuery = useListAdminSupplierTaxonomyLegacyReview({ query: {
     queryKey: getListAdminSupplierTaxonomyLegacyReviewQueryKey(),
     refetchInterval: query => query.state.status === "error" ? 10_000 : false,
@@ -100,9 +103,27 @@ export default function AdminSupplierTaxonomyTab() {
       nodes.flatMap(node => [{ node, path: path ? `${path} / ${node.name}` : node.name, ancestors }, ...walk(node.children, path ? `${path} / ${node.name}` : node.name, [...ancestors, node.id])]);
     return walk(tree);
   }, [treeQuery.data]);
-  const [view, setView] = useState<"tree" | "items" | "review" | "audit">("items");
+  const [view, setView] = useState<"browse" | "tree" | "items" | "review" | "audit">("browse");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [selectedId, setSelectedId] = useState<number | null>(initialCategoryId);
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [associationMode, setAssociationMode] = useState(false);
+  useEffect(() => {
+    const sync = () => {
+      setSelectedId(initialCategoryId());
+      setBrowseSearch("");
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+  const browseTo = (id: number | null) => {
+    setSelectedId(id);
+    setBrowseSearch("");
+    const url = new URL(window.location.href);
+    if (id === null) url.searchParams.delete("groupId");
+    else url.searchParams.set("groupId", String(id));
+    window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
   const [modal, setModal] = useState<Modal | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [name, setName] = useState("");
@@ -165,12 +186,13 @@ export default function AdminSupplierTaxonomyTab() {
   } });
   const pending = [createNode, updateNode, moveNode, deleteNode, reorder, createItem, bulkCreate, updateItem, moveItem, deleteItem, applyMapping, importLegacy].some(m => m.isPending);
   const openNode = (node?: SupplierTaxonomyNode, parentId?: number) => { setNotice(null); setName(node?.name ?? ""); setIcon(node?.icon ?? ""); setDescription(node?.description ?? ""); setActive(node?.isActive ?? true); setDestination(String(parentId ?? node?.parentId ?? "")); setModal({ kind: "node", node, parentId }); };
-  const openItem = (item?: SupplierTaxonomyItem) => {
+  const openItem = (item?: SupplierTaxonomyItem, categoryId?: number, associate = false) => {
+    setAssociationMode(associate);
     setNotice(null); setName(item?.name ?? ""); setNotes(item?.notes ?? ""); setActive(item?.isActive ?? true);
-    setChosenCategories(item?.categories
+    setChosenCategories([...(item?.categories
       .filter(category => !category.isPrimary)
-      .map(category => category.id) ?? []);
-    setPrimaryCategory(String(item?.categoryId ?? selectedId ?? ""));
+      .map(category => category.id) ?? []), ...(categoryId && item?.categoryId !== categoryId && !item?.categories.some(category => category.id === categoryId) ? [categoryId] : [])]);
+    setPrimaryCategory(String(item?.categoryId ?? categoryId ?? selectedId ?? ""));
     setModal({ kind: "item", item });
   };
   const openMove = (m: Modal) => { setNotice(null); setDestination(""); setModal(m); };
@@ -190,6 +212,27 @@ export default function AdminSupplierTaxonomyTab() {
   const deletingPrimaryItems = modal?.kind === "delete-node" && items.some(item =>
     item.categoryId === modal.node.id || flat.find(n => n.node.id === item.categoryId)?.ancestors.includes(modal.node.id));
   const selected = flat.find(n => n.node.id === selectedId);
+  const isPublicNode = (id: number) => {
+    const entry = flat.find(row => row.node.id === id);
+    return !!entry && entry.node.isActive && entry.ancestors.every(parentId => flat.find(row => row.node.id === parentId)?.node.isActive)
+      && (entry.ancestors.length ? flat.find(row => row.node.id === entry.ancestors[0])?.node.name : entry.node.name) !== "الخدمات والاستشارات";
+  };
+  const publicGroup = (node: SupplierTaxonomyNode) => {
+    const match = publicGroupsQuery.data?.find(group => group.id === node.id);
+    return { name: node.name, slug: match?.slug ?? "", icon: node.icon, parentId: node.parentId };
+  };
+  const publicItemOrder = new Map(publicItemsQuery.data?.map(item => [item.id, item.displayOrder]) ?? []);
+  const sortedNodes = (nodes: SupplierTaxonomyNode[]) => [...nodes].sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "ar"));
+  const browseNodes = selected ? sortedNodes(selected.node.children) : sortedNodes(tree);
+  const browseItems = selected ? items.filter(item => item.categories.some(category => category.id === selected.node.id))
+    .sort((a, b) => (publicItemOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (publicItemOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, "ar") || a.id - b.id) : [];
+  const browseTerm = browseSearch.trim().toLocaleLowerCase("ar");
+  const visibleBrowseNodes = browseNodes.filter(node => node.name.toLocaleLowerCase("ar").includes(browseTerm));
+  const visibleBrowseItems = browseItems.filter(item => `${item.name} ${item.notes ?? ""}`.toLocaleLowerCase("ar").includes(browseTerm));
+  const globalBrowseMatches = !selected && browseTerm
+    ? items.filter(item => `${item.name} ${item.categories.map(category => category.path).join(" ")} ${item.notes ?? ""}`.toLocaleLowerCase("ar").includes(browseTerm))
+    : [];
+  const browseTrail = selected ? [...selected.ancestors.map(id => flat.find(entry => entry.node.id === id)).filter((entry): entry is NonNullable<typeof entry> => !!entry), selected] : [];
   const pendingReview = review.filter(row => row.mappedItemId === null).length;
   const duplicateItem = modal?.kind === "item" && name.trim()
     ? items.find(item => item.id !== modal.item?.id && normalizeItemName(item.name) === normalizeItemName(name))
@@ -202,7 +245,7 @@ export default function AdminSupplierTaxonomyTab() {
       <div data-testid={`row-taxonomy-node-${node.id}`} className={`group my-1.5 flex flex-col gap-2 rounded-xl border p-2.5 sm:flex-row sm:items-center ${selectedId === node.id ? "border-primary bg-primary/5" : "border-transparent hover:border-border hover:bg-secondary/25"}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button type="button" data-testid={`button-expand-taxonomy-${node.id}`} disabled={!node.children.length} aria-label={open ? `طي ${node.name}` : `توسيع ${node.name}`} aria-expanded={open} onClick={() => setExpanded(current => { const next = new Set(current); if (open) next.delete(node.id); else next.add(node.id); return next; })} className="rounded-md p-1 disabled:opacity-30">{open ? <ChevronDown size={16}/> : <ChevronLeft size={16}/>}</button>
-          <button type="button" data-testid={`button-select-taxonomy-${node.id}`} onClick={() => { setSelectedId(node.id); setFilterCategory(String(node.id)); setView("items"); }} className="flex min-w-0 flex-1 items-center gap-2 text-right">
+           <button type="button" data-testid={`button-select-taxonomy-${node.id}`} onClick={() => { browseTo(node.id); setFilterCategory(String(node.id)); setView("browse"); }} className="flex min-w-0 flex-1 items-center gap-2 text-right">
             {open ? <FolderOpen size={20} className="shrink-0 text-primary"/> : <Folder size={20} className="shrink-0 text-primary"/>}
             <span className="min-w-0 truncate font-extrabold">{node.name}</span>
             {!node.isActive && <span className="rounded-full bg-muted px-2 text-[10px]">معطل</span>}
@@ -210,9 +253,9 @@ export default function AdminSupplierTaxonomyTab() {
           </button>
         </div>
         <div className="flex flex-wrap gap-1 ps-7 sm:ps-0">
-          <button className={btn} type="button" data-testid={`button-add-child-${node.id}`} onClick={() => { setExpanded(current => new Set(current).add(node.id)); openNode(undefined, node.id); }}><Plus size={14}/>فرعي</button>
+          {node.parentId === null && <button className={btn} type="button" data-testid={`button-add-child-${node.id}`} onClick={() => { setExpanded(current => new Set(current).add(node.id)); openNode(undefined, node.id); }}><Plus size={14}/>فرعي</button>}
           <button className={btn} type="button" data-testid={`button-edit-node-${node.id}`} onClick={() => openNode(node)}><Pencil size={14}/>تعديل</button>
-          <button className={btn} type="button" data-testid={`button-move-node-${node.id}`} onClick={() => openMove({ kind: "move-node", node })}>نقل</button>
+          <button className={btn} type="button" data-testid={`button-move-node-${node.id}`} disabled={node.parentId === null && node.children.length > 0} title={node.parentId === null && node.children.length > 0 ? "المجموعة ذات الفروع لا تُنقل إلى داخل مجموعة أخرى" : undefined} onClick={() => openMove({ kind: "move-node", node })}>نقل</button>
           <button className={btn} type="button" data-testid={`button-up-node-${node.id}`} aria-label={`رفع ${node.name}`} disabled={pending || index === 0} onClick={() => order(-1)}><ArrowUp size={14}/></button>
           <button className={btn} type="button" data-testid={`button-down-node-${node.id}`} aria-label={`خفض ${node.name}`} disabled={pending || index === nodes.length - 1} onClick={() => order(1)}><ArrowDown size={14}/></button>
           <button className={`${btn} text-destructive`} type="button" data-testid={`button-delete-node-${node.id}`} onClick={() => openDelete({ kind: "delete-node", node })}><Trash2 size={14}/></button>
@@ -232,8 +275,8 @@ export default function AdminSupplierTaxonomyTab() {
       if (duplicateItem) {
         failed(new Error("يوجد صنف بهذا الاسم بالفعل. عدّل الصنف الموجود بدلاً من إنشاء نسخة.")); return;
       }
-      const data = { name: clean, notes: notes.trim() || null, isActive: active,
-        categoryIds: [Number(primaryCategory), ...chosenCategories], primaryCategoryId: Number(primaryCategory) };
+       const data = { name: clean, notes: notes.trim() || null, isActive: active,
+         categoryIds: [Number(primaryCategory), ...chosenCategories.filter(id => id !== Number(primaryCategory))], primaryCategoryId: Number(primaryCategory) };
       modal.item ? updateItem.mutate({ id: modal.item.id, data }) : createItem.mutate({ data });
     }
     if (modal.kind === "move-node") moveNode.mutate({ id: modal.node.id, data: { parentId: destination ? Number(destination) : null } });
@@ -256,16 +299,56 @@ export default function AdminSupplierTaxonomyTab() {
       </div>
       <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">{[["الأقسام", flat.length], ["الأصناف", items.length], ["روابط الموردين بالأصناف", items.reduce((sum,item) => sum + item.supplierCount,0)], ["بانتظار مراجعة الربط", pendingReview]].map(([title,value]) => <div key={title} className="bg-card p-4"><p className="text-xs text-muted-foreground">{title}</p><strong className="text-2xl" data-testid={`metric-taxonomy-${title}`}>{fmt(Number(value))}</strong></div>)}</div>
     </header>
-    <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4 text-sm"><AlertTriangle size={19} className="mt-1 shrink-0 text-warning"/><p><strong>هذه الأصناف تظهر في الدليل العام.</strong> راجع ارتباطات الموردين والتصنيفات القديمة قبل الحذف؛ التعديل أو نقل الصنف يحافظ على هويته وروابطه.</p></div>
+     <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4 text-sm"><AlertTriangle size={19} className="mt-1 shrink-0 text-warning"/><p><strong>الأصناف والأقسام المعطّلة لا تظهر للزوار.</strong> راجع ارتباطات الموردين والتصنيفات القديمة قبل الحذف؛ التعديل أو نقل الصنف يحافظ على هويته وروابطه.</p></div>
     {[treeQuery, itemsQuery, reviewQuery, auditQuery].some(query => query.isError && query.data !== undefined) &&
       <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm">
         <span>تعذر تحديث بعض البيانات؛ نعرض آخر نسخة متاحة وسنعيد المحاولة تلقائياً.</span>
         <button type="button" className={btn} disabled={refreshing} onClick={() => void refresh()}>إعادة المحاولة الآن</button>
       </div>}
     {notice && <div role={notice.error ? "alert" : "status"} data-testid="status-taxonomy-action" className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${notice.error ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-success/25 bg-success/5 text-foreground"}`}><span>{notice.text}</span><button type="button" data-testid="button-dismiss-taxonomy-notice" aria-label="إغلاق الإشعار" onClick={() => setNotice(null)} className="ms-auto"><X size={16}/></button></div>}
-    <div role="tablist" aria-label="أقسام إدارة الهيكل" className="flex flex-wrap gap-2 border-b pb-3">
-      {([["tree","شجرة الأقسام",FolderTree],["items","الأصناف",FileText],["review",`مراجعة القديم (${fmt(pendingReview)})`,AlertTriangle],["audit","سجل النشاط",History]] as const).map(([id,title,Icon]) => <button key={id} type="button" role="tab" aria-selected={view === id} data-testid={`button-taxonomy-view-${id}`} onClick={() => setView(id)} className={view === id ? primary : btn}><Icon size={16}/>{title}</button>)}
+     <div role="tablist" aria-label="أقسام إدارة الهيكل" className="flex flex-wrap gap-2 border-b pb-3">
+       {([["browse","تصفح المجموعات",Layers3],["tree","شجرة الأقسام المتقدمة",FolderTree],["items","قائمة كل الأصناف",FileText],["review",`مراجعة القديم (${fmt(pendingReview)})`,AlertTriangle],["audit","سجل النشاط",History]] as const).map(([id,title,Icon]) => <button key={id} type="button" role="tab" aria-selected={view === id} data-testid={`button-taxonomy-view-${id}`} onClick={() => setView(id)} className={view === id ? primary : btn}><Icon size={16}/>{title}</button>)}
     </div>
+     {view === "browse" && <div className="space-y-6">
+       <div className="taxonomy-surface overflow-hidden">
+         <div className="border-b bg-secondary/20 px-5 py-5 md:px-7">
+           <nav aria-label="مسار مجموعات الفهرس" className="mb-5 flex flex-wrap items-center gap-1.5 text-sm">
+             <button type="button" data-testid="button-taxonomy-browse-root" aria-current={!selected ? "page" : undefined} onClick={() => browseTo(null)} className={!selected ? "font-extrabold text-foreground" : "font-bold text-primary hover:underline"}>المجموعات</button>
+             {browseTrail.map((entry, index) => <span key={entry.node.id} className="inline-flex items-center gap-1.5"><ChevronLeft size={15} className="text-muted-foreground"/><button type="button" data-testid={`button-taxonomy-breadcrumb-${entry.node.id}`} aria-current={index === browseTrail.length - 1 ? "page" : undefined} onClick={() => browseTo(entry.node.id)} className={index === browseTrail.length - 1 ? "font-extrabold" : "font-bold text-primary hover:underline"}>{entry.node.name}</button></span>)}
+           </nav>
+           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+             <div className="flex items-start gap-4">
+               {selected && (() => { const Icon = getGroupIcon(publicGroup(selected.node)); return <span className="rounded-2xl border border-primary/15 bg-card p-3 text-primary"><Icon className="h-9 w-9" strokeWidth={1.5} aria-hidden="true"/></span>; })()}
+               <div><p className="text-xs font-extrabold text-primary">{selected ? selected.node.parentId === null ? "مجموعة رئيسية" : "مجموعة فرعية" : "دليل التصنيفات"}</p><h3 className="mt-1 text-2xl font-extrabold md:text-3xl">{selected?.node.name ?? "تصفح المجموعات"}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{selected ? `${fmt(browseNodes.length)} مجموعات فرعية · ${fmt(browseItems.length)} أصناف في هذا القسم` : "نفس ترتيب المجموعات الذي يبدأ منه الزائر. افتح مجموعة لإدارة أصنافها وفروعها."}</p>
+                 {selected && !isPublicNode(selected.node.id) && <span className="mt-2 inline-block rounded-full bg-warning/10 px-2.5 py-1 text-xs font-bold text-warning">غير ظاهر للزوار · قسم غير منشور</span>}
+               </div>
+             </div>
+             <div className="flex flex-wrap gap-2">
+               {selected ? <><button type="button" className={btn} data-testid="button-browse-edit-group" onClick={() => openNode(selected.node)}><Pencil size={15}/> تعديل المجموعة</button><button type="button" className={btn} data-testid="button-browse-move-group" disabled={selected.node.parentId === null && selected.node.children.length > 0} onClick={() => openMove({kind:"move-node",node:selected.node})}>نقل المجموعة</button><button type="button" className={`${btn} text-destructive`} data-testid="button-browse-delete-group" onClick={() => openDelete({kind:"delete-node",node:selected.node})}><Trash2 size={15}/> حذف المجموعة</button>{selected.node.parentId === null && <button type="button" className={btn} data-testid="button-browse-add-subgroup" onClick={() => openNode(undefined, selected.node.id)}><Plus size={15}/> إضافة مجموعة فرعية</button>}<button type="button" className={primary} data-testid="button-browse-add-item" onClick={() => openItem()}><Plus size={15}/> إضافة صنف هنا</button></> : <button type="button" className={primary} data-testid="button-browse-add-root" onClick={() => openNode()}><Plus size={15}/> مجموعة رئيسية</button>}
+             </div>
+           </div>
+         </div>
+         <div className="p-4 md:p-6"><label className="relative block max-w-md"><span className="sr-only">البحث في التصنيفات والأصناف</span><Search size={17} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"/><input type="search" data-testid="input-taxonomy-browse-search" className="taxonomy-field pr-10" placeholder={selected ? "ابحث في الفروع والأصناف هنا..." : "ابحث في المجموعات والأصناف..." } value={browseSearch} onChange={e => setBrowseSearch(e.target.value)}/></label></div>
+       </div>
+       {treeQuery.isLoading || itemsQuery.isLoading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><Skeleton/><Skeleton/><Skeleton/></div> : (treeQuery.isError && treeQuery.data === undefined) || (itemsQuery.isError && itemsQuery.data === undefined) ? <Failure retry={() => void refresh()}/> : <>
+         {visibleBrowseNodes.length > 0 && <section aria-label={selected ? "المجموعات الفرعية" : "المجموعات الرئيسية"}><h4 className="mb-4 text-lg font-extrabold">{selected ? "المجموعات الفرعية" : "المجموعات الرئيسية"}</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visibleBrowseNodes.map(node => { const Icon = getGroupIcon(publicGroup(node)); return <article key={node.id} data-testid={`card-taxonomy-group-${node.id}`} className="taxonomy-surface group flex min-h-44 flex-col justify-between p-5 transition-transform hover:-translate-y-0.5">
+           <div className="flex items-start justify-between gap-2"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><Icon className="h-8 w-8" strokeWidth={1.5} aria-hidden="true"/></span>{!isPublicNode(node.id) && <span className="rounded-full bg-warning/10 px-2 py-1 text-xs font-bold text-warning">غير ظاهر للزوار</span>}</div>
+           <div className="mt-5"><button type="button" data-testid={`button-browse-group-${node.id}`} className="flex w-full items-center justify-between gap-3 text-right text-lg font-extrabold hover:text-primary focus-visible:outline-primary" onClick={() => browseTo(node.id)}><span>{node.name}</span><ChevronLeft size={18} className="shrink-0 text-primary"/></button><p className="mt-1 text-sm text-muted-foreground">{fmt(node.itemCount)} صنف</p></div>
+           <div className="mt-4 flex flex-wrap gap-1.5 border-t pt-3"><button type="button" className={btn} data-testid={`button-browse-add-item-${node.id}`} onClick={() => { browseTo(node.id); openItem(undefined, node.id); }}><Plus size={14}/> صنف</button>{node.parentId === null && <button type="button" className={btn} data-testid={`button-browse-add-child-${node.id}`} onClick={() => openNode(undefined, node.id)}><Plus size={14}/> فرعي</button>}<button type="button" className={btn} data-testid={`button-browse-edit-group-${node.id}`} onClick={() => openNode(node)}><Pencil size={14}/> تعديل</button><button type="button" className={btn} data-testid={`button-browse-move-group-${node.id}`} disabled={node.parentId === null && node.children.length > 0} onClick={() => openMove({kind:"move-node",node})}>نقل</button><button type="button" className={`${btn} text-destructive`} data-testid={`button-browse-delete-group-${node.id}`} aria-label={`حذف مجموعة ${node.name}`} onClick={() => openDelete({kind:"delete-node",node})}><Trash2 size={14}/></button></div>
+         </article>; })}</div></section>}
+         {globalBrowseMatches.length > 0 && <section aria-label="نتائج الأصناف"><h4 className="mb-4 text-lg font-extrabold">الأصناف المطابقة ({fmt(globalBrowseMatches.length)})</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{globalBrowseMatches.map(item => <article key={item.id} className="taxonomy-surface p-4"><strong className="block">{item.name}</strong><p className="mt-1 text-xs text-muted-foreground">{item.categoryPath}{!item.isActive ? " · معطّل" : ""}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" className={btn} onClick={() => browseTo(item.categoryId)}>عرض في القسم</button><button type="button" className={btn} onClick={() => openItem(item)}><Pencil size={14}/> تعديل</button><button type="button" className={btn} onClick={() => openItem(item, undefined, true)}><Link2 size={14}/> ربط بقسم آخر</button></div></article>)}</div></section>}
+         {selected && <section aria-label="الأصناف في المجموعة"><div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><h4 className="text-lg font-extrabold">الأصناف في {selected.node.name}</h4><p className="mt-1 text-xs text-muted-foreground">تظهر العضوية الأساسية والإضافية هنا دون تكرار للصنف نفسه.</p></div><span className="text-sm text-muted-foreground">{fmt(visibleBrowseItems.length)} صنف</span></div>
+           {visibleBrowseItems.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visibleBrowseItems.map(item => { const membership = item.categories.find(category => category.id === selected.node.id); return <article key={item.id} data-testid={`card-taxonomy-item-${item.id}`} className="taxonomy-surface flex min-h-44 flex-col p-5">
+             <div className="flex items-start justify-between gap-3"><span className="rounded-xl bg-secondary/50 p-2.5 text-primary"><FileText size={23} aria-hidden="true"/></span><div className="flex flex-wrap justify-end gap-1"><span className={`rounded-full px-2 py-1 text-[11px] font-bold ${membership?.isPrimary ? "bg-primary/10 text-primary" : "bg-secondary text-foreground"}`}>{membership?.isPrimary ? "القسم الأساسي" : "قسم إضافي"}</span>{(!item.isActive || !isPublicNode(selected.node.id) || !isPublicNode(item.categoryId)) && <span className="rounded-full bg-warning/10 px-2 py-1 text-[11px] font-bold text-warning">غير ظاهر للزوار</span>}</div></div>
+             <h5 className="mt-4 text-lg font-extrabold">{item.name}</h5><p className="mt-1 text-xs text-muted-foreground">{fmt(item.supplierCount)} مورد · {item.categories.length > 1 ? `${fmt(item.categories.length)} أقسام مرتبطة` : "قسم واحد"}</p>
+             {item.notes && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{item.notes}</p>}
+             {!membership?.isPrimary && <p className="mt-2 text-xs text-muted-foreground">الأساسي: {item.categories.find(category => category.isPrimary)?.path ?? item.categoryPath}</p>}
+             <div className="mt-4 flex flex-wrap gap-1.5 border-t pt-4"><button type="button" className={btn} data-testid={`button-browse-edit-item-${item.id}`} onClick={() => openItem(item)}><Pencil size={14}/> تعديل</button><button type="button" className={btn} data-testid={`button-browse-associate-item-${item.id}`} onClick={() => openItem(item, undefined, true)}><Link2 size={14}/> ربط نفس الصنف بقسم آخر</button><button type="button" className={btn} data-testid={`button-browse-move-item-${item.id}`} onClick={() => openMove({kind:"move-item",item})}>نقل</button><button type="button" className={`${btn} text-destructive`} data-testid={`button-browse-delete-item-${item.id}`} onClick={() => openDelete({kind:"delete-item",item})}><Trash2 size={14}/> حذف</button></div>
+           </article>; })}</div> : <Empty title={browseTerm ? "لا توجد نتائج في هذا القسم" : "لا توجد أصناف مباشرة هنا"} detail={browseTerm ? "جرّب كلمة أخرى أو افتح مجموعة فرعية." : "الأصناف في المجموعات الفرعية تظهر داخل كل مجموعة. يمكنك إضافة صنف مباشرة إلى هذا القسم."} action={!browseTerm ? <button type="button" className={primary} onClick={() => openItem()}>إضافة صنف هنا</button> : undefined}/>}
+         </section>}
+         {!visibleBrowseNodes.length && !globalBrowseMatches.length && !selected && <Empty title={browseTerm ? "لا توجد مجموعات أو أصناف مطابقة" : "ابدأ بإضافة مجموعة رئيسية"} detail={browseTerm ? "جرّب كلمة بحث أخرى." : "ستظهر المجموعات هنا بنفس ترتيبها في الدليل العام."} action={!browseTerm ? <button type="button" className={primary} onClick={() => openNode()}>إضافة مجموعة</button> : undefined}/>}
+       </>}
+     </div>}
     {view === "tree" && <div className="taxonomy-surface p-4 md:p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-extrabold">شجرة الأقسام</h3><p className="text-xs text-muted-foreground">افتح القسم لعرض فروعه. الأسهم تغيّر ترتيبه بين إخوته فقط.</p></div><button type="button" data-testid="button-create-root-taxonomy" className={primary} onClick={() => openNode()}><Plus size={16}/> قسم رئيسي</button></div>
       {treeQuery.isLoading ? <Skeleton/> : treeQuery.isError && treeQuery.data === undefined ? <Failure retry={() => void treeQuery.refetch()}/> : !tree.length ? <Empty title="الشجرة جاهزة للبناء" detail="أضف قسماً رئيسياً، ثم أنشئ تحته أقساماً فرعية بالعمق المناسب." action={<button type="button" className={primary} onClick={() => openNode()}>إضافة القسم الأول</button>}/> : renderBranch([...tree].sort((a,b) => a.displayOrder - b.displayOrder || a.id - b.id))}
     </div>}
@@ -332,7 +415,7 @@ export default function AdminSupplierTaxonomyTab() {
         </li>)}
       </ol>}
     </div>}
-    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 p-3" onMouseDown={e => { if (e.target === e.currentTarget && !pending) setModal(null); }}><div role="dialog" aria-modal="true" aria-labelledby="taxonomy-dialog-title" className="taxonomy-surface max-h-[90dvh] w-full max-w-lg overflow-y-auto p-5 shadow-warm-lg md:p-7"><div className="mb-5 flex items-start justify-between gap-2"><div><h3 id="taxonomy-dialog-title" className="text-xl font-extrabold">{modal.kind === "node" ? modal.node ? "تعديل القسم" : "إضافة قسم" : modal.kind === "item" ? modal.item ? "تعديل الصنف" : "إضافة صنف" : modal.kind === "bulk" ? "إضافة أصناف دفعة واحدة" : modal.kind === "legacy-import" ? "نقل الأصناف غير المكررة" : modal.kind === "mapping" ? "تأكيد ربط التصنيف القديم" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : "نقل إلى مكان جديد"}</h3><p className="mt-1 text-xs text-muted-foreground">احفظ التغييرات بعد التحقق من القسم والروابط المرتبطة به.</p></div><button type="button" data-testid="button-close-taxonomy-dialog" aria-label="إغلاق" disabled={pending} onClick={() => setModal(null)}><X size={20}/></button></div>
+    {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 p-3" onMouseDown={e => { if (e.target === e.currentTarget && !pending) setModal(null); }}><div role="dialog" aria-modal="true" aria-labelledby="taxonomy-dialog-title" className="taxonomy-surface max-h-[90dvh] w-full max-w-lg overflow-y-auto p-5 shadow-warm-lg md:p-7"><div className="mb-5 flex items-start justify-between gap-2"><div><h3 id="taxonomy-dialog-title" className="text-xl font-extrabold">{modal.kind === "node" ? modal.node ? "تعديل القسم" : "إضافة قسم" : modal.kind === "item" ? associationMode ? "ربط نفس الصنف بقسم إضافي" : modal.item ? "تعديل الصنف" : "إضافة صنف" : modal.kind === "bulk" ? "إضافة أصناف دفعة واحدة" : modal.kind === "legacy-import" ? "نقل الأصناف غير المكررة" : modal.kind === "mapping" ? "تأكيد ربط التصنيف القديم" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : "نقل إلى مكان جديد"}</h3><p className="mt-1 text-xs text-muted-foreground">{associationMode && modal.kind === "item" ? "اختر قسماً إضافياً أدناه واحفظ الصنف الموجود بهويته وروابط مورديه نفسها. يمكنك إزالة عضوية إضافية بإلغاء اختيارها." : "احفظ التغييرات بعد التحقق من القسم والروابط المرتبطة به."}</p></div><button type="button" data-testid="button-close-taxonomy-dialog" aria-label="إغلاق" disabled={pending} onClick={() => setModal(null)}><X size={20}/></button></div>
       <form onSubmit={submit} className="space-y-4">
         {notice?.error && <p role="alert" data-testid="status-taxonomy-dialog-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{notice.text}</p>}
         {modal.kind === "legacy-import" && <div className="space-y-3 rounded-xl border bg-secondary/20 p-4 text-sm">
@@ -346,7 +429,7 @@ export default function AdminSupplierTaxonomyTab() {
         {modal.kind === "delete-node" && <><div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm"><strong>حذف «{modal.node.name}»</strong><p>لن يُحذف أي صنف. ستُزال روابط الأقسام المحذوفة فقط، ويجب اختيار بديل لأي قسم أساسي محذوف.</p></div><div role="radiogroup" aria-label="طريقة الحذف" className="flex flex-col gap-2 text-sm"><label><input type="radio" name="strategy" data-testid="radio-taxonomy-transfer" checked={deleteStrategy === "transfer"} onChange={() => setDeleteStrategy("transfer")}/> نقل الفروع إلى قسم آخر وحذف هذا القسم فقط</label><label><input type="radio" name="strategy" data-testid="radio-taxonomy-cascade" checked={deleteStrategy === "cascade"} onChange={() => setDeleteStrategy("cascade")}/> حذف هذا القسم وفروعه مع إبقاء الأصناف</label></div></>}
         {modal.kind === "delete-item" && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm">حذف «{modal.item.name}» نهائي. سيختفي من الدليل وتُزال روابطه بالأقسام والموردين وأي مراجعات قديمة مرتبطة به. عدد مورديه: <strong>{fmt(modal.item.supplierCount)}</strong>. لتصحيح اسم أو قسم، استخدم «تعديل الصنف» بدلاً من الحذف.</div>}
         {modal.kind === "mapping" && <div className="rounded-xl border bg-secondary/30 p-3 text-sm">التصنيف القديم: <strong>{modal.legacy.legacyName}</strong> · {fmt(modal.legacy.supplierCount)} مورد<br/>الصنف الجديد: <strong>{items.find(i => i.id === Number(destination))?.name ?? "غير محدد"}</strong><p className="mt-2 text-xs text-muted-foreground">تأكيد الربط لا ينقل الدليل العام تلقائياً.</p></div>}
-        {modal.kind === "node" && !modal.node && <label><span className={label}>القسم الأب (اختياري للقسم الرئيسي)</span><select data-testid="select-taxonomy-parent" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">قسم رئيسي</option>{flat.map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
+        {modal.kind === "node" && !modal.node && <label><span className={label}>القسم الأب (اختياري للقسم الرئيسي)</span><select data-testid="select-taxonomy-parent" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">قسم رئيسي</option>{flat.filter(n => n.node.parentId === null).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "item" && <>
           <label>
             <span className={label}>القسم الرئيسي (إلزامي)</span>
@@ -386,7 +469,7 @@ export default function AdminSupplierTaxonomyTab() {
         </>}
         {modal.kind === "move-item" && <p className="rounded-xl border bg-secondary/20 p-3 text-sm">سينتقل «{modal.item.name}» من «{modal.item.categoryPath}» إلى القسم المختار. تبقى روابط الموردين والأقسام الإضافية كما هي.</p>}
         {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
-        {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{flat.filter(n => n.node.id !== modal.node.id && !n.ancestors.includes(modal.node.id)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
+        {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{modal.node.children.length === 0 && flat.filter(n => n.node.parentId === null && n.node.id !== modal.node.id).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "delete-node" && deleteStrategy === "cascade" && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-legacy-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن روابط الموردين المباشرة بالأقسام المحذوفة ستُزال؛ لن تُحذف الأصناف أو روابط الموردين بالأصناف.</label>}
         {modal.kind === "delete-item" && modal.item.supplierCount > 0 && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-item-supplier-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن حذف هذا الصنف سيفقد الموردين ارتباطهم به، ولن تُنقل الروابط إلى صنف آخر تلقائياً.</label>}
         <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && (!primaryCategory || !!duplicateItem)) || (modal.kind === "delete-item" && modal.item.supplierCount > 0 && !ackLinks) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>

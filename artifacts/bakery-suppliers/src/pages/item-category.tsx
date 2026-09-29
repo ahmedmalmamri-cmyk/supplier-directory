@@ -3,7 +3,7 @@ import { ChevronLeft, MapPin, Pencil, Search, ShieldCheck, Star, Users } from "l
 import { Link, useLocation, useRoute } from "wouter";
 import { getListSuppliersQueryKey, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { categoryBreadcrumb, categoryPath, categorySlug, categorySubGroupId, groupParentId, groupPath, useTaxonomy } from "@/components/categories/taxonomy";
+import { categoryBreadcrumb, categoryPath, categorySlug, categorySubGroupId, groupParentId, groupPath, useTaxonomy, type TaxonomyCategory } from "@/components/categories/taxonomy";
 import { getGroupIcon } from "@/lib/group-icons";
 import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
 
@@ -25,12 +25,14 @@ export default function ItemCategoryPage() {
   const subgroup = subslug ? subgroups.find((group) => group.slug === subslug) : undefined;
   const legacyItem = subslug && !subgroup ? categories.find((category) => categorySlug(category) === subslug) : undefined;
   const item = itemslug
-    ? categories.find((category) => categorySlug(category) === itemslug && categorySubGroupId(category) === subgroup?.id)
-    : legacyItem && root && (legacyItem.primaryGroupId === root.id || legacyItem.tagGroupIds?.includes(root.id)) ? legacyItem : undefined;
-  const rootItems = categories.filter((category) => categorySubGroupId(category) === null && category.parentId !== null && (category.primaryGroupId === root?.id || category.tagGroupIds?.includes(root?.id ?? -1)));
-  const subgroupItems = categories.filter((category) => categorySubGroupId(category) === subgroup?.id && !!subgroup);
+    ? categories.find((category) => categorySlug(category) === itemslug && !!subgroup && (category.subGroupIds?.includes(subgroup.id) ?? categorySubGroupId(category) === subgroup.id))
+    : legacyItem && root && (legacyItem.directGroupIds?.includes(root.id)
+      ?? (legacyItem.primaryGroupId === root.id || !!legacyItem.tagGroupIds?.includes(root.id))) ? legacyItem : undefined;
+  const rootItems = categories.filter((category) => !!root && (category.directGroupIds?.includes(root.id)
+    ?? (categorySubGroupId(category) === null && category.parentId !== null && (category.primaryGroupId === root.id || !!category.tagGroupIds?.includes(root.id)))));
+  const subgroupItems = categories.filter((category) => !!subgroup && (category.subGroupIds?.includes(subgroup.id) ?? categorySubGroupId(category) === subgroup.id));
   const activeItems = subgroup ? subgroupItems : rootItems;
-  const cakeItems = categories.filter((category) => subgroups.some((group) => group.id === categorySubGroupId(category)));
+  const cakeItems = categories.filter((category) => subgroups.some((group) => category.subGroupIds?.includes(group.id) ?? categorySubGroupId(category) === group.id));
 
   const legacyCakeSlugs: Record<string, string> = { "cake-mixes": "mixes", "cake-fillings": "fillings" };
   const cakeRoot = groups.find((group) => group.slug === "cake-supplies" && groupParentId(group) === null);
@@ -38,7 +40,7 @@ export default function ItemCategoryPage() {
   const directChildGroup = !subslug && groups.find((group) => group.slug === slug && groupParentId(group) !== null);
   const requestedPath = itemslug ? `/category/${slug}/${subslug}/${itemslug}` : subslug ? `/category/${slug}/${subslug}` : `/category/${slug}`;
   const globallyMatchedItem = subslug && (!subgroup || !!itemslug) ? categories.find((category) => categorySlug(category) === (itemslug ?? subslug)) : undefined;
-  const canonicalPath = item ? categoryPath(item, categories, groups)
+  const canonicalPath = item && root ? (subgroup ? `${groupPath(subgroup, groups)}/${categorySlug(item)}` : `/category/${root.slug}/${categorySlug(item)}`)
     : legacyCakeSubgroup ? (globallyMatchedItem ? categoryPath(globallyMatchedItem, categories, groups) : groupPath(legacyCakeSubgroup, groups))
     : directChildGroup ? groupPath(directChildGroup, groups)
     : globallyMatchedItem ? categoryPath(globallyMatchedItem, categories, groups) : undefined;
@@ -57,9 +59,15 @@ export default function ItemCategoryPage() {
   const suppliersQuery = useListSuppliers(supplierFilters, { query: { enabled: !!item && !redirectPath, queryKey: getListSuppliersQueryKey(supplierFilters) } });
   const term = search.trim().toLocaleLowerCase("ar");
   const visibleSubgroups = subgroups.filter((group) => group.name.toLocaleLowerCase("ar").includes(term));
-  const visibleItems = (subgroup ? subgroupItems : subgroups.length ? cakeItems.concat(rootItems) : rootItems)
+  const visibleItems = [...new Map((subgroup ? subgroupItems : term && subgroups.length ? cakeItems.concat(rootItems) : rootItems).map(category => [category.id, category])).values()]
     .filter((category) => `${category.name} ${category.description ?? ""}`.toLocaleLowerCase("ar").includes(term))
     .sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "ar"));
+  const itemPathHere = (category: TaxonomyCategory) => {
+    if (subgroup) return `${groupPath(subgroup, groups)}/${categorySlug(category)}`;
+    if (root && category.directGroupIds?.includes(root.id)) return `/category/${root.slug}/${categorySlug(category)}`;
+    const child = subgroups.find((group) => category.subGroupIds?.includes(group.id));
+    return child ? `${groupPath(child, groups)}/${categorySlug(category)}` : categoryPath(category, categories, groups);
+  };
   const title = item?.name ?? subgroup?.name ?? root?.name;
   const Icon = subgroup ?? root ? getGroupIcon((subgroup ?? root)!) : null;
   useEffect(() => {
@@ -117,7 +125,7 @@ export default function ItemCategoryPage() {
           {!item ? <section>
             <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h2 className="text-2xl font-extrabold">{subgroup ? `الأصناف في ${subgroup.name}` : subgroups.length ? "من احتياجك إلى مورّدك" : "اختر الصنف الذي تبحث عنه"}</h2><p className="mt-2 text-sm text-muted-foreground">{subgroups.length && !subgroup ? "اختر مجموعة مستلزمات الكيك أو ابحث مباشرة عن صنف." : "اختر صنفاً لعرض الموردين المتخصصين فيه."}</p></div><label className="relative block w-full sm:w-80"><span className="sr-only">ابحث في أصناف المجموعة</span><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input data-testid="input-child-category-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={subgroups.length && !subgroup ? "ابحث في جميع مستلزمات الكيك..." : "ابحث في الأصناف..."} className="h-11 w-full rounded-xl border border-border bg-card pr-10 pl-3 text-sm outline-none focus:border-primary" /></label></div>
             {!subgroup && visibleSubgroups.length > 0 && <div className="mb-10"><h3 className="mb-4 text-lg font-extrabold">المجموعات الفرعية</h3><div className="grid grid-cols-2 gap-3 md:grid-cols-3">{visibleSubgroups.map((group) => { const TileIcon = getGroupIcon(group); return <Link key={group.id} href={groupPath(group, groups)} data-testid={`card-subgroup-${group.id}`} className="group flex min-h-44 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-warm"><TileIcon className="h-9 w-9 text-primary" strokeWidth={1.5} aria-hidden="true" /><div><h4 className="text-lg font-bold group-hover:text-primary">{group.name}</h4><p className="mt-1 text-sm text-muted-foreground">{group.categoryCount.toLocaleString("ar-SA")} أصناف · {group.supplierCount.toLocaleString("ar-SA")} مورد</p></div></Link>; })}</div></div>}
-             {(subgroup || term || !subgroups.length) && <div><h3 className="mb-4 text-lg font-extrabold">{subgroups.length && !subgroup ? "الأصناف المطابقة" : "الأصناف"}</h3>{visibleItems.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleItems.map((category) => <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`card-child-category-${category.id}`} className="group flex min-h-28 flex-col justify-center rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><div><h4 className="text-lg font-bold group-hover:text-primary">{category.name}</h4><p className="mt-1 text-sm text-muted-foreground">{category.supplierCount.toLocaleString("ar-SA")} مورد</p>{subgroups.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</p>}</div></Link>)}</div> : <Problem title={activeItems.length || cakeItems.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف حالياً"} />}</div>}
+              {(subgroup || term || !subgroups.length || rootItems.length > 0) && <div><h3 className="mb-4 text-lg font-extrabold">{subgroups.length && !subgroup ? term ? "الأصناف المطابقة" : "أصناف في المجموعة الرئيسية" : "الأصناف"}</h3>{visibleItems.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleItems.map((category) => <Link key={category.id} href={itemPathHere(category)} data-testid={`card-child-category-${category.id}`} className="group flex min-h-28 flex-col justify-center rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><div><h4 className="text-lg font-bold group-hover:text-primary">{category.name}</h4><p className="mt-1 text-sm text-muted-foreground">{category.supplierCount.toLocaleString("ar-SA")} مورد</p>{subgroups.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</p>}</div></Link>)}</div> : <Problem title={activeItems.length || cakeItems.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف حالياً"} />}</div>}
            </section> : <section><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-extrabold">الموردون في {item.name}</h2><p className="mt-2 text-sm text-muted-foreground">{item.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف قبل تطبيق الفلاتر</p></div><Link href={`/inquiries/new?itemId=${item.id}`} data-testid={`link-category-inquiry-${item.id}`} className="inquiry-btn inquiry-btn-primary">اسأل عن علامة أو نوع محدد</Link></div>
             <SupplierFilterControls city={city} onCityChange={setCity} type={type} onTypeChange={setType} rating={rating} onRatingChange={setRating} supplierPackage={supplierPackage} onPackageChange={setSupplierPackage} sort={sort} onSortChange={setSort} cities={cities} />
             {suppliersQuery.isLoading && !suppliersQuery.data ? <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="جارٍ تحميل الموردين">{[1, 2, 3].map((i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />)}</div>
