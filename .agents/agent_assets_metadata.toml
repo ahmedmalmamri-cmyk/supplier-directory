@@ -644,3 +644,17 @@ mtime_ms = 1790542783402
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/128db723-95b7-4ec8-a4d1-00a0fdbdc258/d35fcd09-c8d0-4289-bb06-46ff12847d84"
 storage_version_token = "1790542896506696"
 content_type = "image/png"
+
+[[outputs]]
+id = "kg51jD-af7lUR4hpqdulN"
+uri = "file://screenshots/nuts-variants-preview.jpg"
+type = "image"
+title = "صورة معاينة تنويعات اللوز"
+description = "صورة ثابتة لواجهة المورد؛ المعاينة التفاعلية متاحة في مساحة التصميم."
+logical_id = "f92ef406-74fe-4154-8bdf-65d806260a91"
+content_hash = "sha256:20084f7014a1d7e22c074a29c8f078f68d8d268202feffc292bb3426c9383e50"
+size = 67685
+mtime_ms = 1790664863677
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:06bf41fc-13d3-4cfa-b391-893fe644edf7/f92ef406-74fe-4154-8bdf-65d806260a91/8ce0d660-9299-40a0-9562-5aacda24f22a"
+storage_version_token = "1790664872689181"
+content_type = "image/jpeg"
