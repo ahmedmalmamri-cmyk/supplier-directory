@@ -16,6 +16,7 @@ import { restoreExpiredBuyerSuspensions } from "../lib/buyer-moderation";
 import { isTestModeRequest } from "../lib/test-mode";
 import { buildRequestFilter, requestTaxonomyItemJoin } from "../lib/buyer-request-query";
 import { publicSupplierTaxonomyCtes } from "../lib/public-supplier-taxonomy";
+import { publicCatalogVisibilitySql } from "../lib/catalog-visibility";
 
 const router: IRouter = Router();
 const buyerBusinessTypes = ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"];
@@ -466,7 +467,12 @@ router.post("/buyer/contact", (req, res): void => {
     res.status(400).json({ error: "بيانات التواصل غير صحيحة." });
     return;
   }
-  const supplier = directoryDb.prepare("SELECT id, name, whatsapp FROM suppliers WHERE id = ? AND is_active = 1").get(supplierId) as { id: number; name: string; whatsapp: string } | undefined;
+  const supplier = directoryDb.prepare(`
+    SELECT s.id, s.name, s.whatsapp
+    FROM suppliers s
+    WHERE s.id = ? AND s.is_active = 1
+      AND ${publicCatalogVisibilitySql("s")}
+  `).get(supplierId) as { id: number; name: string; whatsapp: string } | undefined;
   if (!supplier) {
     res.status(404).json({ error: "المورد غير موجود." });
     return;

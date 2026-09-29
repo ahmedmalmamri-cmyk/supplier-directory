@@ -10,6 +10,7 @@ import itemCategoryGroupsRouter from "./item-category-groups";
 import supplierTaxonomyRouter from "./supplier-taxonomy";
 import testModeRouter from "./test-mode";
 import itemInquiriesRouter from "./item-inquiries";
+import supplierCatalogRouter from "./supplier-catalog";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(buyerRouter);
 router.use(buyerInvitationsRouter);
 router.use(supplierRouter);
 router.use(itemInquiriesRouter);
+router.use(supplierCatalogRouter);
 
 export default router;

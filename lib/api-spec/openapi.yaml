@@ -1052,6 +1052,11 @@ paths:
           name: category
           schema: { type: string }
         - in: query
+          name: subtypeId
+          required: false
+          description: Filter suppliers offering an approved subtype by catalog subtype ID
+          schema: { type: integer, minimum: 1 }
+        - in: query
           name: variantForm
           description: Precise almond form filter; only valid with category="لوز"
           schema: { type: string, enum: [whole, slices, powder] }
@@ -1257,6 +1262,212 @@ paths:
         "400": { description: Invalid mode or variant combination }
         "401": { description: Supplier authentication required }
         "409": { description: Supplier has no existing almond item link }
+  /supplier/catalog:
+    get:
+      operationId: getSupplierCatalog
+      tags: [supplier]
+      responses:
+        "200":
+          description: Active catalog, approved subtypes, supplier offers and pending proposals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalog" }
+        "401": { description: Supplier authentication required }
+  /supplier/catalog/offers:
+    post:
+      operationId: createSupplierCatalogOffer
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogOfferInput" }
+      responses:
+        "201":
+          description: Supplier offer created or reactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        "400": { description: "Invalid item, subtype or price" }
+        "401": { description: Supplier authentication required }
+        "404": { description: Active master item not found }
+  /supplier/catalog/offers/{id}:
+    patch:
+      operationId: updateSupplierCatalogOffer
+      tags: [supplier]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogOfferPriceInput" }
+      responses:
+        "200":
+          description: Supplier-owned offer updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        "400": { description: Invalid price }
+        "401": { description: Supplier authentication required }
+        "404": { description: Offer not found }
+    delete:
+      operationId: deleteSupplierCatalogOffer
+      tags: [supplier]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Supplier-owned offer soft-deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOfferDeleteResponse" }
+        "401": { description: Supplier authentication required }
+        "404": { description: Offer not found }
+  /supplier/catalog/master-proposals:
+    post:
+      operationId: createSupplierCatalogMasterProposal
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalInput" }
+      responses:
+        "201":
+          description: Pending master proposal submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposal" }
+        "400": { description: Invalid names }
+        "401": { description: Supplier authentication required }
+        "409": { description: Duplicate master or proposal }
+  /admin/catalog:
+    get:
+      operationId: getAdminSupplierCatalog
+      tags: [admin]
+      responses:
+        "200":
+          description: Master catalog, subtype review queue, proposals and counts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalog" }
+        "401": { description: Admin authentication required }
+  /admin/catalog/masters:
+    post:
+      operationId: createAdminSupplierCatalogMaster
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterInput" }
+      responses:
+        "201":
+          description: Canonical taxonomy master created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalogMaster" }
+        "400": { description: Invalid names or category }
+        "401": { description: Admin authentication required }
+        "409": { description: Duplicate master }
+  /admin/catalog/masters/{id}:
+    patch:
+      operationId: updateAdminSupplierCatalogMasterTranslation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterTranslationInput" }
+      responses:
+        "200":
+          description: Legacy master English translation updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterTranslation" }
+        "400": { description: Invalid English translation }
+        "401": { description: Admin authentication required }
+        "404": { description: Master not found }
+        "409": { description: Translation is already used }
+  /admin/catalog/subtypes:
+    post:
+      operationId: createAdminSupplierCatalogSubtype
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogSubtypeInput" }
+      responses:
+        "201":
+          description: Approved subtype created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogSubtype" }
+        "400": { description: Invalid names or master ID }
+        "401": { description: Admin authentication required }
+        "404": { description: Master not found }
+        "409": { description: Duplicate subtype }
+  /admin/catalog/subtypes/{id}/review:
+    patch:
+      operationId: reviewAdminSupplierCatalogSubtype
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogReviewInput" }
+      responses:
+        "200":
+          description: Subtype review recorded; rejected subtype history retained
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogReviewResponse" }
+        "400": { description: Invalid review decision }
+        "401": { description: Admin authentication required }
+        "404": { description: Subtype not found }
+        "409": { description: Subtype was already reviewed }
+  /admin/catalog/master-proposals/{id}/review:
+    patch:
+      operationId: reviewAdminSupplierCatalogMasterProposal
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalReviewInput" }
+      responses:
+        "200":
+          description: Proposal reviewed; approval creates a canonical active master
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalReviewResponse" }
+        "400": { description: Invalid decision or category }
+        "401": { description: Admin authentication required }
+        "404": { description: Proposal not found }
+        "409": { description: Duplicate master or proposal was already reviewed }
   /buyer/logout:
     post:
       operationId: logoutBuyer
@@ -1809,6 +2020,220 @@ paths:
         "409": { description: Request is not approved or supplier already has active access }
 components:
   schemas:
+    CatalogBilingualNames:
+      type: object
+      required: [nameAr, nameEn]
+      properties:
+        nameAr: { type: string, minLength: 1, maxLength: 120 }
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+    SupplierCatalogSubtype:
+      type: object
+      required: [id, nameAr, nameEn, status, isApproved]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        isApproved: { type: boolean }
+    SupplierCatalogOffer:
+      type: object
+      required: [id, subtypeId, price, lastUpdated, isActive, eligibilityStatus]
+      properties:
+        id: { type: integer }
+        subtypeId: { type: integer }
+        price: { type: ["number", "null"], minimum: 0 }
+        lastUpdated: { type: string, format: date-time }
+        isActive: { type: boolean }
+        eligibilityStatus: { type: string, enum: [eligible, pending] }
+    SupplierCatalogMaster:
+      type: object
+      required: [id, name, nameEn, subtypes, offers]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        subtypes:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogSubtype" }
+        offers:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+    SupplierCatalogPendingSubtypeProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, itemId]
+          properties:
+            id: { type: integer }
+            itemId: { type: integer }
+    SupplierCatalogPendingMasterProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, status, createdAt]
+          properties:
+            id: { type: integer }
+            status: { type: string, enum: [pending, approved, rejected] }
+            createdAt: { type: string, format: date-time }
+    SupplierCatalog:
+      type: object
+      required: [profileComplete, masters, pendingProposals]
+      properties:
+        profileComplete:
+          type: boolean
+          description: True only when the supplier is active and has an active offer for an approved subtype of an active, publicly visible taxonomy item and node.
+        masters:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogMaster" }
+        pendingProposals:
+          type: object
+          required: [subtypes, masters]
+          properties:
+            subtypes:
+              type: array
+              items: { $ref: "#/components/schemas/SupplierCatalogPendingSubtypeProposal" }
+            masters:
+              type: array
+              items: { $ref: "#/components/schemas/SupplierCatalogPendingMasterProposal" }
+    SupplierCatalogOfferInput:
+      type: object
+      required: [itemId]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        subtypeId: { type: integer, minimum: 1 }
+        newSubtype: { $ref: "#/components/schemas/CatalogBilingualNames" }
+        price: { type: ["number", "null"], minimum: 0 }
+    SupplierCatalogOfferPriceInput:
+      type: object
+      required: [price]
+      properties:
+        price: { type: ["number", "null"], minimum: 0 }
+    SupplierCatalogOfferDeleteResponse:
+      type: object
+      required: [id, isActive]
+      properties:
+        id: { type: integer }
+        isActive: { type: boolean, const: false }
+    SupplierCatalogMasterProposalInput:
+      $ref: "#/components/schemas/CatalogBilingualNames"
+    SupplierCatalogMasterProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, status]
+          properties:
+            id: { type: integer }
+            status: { type: string, enum: [pending] }
+    AdminSupplierCatalogMaster:
+      type: object
+      required: [id, nameAr, nameEn, categoryId, categoryName, isActive]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: ["string", "null"] }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        isActive: { type: boolean }
+    AdminSupplierCatalogMasterInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [categoryId]
+          properties:
+            categoryId: { type: integer, minimum: 1 }
+    AdminSupplierCatalogMasterTranslationInput:
+      type: object
+      required: [nameEn]
+      properties:
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+    AdminSupplierCatalogMasterTranslation:
+      type: object
+      required: [id, nameEn]
+      properties:
+        id: { type: integer }
+        nameEn: { type: string }
+    AdminSupplierCatalogSubtypeInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [itemId]
+          properties:
+            itemId: { type: integer, minimum: 1 }
+    SupplierCatalogReviewInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+    SupplierCatalogReviewResponse:
+      type: object
+      required: [id, status, isApproved, reviewedAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [approved, rejected] }
+        isApproved: { type: boolean }
+        reviewedAt: { type: string, format: date-time }
+    SupplierCatalogMasterProposalReviewInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        categoryId: { type: integer, minimum: 1 }
+    SupplierCatalogMasterProposalReviewResponse:
+      type: object
+      required: [id, status, itemId, categoryId, reviewedAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [approved, rejected] }
+        itemId: { type: ["integer", "null"] }
+        categoryId: { type: ["integer", "null"] }
+        reviewedAt: { type: string, format: date-time }
+    AdminSupplierCatalog:
+      type: object
+      required: [masters, subtypes, masterProposals, stats]
+      properties:
+        masters:
+          type: array
+          items: { $ref: "#/components/schemas/AdminSupplierCatalogMaster" }
+        subtypes:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/SupplierCatalogSubtype"
+              - type: object
+                required: [itemId, proposedBySupplierId, createdAt, reviewedAt]
+                properties:
+                  itemId: { type: integer }
+                  proposedBySupplierId: { type: ["integer", "null"] }
+                  createdAt: { type: string, format: date-time }
+                  reviewedAt: { type: ["string", "null"], format: date-time }
+        masterProposals:
+          type: array
+          items:
+            type: object
+            required: [id, nameAr, nameEn, status, supplierId, supplierName, categoryId, itemId, createdAt, reviewedAt]
+            properties:
+              id: { type: integer }
+              nameAr: { type: string }
+              nameEn: { type: string }
+              status: { type: string, enum: [pending, approved, rejected] }
+              supplierId: { type: integer }
+              supplierName: { type: string }
+              categoryId: { type: ["integer", "null"] }
+              itemId: { type: ["integer", "null"] }
+              createdAt: { type: string, format: date-time }
+              reviewedAt: { type: ["string", "null"], format: date-time }
+        stats:
+          type: object
+          required: [activeMasters, totalSubtypes, pendingSubtypes, pendingMasterProposals, supplierAccounts, completeSupplierProfiles, approvedSubtypes, pendingProposals]
+          properties:
+            activeMasters: { type: integer }
+            totalSubtypes: { type: integer }
+            pendingSubtypes: { type: integer }
+            pendingMasterProposals: { type: integer }
+            supplierAccounts: { type: integer, description: Count of supplier user accounts with active login status. }
+            completeSupplierProfiles: { type: integer, description: Count of active suppliers with at least one publicly eligible catalog offer. }
+            approvedSubtypes: { type: integer }
+            pendingProposals: { type: integer, description: Pending subtype proposals plus pending master proposals. }
     HealthStatus:
       type: object
       required: [status]
@@ -2402,7 +2827,7 @@ components:
         createdAt: { type: string }
     Supplier:
       type: object
-      required: [id, name, city, region, description, hasWhatsApp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt]
+      required: [id, name, city, region, description, hasWhatsApp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt, offeredSubtypes]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -2421,6 +2846,20 @@ components:
         averageRating: { type: number }
         createdAt: { type: string }
         productCount: { type: integer }
+        offeredSubtypes:
+          type: array
+          items:
+            type: object
+            required: [id, itemId, nameAr, nameEn, itemName, itemNameEn, price, lastUpdated]
+            properties:
+              id: { type: integer }
+              itemId: { type: integer }
+              nameAr: { type: string }
+              nameEn: { type: string }
+              itemName: { type: string }
+              itemNameEn: { type: ["string", "null"] }
+              price: { type: ["number", "null"], minimum: 0 }
+              lastUpdated: { type: string, format: date-time }
     AlmondVariant:
       type: object
       required: [form, preparation, size]

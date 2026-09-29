@@ -5,6 +5,285 @@
  * واجهة دليل موردي المخابز والحلويات
  * OpenAPI spec version: 1.0.0
  */
+export interface CatalogBilingualNames {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nameAr: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nameEn: string;
+}
+
+export type SupplierCatalogSubtypeStatus = typeof SupplierCatalogSubtypeStatus[keyof typeof SupplierCatalogSubtypeStatus];
+
+
+export const SupplierCatalogSubtypeStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface SupplierCatalogSubtype {
+  id: number;
+  nameAr: string;
+  nameEn: string;
+  status: SupplierCatalogSubtypeStatus;
+  isApproved: boolean;
+}
+
+export type SupplierCatalogOfferEligibilityStatus = typeof SupplierCatalogOfferEligibilityStatus[keyof typeof SupplierCatalogOfferEligibilityStatus];
+
+
+export const SupplierCatalogOfferEligibilityStatus = {
+  eligible: 'eligible',
+  pending: 'pending',
+} as const;
+
+export interface SupplierCatalogOffer {
+  id: number;
+  subtypeId: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price: number | null;
+  lastUpdated: string;
+  isActive: boolean;
+  eligibilityStatus: SupplierCatalogOfferEligibilityStatus;
+}
+
+export interface SupplierCatalogMaster {
+  id: number;
+  name: string;
+  /** @nullable */
+  nameEn: string | null;
+  subtypes: SupplierCatalogSubtype[];
+  offers: SupplierCatalogOffer[];
+}
+
+export type SupplierCatalogPendingSubtypeProposal = CatalogBilingualNames & {
+  id: number;
+  itemId: number;
+};
+
+export type SupplierCatalogPendingMasterProposalStatus = typeof SupplierCatalogPendingMasterProposalStatus[keyof typeof SupplierCatalogPendingMasterProposalStatus];
+
+
+export const SupplierCatalogPendingMasterProposalStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type SupplierCatalogPendingMasterProposal = CatalogBilingualNames & {
+  id: number;
+  status: SupplierCatalogPendingMasterProposalStatus;
+  createdAt: string;
+};
+
+export type SupplierCatalogPendingProposals = {
+  subtypes: SupplierCatalogPendingSubtypeProposal[];
+  masters: SupplierCatalogPendingMasterProposal[];
+};
+
+export interface SupplierCatalog {
+  /** True only when the supplier is active and has an active offer for an approved subtype of an active, publicly visible taxonomy item and node. */
+  profileComplete: boolean;
+  masters: SupplierCatalogMaster[];
+  pendingProposals: SupplierCatalogPendingProposals;
+}
+
+export interface SupplierCatalogOfferInput {
+  /** @minimum 1 */
+  itemId: number;
+  /** @minimum 1 */
+  subtypeId?: number;
+  newSubtype?: CatalogBilingualNames;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price?: number | null;
+}
+
+export interface SupplierCatalogOfferPriceInput {
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price: number | null;
+}
+
+export interface SupplierCatalogOfferDeleteResponse {
+  id: number;
+  isActive: false;
+}
+
+export type SupplierCatalogMasterProposalInput = CatalogBilingualNames;
+
+export type SupplierCatalogMasterProposalStatus = typeof SupplierCatalogMasterProposalStatus[keyof typeof SupplierCatalogMasterProposalStatus];
+
+
+export const SupplierCatalogMasterProposalStatus = {
+  pending: 'pending',
+} as const;
+
+export type SupplierCatalogMasterProposal = CatalogBilingualNames & {
+  id: number;
+  status: SupplierCatalogMasterProposalStatus;
+};
+
+export interface AdminSupplierCatalogMaster {
+  id: number;
+  nameAr: string;
+  /** @nullable */
+  nameEn: string | null;
+  categoryId: number;
+  categoryName: string;
+  isActive: boolean;
+}
+
+export type AdminSupplierCatalogMasterInput = CatalogBilingualNames & {
+  /** @minimum 1 */
+  categoryId: number;
+};
+
+export interface AdminSupplierCatalogMasterTranslationInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nameEn: string;
+}
+
+export interface AdminSupplierCatalogMasterTranslation {
+  id: number;
+  nameEn: string;
+}
+
+export type AdminSupplierCatalogSubtypeInput = CatalogBilingualNames & {
+  /** @minimum 1 */
+  itemId: number;
+};
+
+export type SupplierCatalogReviewInputDecision = typeof SupplierCatalogReviewInputDecision[keyof typeof SupplierCatalogReviewInputDecision];
+
+
+export const SupplierCatalogReviewInputDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface SupplierCatalogReviewInput {
+  decision: SupplierCatalogReviewInputDecision;
+}
+
+export type SupplierCatalogReviewResponseStatus = typeof SupplierCatalogReviewResponseStatus[keyof typeof SupplierCatalogReviewResponseStatus];
+
+
+export const SupplierCatalogReviewResponseStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface SupplierCatalogReviewResponse {
+  id: number;
+  status: SupplierCatalogReviewResponseStatus;
+  isApproved: boolean;
+  reviewedAt: string;
+}
+
+export type SupplierCatalogMasterProposalReviewInputDecision = typeof SupplierCatalogMasterProposalReviewInputDecision[keyof typeof SupplierCatalogMasterProposalReviewInputDecision];
+
+
+export const SupplierCatalogMasterProposalReviewInputDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface SupplierCatalogMasterProposalReviewInput {
+  decision: SupplierCatalogMasterProposalReviewInputDecision;
+  /** @minimum 1 */
+  categoryId?: number;
+}
+
+export type SupplierCatalogMasterProposalReviewResponseStatus = typeof SupplierCatalogMasterProposalReviewResponseStatus[keyof typeof SupplierCatalogMasterProposalReviewResponseStatus];
+
+
+export const SupplierCatalogMasterProposalReviewResponseStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface SupplierCatalogMasterProposalReviewResponse {
+  id: number;
+  status: SupplierCatalogMasterProposalReviewResponseStatus;
+  /** @nullable */
+  itemId: number | null;
+  /** @nullable */
+  categoryId: number | null;
+  reviewedAt: string;
+}
+
+export type AdminSupplierCatalogSubtypesItem = SupplierCatalogSubtype & ({
+  itemId: number;
+  /** @nullable */
+  proposedBySupplierId: number | null;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt: string | null;
+});
+
+export type AdminSupplierCatalogMasterProposalsItemStatus = typeof AdminSupplierCatalogMasterProposalsItemStatus[keyof typeof AdminSupplierCatalogMasterProposalsItemStatus];
+
+
+export const AdminSupplierCatalogMasterProposalsItemStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type AdminSupplierCatalogMasterProposalsItem = {
+  id: number;
+  nameAr: string;
+  nameEn: string;
+  status: AdminSupplierCatalogMasterProposalsItemStatus;
+  supplierId: number;
+  supplierName: string;
+  /** @nullable */
+  categoryId: number | null;
+  /** @nullable */
+  itemId: number | null;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt: string | null;
+};
+
+export type AdminSupplierCatalogStats = {
+  activeMasters: number;
+  totalSubtypes: number;
+  pendingSubtypes: number;
+  pendingMasterProposals: number;
+  /** Count of supplier user accounts with active login status. */
+  supplierAccounts: number;
+  /** Count of active suppliers with at least one publicly eligible catalog offer. */
+  completeSupplierProfiles: number;
+  approvedSubtypes: number;
+  /** Pending subtype proposals plus pending master proposals. */
+  pendingProposals: number;
+};
+
+export interface AdminSupplierCatalog {
+  masters: AdminSupplierCatalogMaster[];
+  subtypes: AdminSupplierCatalogSubtypesItem[];
+  masterProposals: AdminSupplierCatalogMasterProposalsItem[];
+  stats: AdminSupplierCatalogStats;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -835,6 +1114,22 @@ export interface ActivityLogEntry {
   createdAt: string;
 }
 
+export type SupplierOfferedSubtypesItem = {
+  id: number;
+  itemId: number;
+  nameAr: string;
+  nameEn: string;
+  itemName: string;
+  /** @nullable */
+  itemNameEn: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price: number | null;
+  lastUpdated: string;
+};
+
 export interface Supplier {
   id: number;
   name: string;
@@ -853,6 +1148,7 @@ export interface Supplier {
   averageRating: number;
   createdAt: string;
   productCount?: number;
+  offeredSubtypes: SupplierOfferedSubtypesItem[];
 }
 
 export type AlmondVariantForm = typeof AlmondVariantForm[keyof typeof AlmondVariantForm];
@@ -1632,6 +1928,11 @@ q?: string;
 city?: string;
 type?: string;
 category?: string;
+/**
+ * Filter suppliers offering an approved subtype by catalog subtype ID
+ * @minimum 1
+ */
+subtypeId?: number;
 /**
  * Precise almond form filter; only valid with category="لوز"
  */

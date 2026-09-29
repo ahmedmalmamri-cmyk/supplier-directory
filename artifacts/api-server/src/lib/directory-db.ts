@@ -230,12 +230,50 @@ directoryDb.exec(`
   CREATE TABLE IF NOT EXISTS supplier_taxonomy_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL COLLATE BINARY UNIQUE,
+    name_en TEXT,
     category_id INTEGER NOT NULL REFERENCES supplier_taxonomy_nodes(id) ON DELETE RESTRICT,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
     notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS supplier_catalog_subtypes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    name_ar TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    is_approved INTEGER NOT NULL DEFAULT 0 CHECK (is_approved IN (0, 1)),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    proposed_by_supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+    reviewed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_catalog_subtypes_item_status
+    ON supplier_catalog_subtypes(item_id, status, id);
+  CREATE TABLE IF NOT EXISTS supplier_catalog_offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    subtype_id INTEGER NOT NULL REFERENCES supplier_catalog_subtypes(id) ON DELETE RESTRICT,
+    price REAL CHECK (price IS NULL OR price >= 0),
+    last_updated TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_catalog_offers_supplier
+    ON supplier_catalog_offers(supplier_id, is_active, subtype_id);
+  CREATE TABLE IF NOT EXISTS supplier_catalog_master_proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_ar TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    category_id INTEGER REFERENCES supplier_taxonomy_nodes(id) ON DELETE SET NULL,
+    item_id INTEGER REFERENCES supplier_taxonomy_items(id) ON DELETE SET NULL,
+    reviewed_at TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_supplier_catalog_master_proposals_status
+    ON supplier_catalog_master_proposals(status, id);
   CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_items_category_active
     ON supplier_taxonomy_items(category_id, is_active, name);
   -- Associations for the proposed taxonomy. The legacy category_id on the item
@@ -530,6 +568,12 @@ directoryDb.exec(`
     applied_at TEXT NOT NULL
   );
 `);
+
+const supplierTaxonomyItemColumns = directoryDb.prepare("PRAGMA table_info(supplier_taxonomy_items)")
+  .all() as Array<{ name: string }>;
+if (!supplierTaxonomyItemColumns.some((column) => column.name === "name_en")) {
+  directoryDb.exec("ALTER TABLE supplier_taxonomy_items ADD COLUMN name_en TEXT");
+}
 
 const taxonomyAuditColumns = directoryDb.prepare("PRAGMA table_info(supplier_taxonomy_audit_log)")
   .all() as Array<{ name: string }>;

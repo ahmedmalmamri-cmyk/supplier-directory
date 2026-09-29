@@ -19,6 +19,7 @@ import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } fr
 import { clearBuyerSession } from "../lib/buyer-auth";
 import { getSupplierMarket } from "../lib/supplier-market";
 import { isTestModeAccount, isTestModeRequest } from "../lib/test-mode";
+import { publicCatalogVisibilitySql } from "../lib/catalog-visibility";
 
 const router: IRouter = Router();
 const reportReasons = ["إساءة أو إزعاج", "بيانات غير صحيحة", "طلب مخالف", "احتيال أو انتحال", "أخرى"];
@@ -486,6 +487,16 @@ router.get("/supplier/contacts", (req, res): void => {
 function handleSupplierRequestContact(req: Request, res: Response, mode: "contact" | "offer"): void {
   const session = requireSupplier(req, res);
   if (!session) return;
+  const publiclyVisibleSupplier = directoryDb.prepare(`
+    SELECT 1
+    FROM suppliers s
+    WHERE s.id = ? AND s.is_active = 1
+      AND ${publicCatalogVisibilitySql("s")}
+  `).get(session.supplierId);
+  if (!publiclyVisibleSupplier) {
+    res.status(403).json({ error: "يجب أن يكون للمورد عرض معتمد ونشط للتواصل مع أصحاب الأعمال." });
+    return;
+  }
 
   const parsedParams = mode === "offer"
     ? CreateSupplierRequestOfferContactParams.safeParse(req.params)

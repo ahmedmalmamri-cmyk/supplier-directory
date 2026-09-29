@@ -30,6 +30,7 @@ import {
 } from "../lib/item-inquiry-photo-storage";
 import { recordSupplierStat } from "../lib/supplier-stats";
 import { publicSupplierTaxonomyCtes } from "../lib/public-supplier-taxonomy";
+import { publicCatalogVisibilitySql } from "../lib/catalog-visibility";
 
 const router: IRouter = Router();
 const inquiryLifetimeMs = 14 * 24 * 60 * 60 * 1000;
@@ -223,6 +224,7 @@ const matchingSuppliersSql = `
     ON item.id = item_link.item_id AND item.is_active = 1
   WHERE supplier.is_active = 1 AND supplier.city = ?
     AND item.category_id IN (SELECT id FROM active_taxonomy_nodes)
+    AND ${publicCatalogVisibilitySql("supplier")}
   ORDER BY supplier.id
 `;
 
@@ -892,6 +894,7 @@ router.post("/buyer/item-inquiries/:id/contact/:supplierId", (req, res): void =>
           ON reply.inquiry_id = inquiry.id AND reply.supplier_id = supplier.id
         WHERE inquiry.id = ? AND inquiry.buyer_id = ?
           AND reply.response_status IN ('available', 'alternative')
+          AND ${publicCatalogVisibilitySql("supplier")}
       `).get(
         params.data.supplierId,
         params.data.id,

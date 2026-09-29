@@ -73,7 +73,14 @@ test(
         )
         SELECT item.id, item.name
         FROM supplier_taxonomy_items item
+        JOIN supplier_taxonomy_nodes category ON category.id = item.category_id
         WHERE item.is_active = 1 AND item.category_id IN (SELECT id FROM active_nodes)
+          AND lower(trim(category.name)) NOT IN ('الخدمات والاستشارات', 'خدمات واستشارات')
+          AND NOT EXISTS (
+            SELECT 1 FROM supplier_taxonomy_nodes deferredRoot
+            WHERE deferredRoot.id = category.parent_id
+              AND lower(trim(deferredRoot.name)) IN ('الخدمات والاستشارات', 'خدمات واستشارات')
+          )
         ORDER BY item.id
         LIMIT 1
       `).get() as { id: number; name: string } | undefined;
@@ -166,6 +173,16 @@ test(
         INSERT INTO supplier_taxonomy_item_suppliers (supplier_id, item_id, created_at)
         VALUES (?, ?, ?)
       `).run(supplierIds[0]!.id, activeItem.id, now);
+      const subtypeResult = directoryDb.prepare(`
+        INSERT INTO supplier_catalog_subtypes
+          (item_id, name_ar, name_en, is_approved, status, created_at, updated_at)
+        VALUES (?, 'نوع اختبار معتمد', 'Approved test subtype', 1, 'approved', ?, ?)
+      `).run(activeItem.id, now, now);
+      directoryDb.prepare(`
+        INSERT INTO supplier_catalog_offers
+          (supplier_id, subtype_id, price, last_updated, is_active)
+        VALUES (?, ?, 25, ?, 1)
+      `).run(supplierIds[0]!.id, Number(subtypeResult.lastInsertRowid), now);
       assert.equal(
         directoryDb.prepare(
           "SELECT count(*) AS count FROM supplier_taxonomy_item_suppliers WHERE item_id = ?",
@@ -211,6 +228,13 @@ test(
       const buyerTwo = await login("buyer", "0500010202", "bakery_buyer_session");
       const supplierOne = await login("supplier", "0500020201", "bakery_supplier_session");
       const supplierTwo = await login("supplier", "0500020202", "bakery_supplier_session");
+
+      const hiddenSupplierContact = await request("/buyer/contact", {
+        method: "POST",
+        cookie: buyerOne,
+        body: { supplierId: supplierIds[1]!.id, message: "محاولة تواصل بمورد غير ظاهر" },
+      });
+      assert.equal(hiddenSupplierContact.status, 404, "unlisted suppliers must not be contactable by ID");
 
       const matches = await request(
         `/buyer/item-inquiries/matches?itemId=${activeItem.id}&city=${encodeURIComponent(city)}`,
@@ -432,6 +456,27 @@ test(
       assert.equal(otherBuyerPhoto.status, 403, "other buyer may not view the private image");
       const otherSupplierPhoto = await fetch(photoReadUrl, { headers: { cookie: supplierTwo } });
       assert.equal(otherSupplierPhoto.status, 403, "unmatched supplier may not view the private image");
+
+      directoryDb.prepare("UPDATE supplier_catalog_offers SET is_active = 0 WHERE supplier_id = ?")
+        .run(supplierIds[0]!.id);
+      const contactCountBeforeHiddenSupplier = Number((directoryDb.prepare(
+        "SELECT count(*) AS count FROM contact_logs WHERE buyer_id = ?",
+      ).get(buyerIds[0]!.id) as { count: number }).count);
+      const retainedDirectContact = await request("/buyer/contact", {
+        method: "POST",
+        cookie: buyerOne,
+        body: { supplierId: supplierIds[0]!.id, message: "محاولة تواصل بعد إخفاء المورد" },
+      });
+      assert.equal(retainedDirectContact.status, 404, "retained supplier IDs must stop working when catalog visibility ends");
+      const retainedInquiryContact = await request(
+        `/buyer/item-inquiries/${availableInquiry.id}/contact/${supplierIds[0]!.id}`,
+        { method: "POST", cookie: buyerOne },
+      );
+      assert.equal(retainedInquiryContact.status, 404, "item inquiry contacts must recheck current catalog visibility");
+      const contactCountAfterHiddenSupplier = Number((directoryDb.prepare(
+        "SELECT count(*) AS count FROM contact_logs WHERE buyer_id = ?",
+      ).get(buyerIds[0]!.id) as { count: number }).count);
+      assert.equal(contactCountAfterHiddenSupplier, contactCountBeforeHiddenSupplier, "blocked contacts must not be logged");
     } finally {
       if (server) {
         await new Promise<void>((resolve) => server!.close(() => resolve()));

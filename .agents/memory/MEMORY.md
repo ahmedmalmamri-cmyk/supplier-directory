@@ -19,3 +19,5 @@
 - [Supplier offer category source](supplier-offer-category-source.md) — use linked item categories, not Google business categories, to describe supplier offerings.
 - [Taxonomy rollout safety](taxonomy-rollout-safety.md) — the approved supplier tree is public; do not reseed retired old categories or infer new supplier links from names.
 - [Deferred services section](deferred-services-section.md) — hide services and its children from product discovery without deleting data or precommitting to a paid tier.
+- [Catalog supplier eligibility](catalog-supplier-eligibility.md) — approved subtype offers gate every supplier discovery/contact path, including legacy suppliers; do not disable supplier logins to enforce it.
+- [API integration test execution](api-integration-test-execution.md) — native TS test execution cannot resolve this workspace's extensionless ESM imports; use the project's bundled test script.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowUpLeft, Bell, Check, Eye, MessageCircle, Star, TrendingUp, Users, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpLeft, Bell, BookOpen, Check, Eye, MessageCircle, Star, TrendingUp, Users, Sparkles } from "lucide-react";
 import { EmptySection, formatCount, formatRating, SupplierWorkspace, WorkspaceError, WorkspaceSkeleton } from "@/components/supplier/SupplierWorkspace";
 import { useReadOpportunity, useSupplierDashboard } from "@/hooks/use-supplier-insights";
 
@@ -16,6 +16,7 @@ export default function SupplierDashboardPage() {
   const [readError, setReadError] = useState("");
   return <SupplierWorkspace title={data ? `مرحباً، ${data.supplier.name}` : "لوحة المورد"} eyebrow="نظرة عامة" subtitle="أداء ملفك في الدليل، وما يستحق انتباهك هذا الأسبوع." error={error}>
     {isPending ? <WorkspaceSkeleton /> : error ? <WorkspaceError error={error} retry={() => void refetch()} /> : data && <>
+      <Link href="/supplier/catalog" data-testid="link-dashboard-catalog" className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-secondary/70 px-5 py-4 transition-colors hover:bg-secondary md:px-6"><span className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><BookOpen className="h-5 w-5" /></span><span><strong className="block text-sm">كتالوج التوريد الخاص بك</strong><span className="block text-xs leading-6 text-muted-foreground">حدد الأنواع التي تبيعها ليتمكن المشترون من العثور عليك؛ يلزم عرض نوع معتمد نشط للظهور في البحث.</span></span></span><span className="inline-flex items-center gap-1 text-xs font-extrabold text-primary">إدارة العروض <ArrowLeft className="h-4 w-4" /></span></Link>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"><span>بيانات شهر {monthLabel} · {data.supplier.city}</span><span>الأرقام تعكس نشاط الدليل، وليست مبيعات مؤكدة.</span></div>
       <section aria-label="أداء هذا الشهر" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric icon={<Eye className="h-5 w-5" />} label="مشاهدات الملف" value={formatCount(data.month.views)} detail="خلال الشهر الحالي" testId="text-month-views" />

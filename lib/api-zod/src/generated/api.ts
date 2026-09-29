@@ -13,6 +13,10 @@ export const HealthCheckResponse = zod.object({
 })
 
 
+export const getHomeResponseFeaturedSuppliersItemOfferedSubtypesItemPriceMin = 0;
+
+
+
 export const GetHomeResponse = zod.object({
   "categories": zod.array(zod.object({
   "id": zod.number().int(),
@@ -38,7 +42,17 @@ export const GetHomeResponse = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(getHomeResponseFeaturedSuppliersItemOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 })),
   "latestProducts": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1375,6 +1389,10 @@ export const SearchDirectoryQueryParams = zod.object({
   "q": zod.coerce.string().optional()
 })
 
+export const searchDirectoryResponseSuppliersItemOfferedSubtypesItemPriceMin = 0;
+
+
+
 export const SearchDirectoryResponse = zod.object({
   "suppliers": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1393,7 +1411,17 @@ export const SearchDirectoryResponse = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(searchDirectoryResponseSuppliersItemOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 })),
   "products": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1423,6 +1451,10 @@ export const FetchCategoryQueryParams = zod.object({
   "sort": zod.enum(['newest', 'rating', 'alphabetical']).optional()
 })
 
+export const fetchCategoryResponseSuppliersItemOfferedSubtypesItemPriceMin = 0;
+
+
+
 export const FetchCategoryResponse = zod.object({
   "category": zod.object({
   "id": zod.number().int(),
@@ -1448,7 +1480,17 @@ export const FetchCategoryResponse = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(fetchCategoryResponseSuppliersItemOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 })),
   "products": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1468,6 +1510,7 @@ export const FetchCategoryResponse = zod.object({
 })
 
 
+
 export const listSuppliersQueryRatingMax = 5;
 
 
@@ -1477,6 +1520,7 @@ export const ListSuppliersQueryParams = zod.object({
   "city": zod.coerce.string().optional(),
   "type": zod.coerce.string().optional(),
   "category": zod.coerce.string().optional(),
+  "subtypeId": zod.coerce.number().int().min(1).optional().describe('Filter suppliers offering an approved subtype by catalog subtype ID'),
   "variantForm": zod.enum(['whole', 'slices', 'powder']).optional().describe('Precise almond form filter; only valid with category="لوز"'),
   "variantPreparation": zod.enum(['raw', 'roasted']).optional().describe('Precise almond preparation filter; only valid with category="لوز"'),
   "variantSize": zod.enum(['32', '34', '36']).optional().describe('Precise whole-almond size filter; only valid with variantForm=whole'),
@@ -1485,6 +1529,10 @@ export const ListSuppliersQueryParams = zod.object({
   "verified": zod.coerce.boolean().optional(),
   "sort": zod.enum(['newest', 'rating', 'alphabetical']).optional()
 })
+
+export const listSuppliersResponseOfferedSubtypesItemPriceMin = 0;
+
+
 
 export const ListSuppliersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -1503,7 +1551,17 @@ export const ListSuppliersResponseItem = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(listSuppliersResponseOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 })
 export const ListSuppliersResponse = zod.array(ListSuppliersResponseItem)
 
@@ -1511,6 +1569,10 @@ export const ListSuppliersResponse = zod.array(ListSuppliersResponseItem)
 export const GetSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+export const getSupplierResponseOneOfferedSubtypesItemPriceMin = 0;
+
+
 
 export const GetSupplierResponse = zod.object({
   "id": zod.number().int(),
@@ -1529,7 +1591,17 @@ export const GetSupplierResponse = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(getSupplierResponseOneOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 }).and(zod.object({
   "products": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1590,6 +1662,10 @@ export const GetProductParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const getProductResponseTwoSupplierOfferedSubtypesItemPriceMin = 0;
+
+
+
 export const GetProductResponse = zod.object({
   "id": zod.number().int(),
   "supplierId": zod.number().int(),
@@ -1626,7 +1702,17 @@ export const GetProductResponse = zod.object({
   "isFeatured": zod.boolean(),
   "averageRating": zod.number(),
   "createdAt": zod.string(),
-  "productCount": zod.number().int().optional()
+  "productCount": zod.number().int().optional(),
+  "offeredSubtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "itemName": zod.string(),
+  "itemNameEn": zod.string().nullable(),
+  "price": zod.number().min(getProductResponseTwoSupplierOfferedSubtypesItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date()
+}))
 }),
   "similarProducts": zod.array(zod.object({
   "id": zod.number().int(),
@@ -1820,6 +1906,319 @@ export const UpdateSupplierAlmondVariantsResponse = zod.object({
   "preparation": zod.enum(['raw', 'roasted']),
   "size": zod.union([zod.literal('32'),zod.literal('34'),zod.literal('36'),zod.literal(null)]).nullable()
 }))
+})
+
+
+export const getSupplierCatalogResponseMastersItemOffersItemPriceMin = 0;
+
+export const getSupplierCatalogResponsePendingProposalsSubtypesItemOneNameArMax = 120;
+
+export const getSupplierCatalogResponsePendingProposalsSubtypesItemOneNameEnMax = 120;
+
+export const getSupplierCatalogResponsePendingProposalsMastersItemOneNameArMax = 120;
+
+export const getSupplierCatalogResponsePendingProposalsMastersItemOneNameEnMax = 120;
+
+
+
+export const GetSupplierCatalogResponse = zod.object({
+  "profileComplete": zod.boolean().describe('True only when the supplier is active and has an active offer for an approved subtype of an active, publicly visible taxonomy item and node.'),
+  "masters": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "nameEn": zod.string().nullable(),
+  "subtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "isApproved": zod.boolean()
+})),
+  "offers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subtypeId": zod.number().int(),
+  "price": zod.number().min(getSupplierCatalogResponseMastersItemOffersItemPriceMin).nullable(),
+  "lastUpdated": zod.coerce.date(),
+  "isActive": zod.boolean(),
+  "eligibilityStatus": zod.enum(['eligible', 'pending'])
+}))
+})),
+  "pendingProposals": zod.object({
+  "subtypes": zod.array(zod.object({
+  "nameAr": zod.string().min(1).max(getSupplierCatalogResponsePendingProposalsSubtypesItemOneNameArMax),
+  "nameEn": zod.string().min(1).max(getSupplierCatalogResponsePendingProposalsSubtypesItemOneNameEnMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "itemId": zod.number().int()
+}))),
+  "masters": zod.array(zod.object({
+  "nameAr": zod.string().min(1).max(getSupplierCatalogResponsePendingProposalsMastersItemOneNameArMax),
+  "nameEn": zod.string().min(1).max(getSupplierCatalogResponsePendingProposalsMastersItemOneNameEnMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date()
+})))
+})
+})
+
+
+
+
+export const createSupplierCatalogOfferBodyNewSubtypeNameArMax = 120;
+
+export const createSupplierCatalogOfferBodyNewSubtypeNameEnMax = 120;
+
+export const createSupplierCatalogOfferBodyPriceMin = 0;
+
+
+
+export const CreateSupplierCatalogOfferBody = zod.object({
+  "itemId": zod.number().int().min(1),
+  "subtypeId": zod.number().int().min(1).optional(),
+  "newSubtype": zod.object({
+  "nameAr": zod.string().min(1).max(createSupplierCatalogOfferBodyNewSubtypeNameArMax),
+  "nameEn": zod.string().min(1).max(createSupplierCatalogOfferBodyNewSubtypeNameEnMax)
+}).optional(),
+  "price": zod.number().min(createSupplierCatalogOfferBodyPriceMin).nullish()
+})
+
+export const createSupplierCatalogOfferResponsePriceMin = 0;
+
+
+
+export const CreateSupplierCatalogOfferResponse = zod.object({
+  "id": zod.number().int(),
+  "subtypeId": zod.number().int(),
+  "price": zod.number().min(createSupplierCatalogOfferResponsePriceMin).nullable(),
+  "lastUpdated": zod.coerce.date(),
+  "isActive": zod.boolean(),
+  "eligibilityStatus": zod.enum(['eligible', 'pending'])
+})
+
+
+
+
+
+export const UpdateSupplierCatalogOfferParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateSupplierCatalogOfferBodyPriceMin = 0;
+
+
+
+export const UpdateSupplierCatalogOfferBody = zod.object({
+  "price": zod.number().min(updateSupplierCatalogOfferBodyPriceMin).nullable()
+})
+
+export const updateSupplierCatalogOfferResponsePriceMin = 0;
+
+
+
+export const UpdateSupplierCatalogOfferResponse = zod.object({
+  "id": zod.number().int(),
+  "subtypeId": zod.number().int(),
+  "price": zod.number().min(updateSupplierCatalogOfferResponsePriceMin).nullable(),
+  "lastUpdated": zod.coerce.date(),
+  "isActive": zod.boolean(),
+  "eligibilityStatus": zod.enum(['eligible', 'pending'])
+})
+
+
+
+
+
+export const DeleteSupplierCatalogOfferParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteSupplierCatalogOfferResponse = zod.object({
+  "id": zod.number().int(),
+  "isActive": zod.literal(false)
+})
+
+
+export const createSupplierCatalogMasterProposalBodyNameArMax = 120;
+
+export const createSupplierCatalogMasterProposalBodyNameEnMax = 120;
+
+
+
+export const CreateSupplierCatalogMasterProposalBody = zod.object({
+  "nameAr": zod.string().min(1).max(createSupplierCatalogMasterProposalBodyNameArMax),
+  "nameEn": zod.string().min(1).max(createSupplierCatalogMasterProposalBodyNameEnMax)
+})
+
+export const createSupplierCatalogMasterProposalResponseOneNameArMax = 120;
+
+export const createSupplierCatalogMasterProposalResponseOneNameEnMax = 120;
+
+
+
+export const CreateSupplierCatalogMasterProposalResponse = zod.object({
+  "nameAr": zod.string().min(1).max(createSupplierCatalogMasterProposalResponseOneNameArMax),
+  "nameEn": zod.string().min(1).max(createSupplierCatalogMasterProposalResponseOneNameEnMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending'])
+}))
+
+
+export const GetAdminSupplierCatalogResponse = zod.object({
+  "masters": zod.array(zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullable(),
+  "categoryId": zod.number().int(),
+  "categoryName": zod.string(),
+  "isActive": zod.boolean()
+})),
+  "subtypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "isApproved": zod.boolean()
+}).and(zod.object({
+  "itemId": zod.number().int(),
+  "proposedBySupplierId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable()
+}))),
+  "masterProposals": zod.array(zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "supplierId": zod.number().int(),
+  "supplierName": zod.string(),
+  "categoryId": zod.number().int().nullable(),
+  "itemId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable()
+})),
+  "stats": zod.object({
+  "activeMasters": zod.number().int(),
+  "totalSubtypes": zod.number().int(),
+  "pendingSubtypes": zod.number().int(),
+  "pendingMasterProposals": zod.number().int(),
+  "supplierAccounts": zod.number().int().describe('Count of supplier user accounts with active login status.'),
+  "completeSupplierProfiles": zod.number().int().describe('Count of active suppliers with at least one publicly eligible catalog offer.'),
+  "approvedSubtypes": zod.number().int(),
+  "pendingProposals": zod.number().int().describe('Pending subtype proposals plus pending master proposals.')
+})
+})
+
+
+export const createAdminSupplierCatalogMasterBodyOneNameArMax = 120;
+
+export const createAdminSupplierCatalogMasterBodyOneNameEnMax = 120;
+
+
+
+
+export const CreateAdminSupplierCatalogMasterBody = zod.object({
+  "nameAr": zod.string().min(1).max(createAdminSupplierCatalogMasterBodyOneNameArMax),
+  "nameEn": zod.string().min(1).max(createAdminSupplierCatalogMasterBodyOneNameEnMax)
+}).and(zod.object({
+  "categoryId": zod.number().int().min(1)
+}))
+
+export const CreateAdminSupplierCatalogMasterResponse = zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string().nullable(),
+  "categoryId": zod.number().int(),
+  "categoryName": zod.string(),
+  "isActive": zod.boolean()
+})
+
+
+
+
+
+export const UpdateAdminSupplierCatalogMasterTranslationParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateAdminSupplierCatalogMasterTranslationBodyNameEnMax = 120;
+
+
+
+export const UpdateAdminSupplierCatalogMasterTranslationBody = zod.object({
+  "nameEn": zod.string().min(1).max(updateAdminSupplierCatalogMasterTranslationBodyNameEnMax)
+})
+
+export const UpdateAdminSupplierCatalogMasterTranslationResponse = zod.object({
+  "id": zod.number().int(),
+  "nameEn": zod.string()
+})
+
+
+export const createAdminSupplierCatalogSubtypeBodyOneNameArMax = 120;
+
+export const createAdminSupplierCatalogSubtypeBodyOneNameEnMax = 120;
+
+
+
+
+export const CreateAdminSupplierCatalogSubtypeBody = zod.object({
+  "nameAr": zod.string().min(1).max(createAdminSupplierCatalogSubtypeBodyOneNameArMax),
+  "nameEn": zod.string().min(1).max(createAdminSupplierCatalogSubtypeBodyOneNameEnMax)
+}).and(zod.object({
+  "itemId": zod.number().int().min(1)
+}))
+
+export const CreateAdminSupplierCatalogSubtypeResponse = zod.object({
+  "id": zod.number().int(),
+  "nameAr": zod.string(),
+  "nameEn": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "isApproved": zod.boolean()
+})
+
+
+
+
+
+export const ReviewAdminSupplierCatalogSubtypeParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const ReviewAdminSupplierCatalogSubtypeBody = zod.object({
+  "decision": zod.enum(['approved', 'rejected'])
+})
+
+export const ReviewAdminSupplierCatalogSubtypeResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['approved', 'rejected']),
+  "isApproved": zod.boolean(),
+  "reviewedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const ReviewAdminSupplierCatalogMasterProposalParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ReviewAdminSupplierCatalogMasterProposalBody = zod.object({
+  "decision": zod.enum(['approved', 'rejected']),
+  "categoryId": zod.number().int().min(1).optional()
+})
+
+export const ReviewAdminSupplierCatalogMasterProposalResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['approved', 'rejected']),
+  "itemId": zod.number().int().nullable(),
+  "categoryId": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date()
 })
 
 

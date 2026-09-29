@@ -10,6 +10,7 @@ import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getGroupIcon } from "@/lib/group-icons";
 import { trackEvent } from "@/lib/analytics";
 import { AlmondVariantFilters, type AlmondFormFilter, type AlmondPreparationFilter, type AlmondSizeFilter } from "@/components/suppliers/AlmondVariantFilters";
+import { CatalogFilters, CatalogOfferList, type CatalogItemOption } from "@/components/suppliers/catalog/CatalogFilters";
 
 const isAlmondCategory = (name: string) => ["لوز", "لوز حب", "لوز شرائح", "لوز مطحون"].includes(name);
 const initialVariantForm = (value: string | null): AlmondFormFilter => value === "whole" || value === "slices" || value === "powder" ? value : "";
@@ -28,6 +29,8 @@ export default function SuppliersPage() {
   const [city, setCity] = useState(initialParams.get("city") ?? "");
   const [type, setType] = useState(SUPPLIER_TYPES.includes(initialType as typeof SUPPLIER_TYPES[number]) ? initialType : "");
   const [rating, setRating] = useState(initialParams.get("rating") ?? "");
+  const [catalogItemId, setCatalogItemId] = useState(initialParams.get("itemId") ?? "");
+  const [catalogSubtypeId, setCatalogSubtypeId] = useState(initialParams.get("subtypeId") ?? "");
   const initialPackage = initialParams.get("package");
   const [supplierPackage, setSupplierPackage] = useState<"" | "verified" | "featured">(initialPackage === "verified" || initialPackage === "featured" ? initialPackage : "");
   const [sort, setSort] = useState<"newest" | "rating" | "alphabetical">("rating");
@@ -46,14 +49,15 @@ export default function SuppliersPage() {
       ...(type ? { type } : {}),
       ...(rating ? { rating: Number(rating) } : {}),
       ...(supplierPackage ? { package: supplierPackage } : {}),
+      ...(catalogSubtypeId && /^\d+$/.test(catalogSubtypeId) ? { subtypeId: Number(catalogSubtypeId) } : {}),
       sort,
     };
   const { data: suppliers, isLoading, error } = useListSuppliers(supplierFilters);
   const lastTrackedFilter = useRef("");
   useEffect(() => {
-    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage || almondForm || almondPreparation || almondSize) || sort !== "rating";
+    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage || almondForm || almondPreparation || almondSize || catalogItemId || catalogSubtypeId) || sort !== "rating";
     if (!hasActiveFilter || isLoading || error || !suppliers) return;
-    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, hasAlmondForm: Boolean(almondForm), hasAlmondPreparation: Boolean(almondPreparation), hasAlmondSize: Boolean(almondSize), sort });
+    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, hasAlmondForm: Boolean(almondForm), hasAlmondPreparation: Boolean(almondPreparation), hasAlmondSize: Boolean(almondSize), hasCatalogItem: Boolean(catalogItemId), hasCatalogSubtype: Boolean(catalogSubtypeId), sort });
     if (lastTrackedFilter.current === key) return;
     lastTrackedFilter.current = key;
     trackEvent("supplier_directory_filtered", {
@@ -67,18 +71,36 @@ export default function SuppliersPage() {
       sort,
       results_count: suppliers.length,
     });
-  }, [almondForm, almondPreparation, almondSize, category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
+  }, [almondForm, almondPreparation, almondSize, catalogItemId, catalogSubtypeId, category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
   const cities = useMemo(
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
   const selectedTaxonomyCategory = itemCategories.find((item) => item.name === category);
+  const catalogItems = useMemo<CatalogItemOption[]>(() => {
+    const options = new Map<number, CatalogItemOption>();
+    for (const supplier of allSuppliers ?? []) {
+      for (const offer of supplier.offeredSubtypes) {
+        const item = options.get(offer.itemId) ?? { id: offer.itemId, name: offer.itemName, subtypes: [] };
+        if (!item.subtypes.some((subtype) => subtype.id === offer.id)) {
+          item.subtypes.push({ id: offer.id, name: offer.nameAr });
+        }
+        options.set(offer.itemId, item);
+      }
+    }
+    return Array.from(options.values()).sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  }, [allSuppliers]);
+  const visibleSuppliers = (suppliers ?? []).filter((supplier) => {
+    return !catalogItemId || supplier.offeredSubtypes.some((offer) => String(offer.itemId) === catalogItemId);
+  });
   const resetFilters = () => {
     setCategory("");
     setType("");
     setCity("");
     setRating("");
     setSupplierPackage("");
+    setCatalogItemId("");
+    setCatalogSubtypeId("");
     setAlmondForm("");
     setAlmondPreparation("");
     setAlmondSize("");
@@ -99,7 +121,7 @@ export default function SuppliersPage() {
               aria-label="البحث عن مورد أو تصنيف"
               data-testid="input-suppliers-search"
               type="text" 
-              placeholder="ابحث باسم المورد، المدينة أو التصنيف..." 
+              placeholder="ابحث باسم المورد أو الصنف بالعربية أو الإنجليزية..."
               className="w-full h-12 pl-4 pr-12 rounded-lg border bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none shadow-sm transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -119,6 +141,16 @@ export default function SuppliersPage() {
               sort={sort}
               onSortChange={setSort}
               cities={cities}
+            />
+            <CatalogFilters
+              items={catalogItems}
+              itemId={catalogItemId}
+              subtypeId={catalogSubtypeId}
+              onItemChange={(value) => {
+                setCatalogItemId(value);
+                setCatalogSubtypeId("");
+              }}
+              onSubtypeChange={setCatalogSubtypeId}
             />
             {category === "لوز" && <AlmondVariantFilters
               form={almondForm}
@@ -160,7 +192,7 @@ export default function SuppliersPage() {
           <div className="text-center text-destructive py-10">حدث خطأ في تحميل قائمة الموردين.</div>
         ) : isLoading && !suppliers ? (
           <LoadingSpinner className="min-h-[40vh]" />
-        ) : suppliers?.length === 0 ? (
+        ) : visibleSuppliers.length === 0 ? (
           <div className="text-center py-20 bg-muted/20 rounded-2xl border border-dashed">
             <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
             {category ? (
@@ -181,7 +213,10 @@ export default function SuppliersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {suppliers?.map(supplier => (
+            {visibleSuppliers.map(supplier => {
+              const catalogOffers = supplier.offeredSubtypes
+                .filter((offer) => !catalogItemId || String(offer.itemId) === catalogItemId);
+              return (
               <Link key={supplier.id} href={`/supplier/${supplier.id}`} className="flex flex-col bg-card border rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all group">
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -218,9 +253,10 @@ export default function SuppliersPage() {
                       منتجات: {supplier.productCount || 0}
                     </div>
                   </div>
+                  <CatalogOfferList offers={catalogOffers} />
                 </div>
               </Link>
-            ))}
+            );})}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
+    "test:supplier-catalog": "pnpm exec esbuild src/routes/supplier-catalog.integration.test.ts --bundle --platform=node --format=cjs --external:@google-cloud/* --external:pino-pretty --external:thread-stream --outfile=./dist/catalog-integration-test.cjs && node --test ./dist/catalog-integration-test.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

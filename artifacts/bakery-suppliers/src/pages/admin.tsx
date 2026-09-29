@@ -1,5 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import AdminSupplierTaxonomyTab from "@/components/admin-supplier-taxonomy-tab";
+import AdminCatalogPanel from "@/components/admin/catalog/AdminCatalogPanel";
 import { SupplierInvitationsPanel } from "@/pages/supplier-invitations";
 import { BuyerInvitationsPanel } from "@/pages/buyer-invitations";
 import { buildWhatsAppMessageUrl, invalidSaudiPhoneMessage, normalizeSaudiMobile } from "@/lib/saudi-phone";
@@ -10,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Clock3, Copy, Eye, EyeOff, FileText, Flag, FolderTree, GripVertical, ImagePlus, LayoutDashboard, LoaderCircle, LogIn, LogOut, MessageCircle, Package, Plus, Send, Settings, ShieldCheck, ShoppingCart, Store, Trash2, TrendingUp, UserRound, XCircle } from "lucide-react";
 import { Link } from "wouter";
 
-type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "settings";
+type Tab = "suppliers" | "buyers" | "moderation" | "contacts" | "directory" | "invitations" | "buyer-invitations" | "stats" | "item-categories" | "catalog" | "settings";
 type SupplierRequest = {
   id: number; requestCode: string; businessName: string; contactPerson: string; businessType: string;
   phone: string; whatsapp: string; email: string | null; website: string | null; city: string; address: string | null;
@@ -41,6 +42,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "buyer-invitations", label: "دعوات أصحاب الأعمال", icon: UserRound },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
   { id: "item-categories", label: "إدارة الأصناف والمجموعات", icon: FolderTree },
+  { id: "catalog", label: "مراجعة الكتالوج", icon: Package },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -59,6 +61,7 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [catalogRefresh, setCatalogRefresh] = useState(0);
 
   const login = useAdminLogin({
     mutation: {
@@ -140,7 +143,7 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
             <div><h2 className="text-2xl font-bold">{tabs.find((item) => item.id === tab)?.label}</h2><p className="text-sm text-muted-foreground mt-1">إدارة دليل موردي المخابز والحلويات</p></div>
             <div className="flex items-center gap-4">
               <Link href="/test-mode" data-testid="link-admin-test-mode" className="inline-flex items-center gap-2 rounded-xl border border-primary/20 px-3 py-2 text-sm font-bold text-primary hover:bg-primary/5"><ShieldCheck className="h-4 w-4" /> وضع المعاينة</Link>
-              <button type="button" onClick={() => void refresh()} className="text-sm text-primary font-bold hover:underline">{loading ? "جاري التحديث..." : "تحديث البيانات"}</button>
+              <button type="button" onClick={() => { if (tab === "catalog") setCatalogRefresh((value) => value + 1); else void refresh(); }} className="text-sm text-primary font-bold hover:underline">{loading && tab !== "catalog" ? "جاري التحديث..." : "تحديث البيانات"}</button>
             </div>
           </div>
           {notice && <div className="mb-5 rounded-xl bg-success/10 border border-success/25 text-success p-3 text-sm">{notice}</div>}
@@ -154,6 +157,7 @@ export default function AdminPage({ initialTab = "suppliers" }: { initialTab?: T
             {tab === "buyer-invitations" && <BuyerInvitationsPanel />}
           {tab === "stats" && <StatsTab stats={stats} />}
           {tab === "item-categories" && <AdminSupplierTaxonomyTab />}
+          {tab === "catalog" && <AdminCatalogPanel refreshKey={catalogRefresh} />}
            {tab === "settings" && <SettingsTab settings={settings} suppliers={suppliers} onAction={act} />}
         </main>
       </div>

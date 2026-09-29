@@ -1,7 +1,9 @@
 import { directoryDb } from "./directory-db";
+import { publicCatalogOfferEligibilitySql } from "./catalog-visibility";
 
 export const deferredServicesRootName = "الخدمات والاستشارات";
-export const publicSupplierTaxonomyRootFilterSql = `AND name <> '${deferredServicesRootName}'`;
+export const publicSupplierTaxonomyRootFilterSql =
+  `AND name NOT IN ('${deferredServicesRootName}', 'خدمات واستشارات')`;
 
 export const publicSupplierTaxonomyCtes = `
   WITH RECURSIVE active_nodes (
@@ -55,18 +57,19 @@ export function listPublicSupplierTaxonomyGroups() {
       (
         SELECT COUNT(DISTINCT linked.supplierId)
         FROM (
-          SELECT itemLink.supplier_id AS supplierId, ancestors.ancestorId AS nodeId
-          FROM supplier_taxonomy_item_suppliers itemLink
-          JOIN suppliers itemSupplier
-            ON itemSupplier.id = itemLink.supplier_id AND itemSupplier.is_active = 1
-          JOIN active_item_nodes itemNode ON itemNode.itemId = itemLink.item_id
+          SELECT catalogOffer.supplier_id AS supplierId, ancestors.ancestorId AS nodeId
+          FROM supplier_catalog_offers catalogOffer
+          JOIN supplier_catalog_subtypes catalogSubtype
+            ON catalogSubtype.id = catalogOffer.subtype_id
+          JOIN supplier_taxonomy_items catalogItem
+            ON catalogItem.id = catalogSubtype.item_id
+          JOIN supplier_taxonomy_nodes catalogNode
+            ON catalogNode.id = catalogItem.category_id
+          JOIN active_item_nodes itemNode ON itemNode.itemId = catalogItem.id
           JOIN node_ancestors ancestors ON ancestors.descendantId = itemNode.nodeId
-          UNION
-          SELECT nodeLink.supplier_id AS supplierId, ancestors.ancestorId AS nodeId
-          FROM supplier_taxonomy_supplier_links nodeLink
-          JOIN suppliers nodeSupplier
-            ON nodeSupplier.id = nodeLink.supplier_id AND nodeSupplier.is_active = 1
-          JOIN node_ancestors ancestors ON ancestors.descendantId = nodeLink.node_id
+          JOIN suppliers offerSupplier ON offerSupplier.id = catalogOffer.supplier_id
+          WHERE offerSupplier.is_active = 1
+            AND ${publicCatalogOfferEligibilitySql()}
         ) linked
         WHERE linked.nodeId = node.id
       ) AS supplierCount
@@ -97,11 +100,20 @@ export function listPublicSupplierTaxonomyItems() {
       node.description, 0 AS displayOnHome, item.id AS displayOrder,
       1 AS isActive, item.created_at AS createdAt, item.updated_at AS updatedAt,
       (
-        SELECT COUNT(DISTINCT link.supplier_id)
-        FROM supplier_taxonomy_item_suppliers link
-        JOIN suppliers supplier
-          ON supplier.id = link.supplier_id AND supplier.is_active = 1
-        WHERE link.item_id = item.id
+        SELECT COUNT(DISTINCT linked.supplierId)
+        FROM (
+          SELECT catalogOffer.supplier_id AS supplierId
+          FROM supplier_catalog_offers catalogOffer
+          JOIN supplier_catalog_subtypes catalogSubtype
+            ON catalogSubtype.id = catalogOffer.subtype_id
+          JOIN supplier_taxonomy_items catalogItem
+            ON catalogItem.id = catalogSubtype.item_id AND catalogItem.id = item.id
+          JOIN supplier_taxonomy_nodes catalogNode
+            ON catalogNode.id = catalogItem.category_id
+          JOIN suppliers offerSupplier ON offerSupplier.id = catalogOffer.supplier_id
+          WHERE offerSupplier.is_active = 1
+            AND ${publicCatalogOfferEligibilitySql()}
+        ) linked
       ) AS supplierCount,
        (
          SELECT json_group_array(subGroupId)
@@ -194,14 +206,29 @@ export function resolvePublicSupplierTaxonomySelection(name: string) {
     SELECT DISTINCT item.id
     FROM supplier_taxonomy_items item
     JOIN active_nodes node ON node.id = item.category_id
-    WHERE item.is_active = 1 AND lower(trim(item.name)) = lower(?)
-  `).all(normalizedName) as Array<{ id: number }>;
+    WHERE item.is_active = 1 AND (
+      lower(trim(item.name)) = lower(?)
+      OR lower(trim(COALESCE(item.name_en, ''))) = lower(?)
+    )
+  `).all(normalizedName, normalizedName) as Array<{ id: number }>;
+  const approximateItems = activeItems.length ? activeItems : directoryDb.prepare(`
+    ${publicSupplierTaxonomyCtes}
+    SELECT DISTINCT item.id
+    FROM supplier_taxonomy_items item
+    JOIN active_nodes node ON node.id = item.category_id
+    WHERE item.is_active = 1 AND (
+      lower(item.name) LIKE lower(?)
+      OR lower(COALESCE(item.name_en, '')) LIKE lower(?)
+    )
+  `).all(`%${normalizedName}%`, `%${normalizedName}%`) as Array<{ id: number }>;
   const knownNode = directoryDb.prepare(`
     SELECT 1 FROM supplier_taxonomy_nodes WHERE lower(trim(name)) = lower(?) LIMIT 1
   `).get(normalizedName);
   const knownItem = directoryDb.prepare(`
-    SELECT 1 FROM supplier_taxonomy_items WHERE lower(trim(name)) = lower(?) LIMIT 1
-  `).get(normalizedName);
+    SELECT 1 FROM supplier_taxonomy_items
+    WHERE lower(trim(name)) = lower(?)
+      OR lower(trim(COALESCE(name_en, ''))) = lower(?) LIMIT 1
+  `).get(normalizedName, normalizedName);
 
   const nodeIds = activeNodes.length
     ? (directoryDb.prepare(`
@@ -214,7 +241,7 @@ export function resolvePublicSupplierTaxonomySelection(name: string) {
         SELECT DISTINCT id FROM descendants
       `).all(normalizedName) as Array<{ id: number }>).map(({ id }) => id)
     : [];
-  const itemIds = activeItems.map(({ id }) => id);
+  const itemIds = approximateItems.map(({ id }) => id);
   const nodeItemIds = nodeIds.length
     ? (directoryDb.prepare(`
         ${publicSupplierTaxonomyCtes}

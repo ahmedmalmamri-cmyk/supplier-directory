@@ -7,6 +7,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useEffect, useMemo, useRef } from "react";
 import { categoryBreadcrumb, categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { trackEvent } from "@/lib/analytics";
+import { CatalogOfferList } from "@/components/suppliers/catalog/CatalogFilters";
 
 export default function SearchPage() {
   const q = new URLSearchParams(window.location.search).get("q") || "";
@@ -102,6 +103,12 @@ export default function SearchPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {suppliers.map((supplier) => {
                     const rating = Number(supplier.googleRating || supplier.averageRating || 0);
+                    const normalizedQuery = q.trim().toLocaleLowerCase();
+                    const matchingOffers = supplier.offeredSubtypes.filter((offer) =>
+                      `${offer.itemName} ${offer.itemNameEn ?? ""} ${offer.nameAr} ${offer.nameEn}`
+                        .toLocaleLowerCase()
+                        .includes(normalizedQuery),
+                    );
                     return (
                       <article key={supplier.id} className="rounded-2xl border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <Link href={`/supplier/${supplier.id}`} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -122,6 +129,7 @@ export default function SearchPage() {
                             <span className="font-normal text-muted-foreground">{rating > 0 ? "تقييم المورد" : "لا توجد تقييمات بعد"}</span>
                           </div>
                         </Link>
+                        <CatalogOfferList offers={matchingOffers} />
                         <div className="mt-5 flex items-center gap-2">
                           <ProtectedWhatsAppButton
                             supplierId={supplier.id}
@@ -140,9 +148,14 @@ export default function SearchPage() {
               )}
             </section>
             {suppliers.length > 0 && (
-              <aside className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm leading-7">
+              <aside className="flex flex-col items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm leading-7 sm:flex-row">
                 <Lightbulb className="mt-1 h-5 w-5 shrink-0 text-primary" />
-                <p><span className="font-extrabold">تواصل مع المورد لمعرفة أنواع {q} المتوفرة لديه.</span> الفئة ثابتة؛ أكّد التوفر والأسعار مباشرة عبر واتساب.</p>
+                <div>
+                  <p><span className="font-extrabold">قد تظهر أنواع وأسعار أعلن عنها المورد.</span> هذه البيانات ليست مخزوناً لحظياً؛ أكّد التوفر والسعر الحالي مباشرةً مع المورد.</p>
+                  <Link href={`/suppliers?q=${encodeURIComponent(q)}`} data-testid="link-refine-supplier-subtype" className="mt-2 inline-flex min-h-11 items-center rounded-lg font-bold text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    تنقيح النتائج حسب الصنف والنوع الفرعي
+                  </Link>
+                </div>
               </aside>
             )}
           </div>
