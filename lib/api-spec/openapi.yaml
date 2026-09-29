@@ -1052,6 +1052,18 @@ paths:
           name: category
           schema: { type: string }
         - in: query
+          name: variantForm
+          description: Precise almond form filter; only valid with category="لوز"
+          schema: { type: string, enum: [whole, slices, powder] }
+        - in: query
+          name: variantPreparation
+          description: Precise almond preparation filter; only valid with category="لوز"
+          schema: { type: string, enum: [raw, roasted] }
+        - in: query
+          name: variantSize
+          description: Precise whole-almond size filter; only valid with variantForm=whole
+          schema: { type: string, enum: ["32", "34", "36"] }
+        - in: query
           name: rating
           schema: { type: number, minimum: 1, maximum: 5 }
         - in: query
@@ -1217,6 +1229,34 @@ paths:
               schema: { $ref: "#/components/schemas/SupplierAuthResponse" }
         "400": { description: Invalid login input }
         "401": { description: Invalid credentials }
+  /supplier/almond-variants:
+    get:
+      operationId: getSupplierAlmondVariants
+      tags: [supplier]
+      responses:
+        "200":
+          description: The authenticated supplier's almond variant preferences and current eligibility
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAlmondVariants" }
+        "401": { description: Supplier authentication required }
+    put:
+      operationId: updateSupplierAlmondVariants
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierAlmondVariantsInput" }
+      responses:
+        "200":
+          description: Preferences atomically replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAlmondVariants" }
+        "400": { description: Invalid mode or variant combination }
+        "401": { description: Supplier authentication required }
+        "409": { description: Supplier has no existing almond item link }
   /buyer/logout:
     post:
       operationId: logoutBuyer
@@ -2381,6 +2421,30 @@ components:
         averageRating: { type: number }
         createdAt: { type: string }
         productCount: { type: integer }
+    AlmondVariant:
+      type: object
+      required: [form, preparation, size]
+      properties:
+        form: { type: string, enum: [whole, slices, powder] }
+        preparation: { type: string, enum: [raw, roasted] }
+        size: { type: ["string", "null"], enum: ["32", "34", "36", null] }
+    SupplierAlmondVariants:
+      type: object
+      required: [eligible, mode, variants]
+      properties:
+        eligible: { type: boolean }
+        mode: { type: string, enum: [unspecified, all, selected] }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/AlmondVariant" }
+    SupplierAlmondVariantsInput:
+      type: object
+      required: [mode, variants]
+      properties:
+        mode: { type: string, enum: [unspecified, all, selected] }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/AlmondVariant" }
     Product:
       type: object
       required: [id, supplierId, supplierName, categoryId, categoryName, name, weight, unit, countryOfOrigin, minOrder, createdAt]

@@ -9,8 +9,12 @@ import {
   CreateSupplierRequestOfferContactParams,
   GetSupplierActivationQueryParams,
   GetSupplierActivationResponse,
+  GetSupplierAlmondVariantsResponse,
+  UpdateSupplierAlmondVariantsBody,
+  UpdateSupplierAlmondVariantsResponse,
 } from "@workspace/api-zod";
 import { directoryDb } from "../lib/directory-db";
+import { getSupplierAlmondVariants, replaceSupplierAlmondVariants } from "../lib/almond-variants";
 import { clearSupplierSession, getSupplierIdFromRequest, setSupplierSession } from "../lib/supplier-auth";
 import { clearBuyerSession } from "../lib/buyer-auth";
 import { getSupplierMarket } from "../lib/supplier-market";
@@ -137,6 +141,45 @@ router.post("/supplier/login", (req, res): void => {
 router.post("/supplier/logout", (_req, res): void => {
   clearSupplierSession(res);
   res.json({ success: true });
+});
+
+router.get("/supplier/almond-variants", (req, res): void => {
+  const auth = requireSupplier(req, res);
+  if (!auth) return;
+  res.json(GetSupplierAlmondVariantsResponse.parse(getSupplierAlmondVariants(auth.supplierId, directoryDb)));
+});
+
+router.put("/supplier/almond-variants", (req, res): void => {
+  const auth = requireSupplier(req, res);
+  if (!auth) return;
+  const parsed = UpdateSupplierAlmondVariantsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { mode } = parsed.data;
+  if ((mode === "selected" && parsed.data.variants.length === 0)
+    || (mode !== "selected" && parsed.data.variants.length > 0)) {
+    res.status(400).json({ error: "حدد تركيبة واحدة على الأقل عند اختيار أصناف محددة، أو أرسل قائمة فارغة لبقية الخيارات." });
+    return;
+  }
+  const uniqueVariants = new Map<string, (typeof parsed.data.variants)[number]>();
+  for (const variant of parsed.data.variants) {
+    const validSize = variant.form === "whole"
+      ? variant.size === "32" || variant.size === "34" || variant.size === "36"
+      : variant.size === null;
+    if (!validSize) {
+      res.status(400).json({ error: "اختر مقاس 32 أو 34 أو 36 للوز الحب، واترك المقاس فارغاً للشرائح والمطحون." });
+      return;
+    }
+    uniqueVariants.set(`${variant.form}|${variant.preparation}|${variant.size ?? ""}`, variant);
+  }
+  const saved = replaceSupplierAlmondVariants(auth.supplierId, mode, [...uniqueVariants.values()], directoryDb);
+  if (!saved) {
+    res.status(409).json({ error: "لا يمكن تحديد تفضيلات اللوز قبل ربط حساب المورد بأحد أصناف اللوز المعتمدة." });
+    return;
+  }
+  res.json(UpdateSupplierAlmondVariantsResponse.parse(getSupplierAlmondVariants(auth.supplierId, directoryDb)));
 });
 
 router.get("/supplier/activation", (req, res): void => {

@@ -95,6 +95,8 @@ import type {
   SupplierActivationInput,
   SupplierActivationLink,
   SupplierActivationResult,
+  SupplierAlmondVariants,
+  SupplierAlmondVariantsInput,
   SupplierAuthResponse,
   SupplierDetail,
   SupplierInvitation,
@@ -5245,6 +5247,159 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getLoginSupplierMutationOptions(options));
+    }
+
+export const getGetSupplierAlmondVariantsUrl = () => {
+
+
+
+
+  return `/api/supplier/almond-variants`
+}
+
+export const getSupplierAlmondVariants = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupplierAlmondVariants> => {
+
+  return customFetch<SupplierAlmondVariants>(getGetSupplierAlmondVariantsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupplierAlmondVariantsQueryKey = () => {
+    return [
+    `/api/supplier/almond-variants`
+    ] as const;
+    }
+
+
+export const getGetSupplierAlmondVariantsQueryOptions = <TData = Awaited<ReturnType<typeof getSupplierAlmondVariants>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierAlmondVariants>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupplierAlmondVariantsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupplierAlmondVariants>>> = ({ signal }) => getSupplierAlmondVariants({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupplierAlmondVariants>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupplierAlmondVariantsQueryResult = NonNullable<Awaited<ReturnType<typeof getSupplierAlmondVariants>>>
+export type GetSupplierAlmondVariantsQueryError = ErrorType<void>
+
+
+
+export function useGetSupplierAlmondVariants<TData = Awaited<ReturnType<typeof getSupplierAlmondVariants>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupplierAlmondVariants>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupplierAlmondVariantsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSupplierAlmondVariantsUrl = () => {
+
+
+
+
+  return `/api/supplier/almond-variants`
+}
+
+export const updateSupplierAlmondVariants = async (supplierAlmondVariantsInput: SupplierAlmondVariantsInput, options?: Parameters<typeof customFetch>[1]): Promise<SupplierAlmondVariants> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupplierAlmondVariants>(getUpdateSupplierAlmondVariantsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierAlmondVariantsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSupplierAlmondVariantsMutationKey = () => ['updateSupplierAlmondVariants'] as const;
+
+export const getUpdateSupplierAlmondVariantsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSupplierAlmondVariants>>, TError,UpdateSupplierAlmondVariantsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSupplierAlmondVariants>>, TError,UpdateSupplierAlmondVariantsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSupplierAlmondVariantsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSupplierAlmondVariants>>, UpdateSupplierAlmondVariantsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateSupplierAlmondVariants(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSupplierAlmondVariantsMutationResult = NonNullable<Awaited<ReturnType<typeof updateSupplierAlmondVariants>>>
+    export type UpdateSupplierAlmondVariantsMutationBody = BodyType<SupplierAlmondVariantsInput>
+    export type UpdateSupplierAlmondVariantsMutationError = ErrorType<void>
+    export type UpdateSupplierAlmondVariantsMutationVariables = {data: BodyType<SupplierAlmondVariantsInput>}
+
+    export const useUpdateSupplierAlmondVariants = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSupplierAlmondVariants>>, TError,UpdateSupplierAlmondVariantsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSupplierAlmondVariants>>,
+        TError,
+        UpdateSupplierAlmondVariantsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSupplierAlmondVariantsMutationOptions(options));
     }
 
 export const getLogoutBuyerUrl = () => {

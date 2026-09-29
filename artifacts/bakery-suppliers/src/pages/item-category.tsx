@@ -6,6 +6,11 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { categoryBreadcrumb, categoryPath, categorySlug, categorySubGroupId, groupParentId, groupPath, useTaxonomy, type TaxonomyCategory } from "@/components/categories/taxonomy";
 import { getGroupIcon } from "@/lib/group-icons";
 import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
+import { AlmondVariantFilters, type AlmondFormFilter, type AlmondPreparationFilter, type AlmondSizeFilter } from "@/components/suppliers/AlmondVariantFilters";
+
+const ALMOND_ITEM_NAMES = new Set(["لوز حب", "لوز شرائح", "لوز مطحون"]);
+const ALMOND_SEARCH_LABELS = ["لوز", ...ALMOND_ITEM_NAMES];
+type CategoryTile = { kind: "category"; category: TaxonomyCategory } | { kind: "almond-union"; order: number };
 
 function Problem({ title, onRetry }: { title: string; onRetry?: () => void }) {
   return <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-border bg-card p-10 text-center"><Search className="mx-auto mb-4 h-10 w-10 text-primary/60" /><h2 className="text-xl font-extrabold">{title}</h2><p className="mt-2 text-sm text-muted-foreground">يمكنك العودة إلى المجموعات واختيار صنف آخر.</p><div className="mt-5 flex justify-center gap-3">{onRetry && <button data-testid="button-retry-category" type="button" onClick={onRetry} className="rounded-xl border border-primary px-4 py-2 text-sm font-bold text-primary">إعادة المحاولة</button>}<Link href="/categories/all" className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">كل المجموعات</Link></div></div>;
@@ -53,15 +58,41 @@ export default function ItemCategoryPage() {
   const [type, setType] = useState("");
   const [supplierPackage, setSupplierPackage] = useState<"" | "verified" | "featured">("");
   const [sort, setSort] = useState<"newest" | "rating" | "alphabetical">("rating");
+  const [almondForm, setAlmondForm] = useState<AlmondFormFilter>("");
+  const [almondPreparation, setAlmondPreparation] = useState<AlmondPreparationFilter>("");
+  const [almondSize, setAlmondSize] = useState<AlmondSizeFilter>("");
+  const isAlmondItem = ["لوز حب", "لوز شرائح", "لوز مطحون", "لوز"].includes(item?.name ?? "");
+  const almondFiltersActive = isAlmondItem && Boolean(almondForm || almondPreparation || almondSize);
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" }, { query: { enabled: !!item, queryKey: getListSuppliersQueryKey({ sort: "rating" }) } });
   const cities = useMemo(() => [...new Set((allSuppliers ?? []).map((supplier) => supplier.city))].sort((a, b) => a.localeCompare(b, "ar")), [allSuppliers]);
-  const supplierFilters = { category: item?.name, ...(city ? { city } : {}), ...(rating ? { rating: Number(rating) } : {}), ...(type ? { type } : {}), ...(supplierPackage ? { package: supplierPackage } : {}), sort };
+  const supplierFilters = {
+    category: isAlmondItem ? "لوز" : item?.name,
+    ...(isAlmondItem && almondForm ? { variantForm: almondForm } : {}),
+    ...(isAlmondItem && almondPreparation ? { variantPreparation: almondPreparation } : {}),
+    ...(isAlmondItem && almondForm === "whole" && almondSize ? { variantSize: almondSize } : {}),
+    ...(city ? { city } : {}),
+    ...(rating ? { rating: Number(rating) } : {}),
+    ...(type ? { type } : {}),
+    ...(supplierPackage ? { package: supplierPackage } : {}),
+    sort,
+  };
   const suppliersQuery = useListSuppliers(supplierFilters, { query: { enabled: !!item && !redirectPath, queryKey: getListSuppliersQueryKey(supplierFilters) } });
   const term = search.trim().toLocaleLowerCase("ar");
   const visibleSubgroups = subgroups.filter((group) => group.name.toLocaleLowerCase("ar").includes(term));
-  const visibleItems = [...new Map((subgroup ? subgroupItems : term && subgroups.length ? cakeItems.concat(rootItems) : rootItems).map(category => [category.id, category])).values()]
-    .filter((category) => `${category.name} ${category.description ?? ""}`.toLocaleLowerCase("ar").includes(term))
-    .sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "ar"));
+  const itemSource = [...new Map((subgroup ? subgroupItems : term && subgroups.length ? cakeItems.concat(rootItems) : rootItems).map(category => [category.id, category])).values()];
+  const almondSource = itemSource.filter((category) => ALMOND_ITEM_NAMES.has(category.name));
+  const visibleItems: CategoryTile[] = [
+    ...(almondSource.length && ALMOND_SEARCH_LABELS.some((label) => label.toLocaleLowerCase("ar").includes(term))
+      ? [{ kind: "almond-union" as const, order: Math.min(...almondSource.map((category) => category.displayOrder)) }]
+      : []),
+    ...itemSource
+      .filter((category) => !ALMOND_ITEM_NAMES.has(category.name) && `${category.name} ${category.description ?? ""}`.toLocaleLowerCase("ar").includes(term))
+      .map((category) => ({ kind: "category" as const, category })),
+  ].sort((a, b) => {
+    const orderA = a.kind === "almond-union" ? a.order : a.category.displayOrder;
+    const orderB = b.kind === "almond-union" ? b.order : b.category.displayOrder;
+    return orderA - orderB || (a.kind === "almond-union" ? "لوز" : a.category.name).localeCompare(b.kind === "almond-union" ? "لوز" : b.category.name, "ar");
+  });
   const itemPathHere = (category: TaxonomyCategory) => {
     if (subgroup) return `${groupPath(subgroup, groups)}/${categorySlug(category)}`;
     if (root && category.directGroupIds?.includes(root.id)) return `/category/${root.slug}/${categorySlug(category)}`;
@@ -125,13 +156,17 @@ export default function ItemCategoryPage() {
           {!item ? <section>
             <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h2 className="text-2xl font-extrabold">{subgroup ? `الأصناف في ${subgroup.name}` : subgroups.length ? "من احتياجك إلى مورّدك" : "اختر الصنف الذي تبحث عنه"}</h2><p className="mt-2 text-sm text-muted-foreground">{subgroups.length && !subgroup ? "اختر مجموعة مستلزمات الكيك أو ابحث مباشرة عن صنف." : "اختر صنفاً لعرض الموردين المتخصصين فيه."}</p></div><label className="relative block w-full sm:w-80"><span className="sr-only">ابحث في أصناف المجموعة</span><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input data-testid="input-child-category-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={subgroups.length && !subgroup ? "ابحث في جميع مستلزمات الكيك..." : "ابحث في الأصناف..."} className="h-11 w-full rounded-xl border border-border bg-card pr-10 pl-3 text-sm outline-none focus:border-primary" /></label></div>
             {!subgroup && visibleSubgroups.length > 0 && <div className="mb-10"><h3 className="mb-4 text-lg font-extrabold">المجموعات الفرعية</h3><div className="grid grid-cols-2 gap-3 md:grid-cols-3">{visibleSubgroups.map((group) => { const TileIcon = getGroupIcon(group); return <Link key={group.id} href={groupPath(group, groups)} data-testid={`card-subgroup-${group.id}`} className="group flex min-h-44 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-warm"><TileIcon className="h-9 w-9 text-primary" strokeWidth={1.5} aria-hidden="true" /><div><h4 className="text-lg font-bold group-hover:text-primary">{group.name}</h4><p className="mt-1 text-sm text-muted-foreground">{group.categoryCount.toLocaleString("ar-SA")} أصناف · {group.supplierCount.toLocaleString("ar-SA")} مورد</p></div></Link>; })}</div></div>}
-              {(subgroup || term || !subgroups.length || rootItems.length > 0) && <div><h3 className="mb-4 text-lg font-extrabold">{subgroups.length && !subgroup ? term ? "الأصناف المطابقة" : "أصناف في المجموعة الرئيسية" : "الأصناف"}</h3>{visibleItems.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleItems.map((category) => <Link key={category.id} href={itemPathHere(category)} data-testid={`card-child-category-${category.id}`} className="group flex min-h-28 flex-col justify-center rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><div><h4 className="text-lg font-bold group-hover:text-primary">{category.name}</h4><p className="mt-1 text-sm text-muted-foreground">{category.supplierCount.toLocaleString("ar-SA")} مورد</p>{subgroups.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</p>}</div></Link>)}</div> : <Problem title={activeItems.length || cakeItems.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف حالياً"} />}</div>}
+             {(subgroup || term || !subgroups.length || rootItems.length > 0) && <div><h3 className="mb-4 text-lg font-extrabold">{subgroups.length && !subgroup ? term ? "الأصناف المطابقة" : "أصناف في المجموعة الرئيسية" : "الأصناف"}</h3>{visibleItems.length ? <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{visibleItems.map((tile) => tile.kind === "almond-union"
+                ? <Link key="almond-union" href="/suppliers?category=لوز" data-testid="card-child-category-almond-union" className="group flex min-h-28 flex-col justify-center rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><div><h4 className="text-lg font-bold group-hover:text-primary">لوز</h4><p className="mt-1 text-sm text-muted-foreground">حب · شرائح · مطحون</p><p className="mt-1 text-xs text-muted-foreground">تصفح الموردين في جميع أشكال اللوز</p></div></Link>
+                : <Link key={tile.category.id} href={itemPathHere(tile.category)} data-testid={`card-child-category-${tile.category.id}`} className="group flex min-h-28 flex-col justify-center rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:scale-[1.02] hover:shadow-warm"><div><h4 className="text-lg font-bold group-hover:text-primary">{tile.category.name}</h4><p className="mt-1 text-sm text-muted-foreground">{tile.category.supplierCount.toLocaleString("ar-SA")} مورد</p>{subgroups.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{categoryBreadcrumb(tile.category, groups)}</p>}</div></Link>)}</div> : <Problem title={activeItems.length || cakeItems.length ? "لا توجد أصناف تطابق بحثك" : "لا توجد أصناف حالياً"} />}</div>}
            </section> : <section><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-extrabold">الموردون في {item.name}</h2><p className="mt-2 text-sm text-muted-foreground">{item.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف قبل تطبيق الفلاتر</p></div><Link href={`/inquiries/new?itemId=${item.id}`} data-testid={`link-category-inquiry-${item.id}`} className="inquiry-btn inquiry-btn-primary">اسأل عن علامة أو نوع محدد</Link></div>
-            <SupplierFilterControls city={city} onCityChange={setCity} type={type} onTypeChange={setType} rating={rating} onRatingChange={setRating} supplierPackage={supplierPackage} onPackageChange={setSupplierPackage} sort={sort} onSortChange={setSort} cities={cities} />
+             <SupplierFilterControls city={city} onCityChange={setCity} type={type} onTypeChange={setType} rating={rating} onRatingChange={setRating} supplierPackage={supplierPackage} onPackageChange={setSupplierPackage} sort={sort} onSortChange={setSort} cities={cities} />
+             {isAlmondItem && <AlmondVariantFilters form={almondForm} onFormChange={(value) => { setAlmondForm(value); if (value !== "whole") setAlmondSize(""); }} preparation={almondPreparation} onPreparationChange={setAlmondPreparation} size={almondSize} onSizeChange={setAlmondSize} />}
+             {isAlmondItem && <p className="mt-3 text-sm text-muted-foreground" data-testid="text-almond-directory-scope">تصفح اللوز بصورة عامة لعرض الموردين المسجلين، أو اختر فلاتر دقيقة لعرض الخيارات التي أعلنها الموردون فقط.</p>}
             {suppliersQuery.isLoading && !suppliersQuery.data ? <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" role="status" aria-label="جارٍ تحميل الموردين">{[1, 2, 3].map((i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />)}</div>
               : suppliersQuery.error ? <div className="mt-6"><Problem title="تعذر تحميل الموردين" onRetry={() => void suppliersQuery.refetch()} /></div>
               : suppliersQuery.data?.length ? <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">{suppliersQuery.data.map((supplier) => <Link key={supplier.id} href={`/supplier/${supplier.id}`} data-testid={`card-category-supplier-${supplier.id}`} className="group flex min-h-48 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-warm"><div className="flex items-center gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-xl font-bold text-primary">{supplier.name.slice(0, 1)}</span><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{supplier.name}</h3><span className="flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-4 w-4" />{supplier.city}</span></div></div><p className="mt-4 line-clamp-2 flex-1 text-sm leading-6 text-muted-foreground">{supplier.description}</p><div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm"><span className="flex items-center gap-1 font-bold text-primary"><Star className="h-4 w-4 fill-current" />{supplier.averageRating.toFixed(1)}</span>{supplier.isVerified && <span className="flex items-center gap-1 text-muted-foreground"><ShieldCheck className="h-4 w-4" />موثق</span>}</div></Link>)}</div>
-              : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center"><Users className="mx-auto mb-3 h-10 w-10 text-primary/60" /><h3 className="text-lg font-bold">لا يوجد موردون يطابقون الفلاتر</h3><p className="mt-2 text-sm text-muted-foreground">جرّب مدينة أو تقييماً آخر، أو تصفح بقية الأصناف.</p><button data-testid="button-clear-supplier-filters" type="button" onClick={() => { setCity(""); setRating(""); setType(""); setSupplierPackage(""); setSort("rating"); }} className="mt-4 rounded-xl border border-primary px-5 py-2 text-sm font-bold text-primary">مسح الفلاتر</button></div>}
+               : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center"><Users className="mx-auto mb-3 h-10 w-10 text-primary/60" /><h3 className="text-lg font-bold">لا يوجد موردون يطابقون الفلاتر</h3><p className="mt-2 text-sm text-muted-foreground">جرّب مدينة أو تقييماً آخر، أو تصفح بقية الأصناف.</p><button data-testid="button-clear-supplier-filters" type="button" onClick={() => { setCity(""); setRating(""); setType(""); setSupplierPackage(""); setAlmondForm(""); setAlmondPreparation(""); setAlmondSize(""); setSort("rating"); }} className="mt-4 rounded-xl border border-primary px-5 py-2 text-sm font-bold text-primary">مسح الفلاتر</button></div>}
           </section>}
         </div>
       </>}

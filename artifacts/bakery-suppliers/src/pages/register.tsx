@@ -23,6 +23,29 @@ type BuyerForm = {
 type RegistrationCategory = { value: string; label: string; description?: string; children?: RegistrationCategory[] };
 type RegistrationCategoryGroup = { label: string; items: RegistrationCategory[] };
 
+const ALMOND_CATEGORY_ANCHOR = "لوز حب";
+const ALMOND_CATEGORY_NAMES = new Set([ALMOND_CATEGORY_ANCHOR, "لوز شرائح", "لوز مطحون"]);
+
+function normalizeRegistrationCategory(value: string) {
+  return ALMOND_CATEGORY_NAMES.has(value) || value === "لوز" ? ALMOND_CATEGORY_ANCHOR : value;
+}
+
+function presentAlmondAsSingleCategory(category: RegistrationCategory): RegistrationCategory[] {
+  if (!ALMOND_CATEGORY_NAMES.has(category.value)) {
+    return [{
+      ...category,
+      children: category.children?.flatMap(presentAlmondAsSingleCategory),
+    }];
+  }
+  if (category.value !== ALMOND_CATEGORY_ANCHOR) return [];
+  return [{
+    ...category,
+    label: "لوز",
+    description: undefined,
+    children: category.children?.flatMap(presentAlmondAsSingleCategory),
+  }];
+}
+
 const supplierCities = ["الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة"];
 const buyerCities = ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران", "الأحساء", "الجبيل", "القطيف", "حفر الباطن", "رأس تنورة", "بريدة", "تبوك", "أبها", "حائل", "جازان", "نجران", "سكاكا", "عرعر", "الطائف", "ينبع"];
 const buyerBusinessTypes = [
@@ -72,7 +95,13 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
             .sort((a, b) => a.displayOrder - b.displayOrder)
             .map((node) => ({ value: node.name, label: node.name })),
         }],
-      }));
+      }))
+      .map((group) => ({
+        ...group,
+        label: group.label === ALMOND_CATEGORY_ANCHOR ? "لوز" : group.label,
+        items: group.items.flatMap(presentAlmondAsSingleCategory),
+      }))
+      .filter((group) => group.items.length > 0);
   }, [taxonomyGroups]);
   const requestedType = new URLSearchParams(window.location.search).get("type");
   const initialType = defaultType ?? (requestedType === "supplier" || requestedType === "buyer" ? requestedType : null);
@@ -83,7 +112,8 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
     return {
       ...draft,
       categories: [...new Set(categories
-        .filter((category) => category !== "أخرى"))],
+        .filter((category) => category !== "أخرى")
+        .map(normalizeRegistrationCategory))],
     };
   });
   const [buyer, setBuyer] = useState<BuyerForm>(() => loadDraft("buyer", emptyBuyer));
@@ -97,6 +127,7 @@ export default function RegisterPage({ defaultType }: { defaultType?: Registrati
     const allowedCategories = new Set(taxonomyGroups.filter((node) => node.isActive).map((node) => node.name));
     setSupplier((current) => {
       const categories = [...new Set(current.categories
+        .map(normalizeRegistrationCategory)
         .filter((category) => allowedCategories.has(category)))];
       return categories.length === current.categories.length &&
         categories.every((category, index) => category === current.categories[index])
@@ -250,7 +281,7 @@ function SupplierWizard({ form, categoryGroups, categoriesLoading, categoriesErr
       ) : (
         <>
       <div className="mb-6 rounded-xl bg-muted/30 p-4 text-sm">
-        <span className="font-bold">فئاتك:</span> {form.categories.join("، ")}
+        <span className="font-bold">فئاتك:</span> {form.categories.map((category) => category === ALMOND_CATEGORY_ANCHOR ? "لوز" : category).join("، ")}
         <button type="button" onClick={() => setStep(0)} className="mr-3 font-bold text-primary hover:underline">تعديل</button>
       </div>
       <div className="mb-6">
@@ -388,6 +419,7 @@ function SupplierCategoryStep({ selected, groups, isLoading, hasError, error, on
     <div>
       <h2 className="text-2xl font-extrabold">ما الذي توفره؟</h2>
       <p className="mt-1 text-sm text-muted-foreground">اختر الأصناف التي توفرها فعلياً، ثم اكتب التفاصيل في الخطوة التالية.</p>
+      <p className="mt-2 rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-3 text-sm leading-6 text-muted-foreground">اختيار «لوز» يربط ملفك بفئة اللوز، ولا يعني أنك توفر جميع أنواعه. بعد الموافقة وتفعيل حسابك يمكنك ضبط الأنواع المتوفرة من لوحة المورد.</p>
       {isLoading ? (
         <p className="mt-5 rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground" role="status">جارٍ تحميل التصنيفات...</p>
       ) : hasError ? (

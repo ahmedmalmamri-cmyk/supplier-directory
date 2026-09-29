@@ -9,12 +9,22 @@ import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/S
 import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getGroupIcon } from "@/lib/group-icons";
 import { trackEvent } from "@/lib/analytics";
+import { AlmondVariantFilters, type AlmondFormFilter, type AlmondPreparationFilter, type AlmondSizeFilter } from "@/components/suppliers/AlmondVariantFilters";
+
+const isAlmondCategory = (name: string) => ["لوز", "لوز حب", "لوز شرائح", "لوز مطحون"].includes(name);
+const initialVariantForm = (value: string | null): AlmondFormFilter => value === "whole" || value === "slices" || value === "powder" ? value : "";
+const initialVariantPreparation = (value: string | null): AlmondPreparationFilter => value === "raw" || value === "roasted" ? value : "";
+const initialVariantSize = (value: string | null): AlmondSizeFilter => value === "32" || value === "34" || value === "36" ? value : "";
 
 export default function SuppliersPage() {
   const [initialParams] = useState(() => new URLSearchParams(window.location.search));
   const [searchTerm, setSearchTerm] = useState(initialParams.get("q") ?? "");
   const initialType = initialParams.get("type") ?? "";
-  const [category, setCategory] = useState(initialParams.get("category") ?? "");
+  const initialCategory = initialParams.get("category") ?? "";
+  const [category, setCategory] = useState(isAlmondCategory(initialCategory) ? "لوز" : initialCategory);
+  const [almondForm, setAlmondForm] = useState<AlmondFormFilter>(() => initialVariantForm(initialParams.get("variantForm")));
+  const [almondPreparation, setAlmondPreparation] = useState<AlmondPreparationFilter>(() => initialVariantPreparation(initialParams.get("variantPreparation")));
+  const [almondSize, setAlmondSize] = useState<AlmondSizeFilter>(() => initialVariantForm(initialParams.get("variantForm")) === "whole" ? initialVariantSize(initialParams.get("variantSize")) : "");
   const [city, setCity] = useState(initialParams.get("city") ?? "");
   const [type, setType] = useState(SUPPLIER_TYPES.includes(initialType as typeof SUPPLIER_TYPES[number]) ? initialType : "");
   const [rating, setRating] = useState(initialParams.get("rating") ?? "");
@@ -26,20 +36,24 @@ export default function SuppliersPage() {
 
   const { categories: itemCategories, groups, roots: categoryRoots, isLoading: isLoadingCategories, error: categoriesError } = useTaxonomy();
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
-  const { data: suppliers, isLoading, error } = useListSuppliers({
+  const supplierFilters = {
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
       ...(category ? { category } : {}),
+      ...(category === "لوز" && almondForm ? { variantForm: almondForm } : {}),
+      ...(category === "لوز" && almondPreparation ? { variantPreparation: almondPreparation } : {}),
+      ...(category === "لوز" && almondForm === "whole" && almondSize ? { variantSize: almondSize } : {}),
       ...(city ? { city } : {}),
       ...(type ? { type } : {}),
       ...(rating ? { rating: Number(rating) } : {}),
       ...(supplierPackage ? { package: supplierPackage } : {}),
       sort,
-    });
+    };
+  const { data: suppliers, isLoading, error } = useListSuppliers(supplierFilters);
   const lastTrackedFilter = useRef("");
   useEffect(() => {
-    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage) || sort !== "rating";
+    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage || almondForm || almondPreparation || almondSize) || sort !== "rating";
     if (!hasActiveFilter || isLoading || error || !suppliers) return;
-    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, sort });
+    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, hasAlmondForm: Boolean(almondForm), hasAlmondPreparation: Boolean(almondPreparation), hasAlmondSize: Boolean(almondSize), sort });
     if (lastTrackedFilter.current === key) return;
     lastTrackedFilter.current = key;
     trackEvent("supplier_directory_filtered", {
@@ -49,10 +63,11 @@ export default function SuppliersPage() {
       has_type: Boolean(type),
       has_rating: Boolean(rating),
       has_plan: Boolean(supplierPackage),
+      has_almond_variant_filter: Boolean(almondForm || almondPreparation || almondSize),
       sort,
       results_count: suppliers.length,
     });
-  }, [category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
+  }, [almondForm, almondPreparation, almondSize, category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
   const cities = useMemo(
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
@@ -64,6 +79,9 @@ export default function SuppliersPage() {
     setCity("");
     setRating("");
     setSupplierPackage("");
+    setAlmondForm("");
+    setAlmondPreparation("");
+    setAlmondSize("");
     setSearchTerm("");
     setLocation("/suppliers");
   };
@@ -102,6 +120,15 @@ export default function SuppliersPage() {
               onSortChange={setSort}
               cities={cities}
             />
+            {category === "لوز" && <AlmondVariantFilters
+              form={almondForm}
+              onFormChange={(value) => { setAlmondForm(value); if (value !== "whole") setAlmondSize(""); }}
+              preparation={almondPreparation}
+              onPreparationChange={setAlmondPreparation}
+              size={almondSize}
+              onSizeChange={setAlmondSize}
+            />}
+            {category === "لوز" && <p className="mx-auto mt-3 max-w-5xl text-right text-sm leading-6 text-muted-foreground" data-testid="text-almond-directory-scope">البحث العام عن اللوز يشمل الموردين المسجلين حتى إن لم يحددوا تفاصيل الخيارات. الفلاتر الدقيقة لا تعرض إلا الموردين الذين أعلنوا عن تركيبة مطابقة.</p>}
           </div>
         </div>
       </div>

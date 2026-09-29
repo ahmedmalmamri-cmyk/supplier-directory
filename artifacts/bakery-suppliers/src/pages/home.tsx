@@ -18,7 +18,8 @@ import { useGetHome, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SupplierFilterControls } from "@/components/suppliers/SupplierFilterControls";
-import { CategorySearch, RootCard, useTaxonomy } from "@/components/categories/taxonomy";
+import { CategorySearch, useTaxonomy } from "@/components/categories/taxonomy";
+import { HomeTaxonomyGroups } from "@/components/categories/HomeTaxonomyGroups";
 
 function Rating({ value }: { value: number }) {
   return <span className="inline-flex items-center gap-1 text-sm font-bold text-gold-ink"><Star className="h-4 w-4 fill-accent text-accent" aria-hidden="true" />{value.toFixed(1)}</span>;
@@ -47,6 +48,8 @@ export default function Home() {
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
   );
+  const publicRoots = roots.filter((root) => root.name.trim() !== "الخدمات والاستشارات");
+  const totalRootCategories = publicRoots.reduce((sum, root) => sum + root.categoryCount, 0);
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -86,27 +89,29 @@ export default function Home() {
 
       <section className="border-y border-border bg-muted/20" aria-labelledby="home-category-heading">
         <div className="container mx-auto max-w-7xl px-4 py-6 md:py-11">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="mb-1 text-xs font-bold text-primary">ابدأ من احتياجك</p>
-               <h2 id="home-category-heading" className="text-2xl font-extrabold md:text-3xl">تصفح حسب المجموعة</h2>
-               <p className="mt-1 text-sm text-muted-foreground">ابدأ بإحدى المجموعات الرئيسية، ثم اختر الصنف الفرعي للوصول إلى مورديه.</p>
+              <p className="mb-1.5 text-xs font-extrabold tracking-wide text-gold-ink">اختر نقطة البداية</p>
+              <h2 id="home-category-heading" className="text-2xl font-extrabold tracking-tight md:text-3xl">تصفّح حسب عائلة المكوّن</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">اختر مجموعة رئيسية أو فرعية، ثم انتقل مباشرة إلى الأصناف ومورديها.</p>
             </div>
-             <span className="hidden text-sm font-bold text-muted-foreground sm:block">{roots.length.toLocaleString("ar-SA")} مجموعة رئيسية</span>
+            <span className="inline-flex w-fit items-center rounded-full border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground">
+              {publicRoots.length.toLocaleString("ar-SA")} مجموعات · {totalRootCategories.toLocaleString("ar-SA")} صنفاً
+            </span>
           </div>
           {isLoadingItemCategories ? (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" role="status" aria-label="جارٍ تحميل التصنيفات">
-              {[1, 2, 3, 4].map((item) => <div key={item} className="h-36 animate-pulse rounded-2xl bg-muted" />)}
+            <div className="grid gap-4 md:grid-cols-2" role="status" aria-label="جارٍ تحميل التصنيفات">
+              {[1, 2, 3, 4].map((item) => <div key={item} className="h-56 animate-pulse rounded-[1.35rem] bg-muted" />)}
             </div>
           ) : itemCategoriesError ? (
-            <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-card px-4 py-5 text-center text-sm text-destructive" role="alert"><p>تعذر تحميل التصنيفات.</p><button type="button" data-testid="button-retry-home-categories" onClick={() => void refetchItemCategories()} className="min-h-10 rounded-xl border border-destructive/25 px-4 py-2 font-bold transition-colors hover:bg-destructive/5">إعادة المحاولة</button></div>
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-card px-4 py-5 text-center text-sm text-destructive" role="alert"><p>تعذر تحميل التصنيفات.</p><button type="button" data-testid="button-retry-home-categories" onClick={() => void refetchItemCategories()} className="min-h-10 rounded-xl border border-destructive/25 px-4 py-2 font-bold transition-colors hover:bg-destructive/5">إعادة المحاولة</button></div>
           ) : (
             <>
-                <div className="mt-6 max-w-xl"><CategorySearch value={categorySearch} onChange={setCategorySearch} categories={categories} groups={groups} /></div>
-               {roots.length ? (
-                 <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{roots.map((category) => <RootCard key={category.id} category={category} categories={categories} />)}</div>
+              <div className="mb-5 max-w-xl"><CategorySearch value={categorySearch} onChange={setCategorySearch} categories={categories} groups={groups} /></div>
+              {publicRoots.length ? (
+                <HomeTaxonomyGroups roots={publicRoots} categories={categories} groups={groups} />
               ) : (
-                <div className="mt-5 rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center"><Search className="mx-auto mb-3 h-8 w-8 text-primary/50" aria-hidden="true" /><p className="font-bold">لا توجد تصنيفات مطابقة</p><p className="mt-1 text-sm text-muted-foreground">جرّب كلمة بحث أخرى.</p></div>
+                <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center"><Search className="mx-auto mb-3 h-8 w-8 text-primary/50" aria-hidden="true" /><p className="font-bold">لا توجد مجموعات متاحة حالياً</p></div>
               )}
             </>
           )}

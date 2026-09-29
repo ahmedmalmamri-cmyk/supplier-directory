@@ -69,6 +69,9 @@ export function categoryBreadcrumb(category: TaxonomyCategory, groups: Group[]) 
 export function CategorySearch({ value, onChange, categories, groups = [], testId = "input-category-search" }: { value: string; onChange: (value: string) => void; categories: TaxonomyCategory[]; groups?: Group[]; testId?: string }) {
   const term = value.trim().toLocaleLowerCase("ar");
   const matches = term ? categories.filter((c) => !(c.parentId === null && groups.some((group) => group.id === c.id)) && `${c.name} ${c.description ?? ""} ${c.slug} ${categoryBreadcrumb(c, groups)}`.toLocaleLowerCase("ar").includes(term)) : [];
+  const almondNames = new Set(["لوز حب", "لوز شرائح", "لوز مطحون"]);
+  const hasAlmondMatch = matches.some((category) => almondNames.has(category.name)) || (term && "لوز".includes(term) && categories.some((category) => almondNames.has(category.name)));
+  const regularMatches = matches.filter((category) => !almondNames.has(category.name));
   const matchingGroups = term ? groups.filter((group) => `${group.name} ${group.slug}`.toLocaleLowerCase("ar").includes(term)) : [];
   return <div className="relative">
     <label className="relative block">
@@ -77,7 +80,7 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
       <input data-testid={testId} type="search" value={value} onChange={(event) => onChange(event.target.value)} placeholder="ابحث في جميع التصنيفات والأنواع..." className="h-13 w-full rounded-2xl border border-border bg-card py-3 pr-12 pl-4 text-sm text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
     </label>
     {term && <div className="absolute inset-x-0 top-full z-20 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-warm-lg" role="region" aria-label="نتائج بحث التصنيفات">
-      {matches.length || matchingGroups.length ? <>
+      {regularMatches.length || hasAlmondMatch || matchingGroups.length ? <>
         {matchingGroups.map((group) => {
           const Icon = getGroupIcon(group);
            return <Link key={`group-${group.id}`} href={groupPath(group, groups)} data-testid={`link-group-search-${group.id}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -86,7 +89,11 @@ export function CategorySearch({ value, onChange, categories, groups = [], testI
             <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Link>;
         })}
-        {matches.map((category) => {
+        {hasAlmondMatch && <Link href="/suppliers?category=لوز" data-testid="link-category-search-almond" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">لوز</strong><span className="block truncate text-xs text-muted-foreground">حب · شرائح · مطحون — حدّد المواصفات لدى الموردين</span></span>
+          <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        </Link>}
+        {regularMatches.map((category) => {
         return <Link key={category.id} href={categoryPath(category, categories, groups)} data-testid={`link-category-search-${category.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
            <span className="min-w-0 flex-1"><strong className="block truncate text-foreground">{category.name}</strong><span className="block truncate text-xs text-muted-foreground">{categoryBreadcrumb(category, groups)}</span></span>
           <ArrowUpLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

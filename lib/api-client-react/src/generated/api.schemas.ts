@@ -855,6 +855,71 @@ export interface Supplier {
   productCount?: number;
 }
 
+export type AlmondVariantForm = typeof AlmondVariantForm[keyof typeof AlmondVariantForm];
+
+
+export const AlmondVariantForm = {
+  whole: 'whole',
+  slices: 'slices',
+  powder: 'powder',
+} as const;
+
+export type AlmondVariantPreparation = typeof AlmondVariantPreparation[keyof typeof AlmondVariantPreparation];
+
+
+export const AlmondVariantPreparation = {
+  raw: 'raw',
+  roasted: 'roasted',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AlmondVariantSize = typeof AlmondVariantSize[keyof typeof AlmondVariantSize] | null;
+
+
+export const AlmondVariantSize = {
+  NUMBER_32: '32',
+  NUMBER_34: '34',
+  NUMBER_36: '36',
+} as const;
+
+export interface AlmondVariant {
+  form: AlmondVariantForm;
+  preparation: AlmondVariantPreparation;
+  /** @nullable */
+  size: AlmondVariantSize;
+}
+
+export type SupplierAlmondVariantsMode = typeof SupplierAlmondVariantsMode[keyof typeof SupplierAlmondVariantsMode];
+
+
+export const SupplierAlmondVariantsMode = {
+  unspecified: 'unspecified',
+  all: 'all',
+  selected: 'selected',
+} as const;
+
+export interface SupplierAlmondVariants {
+  eligible: boolean;
+  mode: SupplierAlmondVariantsMode;
+  variants: AlmondVariant[];
+}
+
+export type SupplierAlmondVariantsInputMode = typeof SupplierAlmondVariantsInputMode[keyof typeof SupplierAlmondVariantsInputMode];
+
+
+export const SupplierAlmondVariantsInputMode = {
+  unspecified: 'unspecified',
+  all: 'all',
+  selected: 'selected',
+} as const;
+
+export interface SupplierAlmondVariantsInput {
+  mode: SupplierAlmondVariantsInputMode;
+  variants: AlmondVariant[];
+}
+
 export interface Product {
   id: number;
   supplierId: number;
@@ -1568,6 +1633,18 @@ city?: string;
 type?: string;
 category?: string;
 /**
+ * Precise almond form filter; only valid with category="لوز"
+ */
+variantForm?: ListSuppliersVariantForm;
+/**
+ * Precise almond preparation filter; only valid with category="لوز"
+ */
+variantPreparation?: ListSuppliersVariantPreparation;
+/**
+ * Precise whole-almond size filter; only valid with variantForm=whole
+ */
+variantSize?: ListSuppliersVariantSize;
+/**
  * @minimum 1
  * @maximum 5
  */
@@ -1576,6 +1653,32 @@ package?: ListSuppliersPackage;
 verified?: boolean;
 sort?: ListSuppliersSort;
 };
+
+export type ListSuppliersVariantForm = typeof ListSuppliersVariantForm[keyof typeof ListSuppliersVariantForm];
+
+
+export const ListSuppliersVariantForm = {
+  whole: 'whole',
+  slices: 'slices',
+  powder: 'powder',
+} as const;
+
+export type ListSuppliersVariantPreparation = typeof ListSuppliersVariantPreparation[keyof typeof ListSuppliersVariantPreparation];
+
+
+export const ListSuppliersVariantPreparation = {
+  raw: 'raw',
+  roasted: 'roasted',
+} as const;
+
+export type ListSuppliersVariantSize = typeof ListSuppliersVariantSize[keyof typeof ListSuppliersVariantSize];
+
+
+export const ListSuppliersVariantSize = {
+  NUMBER_32: '32',
+  NUMBER_34: '34',
+  NUMBER_36: '36',
+} as const;
 
 export type ListSuppliersPackage = typeof ListSuppliersPackage[keyof typeof ListSuppliersPackage];
 

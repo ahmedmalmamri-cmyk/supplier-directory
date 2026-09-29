@@ -1477,6 +1477,9 @@ export const ListSuppliersQueryParams = zod.object({
   "city": zod.coerce.string().optional(),
   "type": zod.coerce.string().optional(),
   "category": zod.coerce.string().optional(),
+  "variantForm": zod.enum(['whole', 'slices', 'powder']).optional().describe('Precise almond form filter; only valid with category="لوز"'),
+  "variantPreparation": zod.enum(['raw', 'roasted']).optional().describe('Precise almond preparation filter; only valid with category="لوز"'),
+  "variantSize": zod.enum(['32', '34', '36']).optional().describe('Precise whole-almond size filter; only valid with variantForm=whole'),
   "rating": zod.coerce.number().min(1).max(listSuppliersQueryRatingMax).optional(),
   "package": zod.enum(['verified', 'featured']).optional(),
   "verified": zod.coerce.boolean().optional(),
@@ -1786,6 +1789,37 @@ export const LoginSupplierResponse = zod.object({
   "whatsapp": zod.string(),
   "isVerified": zod.boolean()
 })
+})
+
+
+export const GetSupplierAlmondVariantsResponse = zod.object({
+  "eligible": zod.boolean(),
+  "mode": zod.enum(['unspecified', 'all', 'selected']),
+  "variants": zod.array(zod.object({
+  "form": zod.enum(['whole', 'slices', 'powder']),
+  "preparation": zod.enum(['raw', 'roasted']),
+  "size": zod.union([zod.literal('32'),zod.literal('34'),zod.literal('36'),zod.literal(null)]).nullable()
+}))
+})
+
+
+export const UpdateSupplierAlmondVariantsBody = zod.object({
+  "mode": zod.enum(['unspecified', 'all', 'selected']),
+  "variants": zod.array(zod.object({
+  "form": zod.enum(['whole', 'slices', 'powder']),
+  "preparation": zod.enum(['raw', 'roasted']),
+  "size": zod.union([zod.literal('32'),zod.literal('34'),zod.literal('36'),zod.literal(null)]).nullable()
+}))
+})
+
+export const UpdateSupplierAlmondVariantsResponse = zod.object({
+  "eligible": zod.boolean(),
+  "mode": zod.enum(['unspecified', 'all', 'selected']),
+  "variants": zod.array(zod.object({
+  "form": zod.enum(['whole', 'slices', 'powder']),
+  "preparation": zod.enum(['raw', 'roasted']),
+  "size": zod.union([zod.literal('32'),zod.literal('34'),zod.literal('36'),zod.literal(null)]).nullable()
+}))
 })
 
 

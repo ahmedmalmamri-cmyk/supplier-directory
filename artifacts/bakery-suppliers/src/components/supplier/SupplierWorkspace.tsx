@@ -1,17 +1,18 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowUpLeft, BarChart3, ClipboardList, LayoutDashboard, MapPinned } from "lucide-react";
+import { ArrowUpLeft, BarChart3, ClipboardList, LayoutDashboard, MapPinned, Wheat } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { SupplierUnauthorizedError } from "@/hooks/use-supplier-insights";
 
 export function SupplierWorkspace({ title, eyebrow, subtitle, children, error }: { title: string; eyebrow: string; subtitle: string; children: ReactNode; error?: Error | null }) {
   const [location, navigate] = useLocation();
   useEffect(() => {
-    if (error instanceof SupplierUnauthorizedError) navigate("/supplier/login");
+    if (error instanceof SupplierUnauthorizedError || (error as (Error & { status?: number }) | null)?.status === 401) navigate("/supplier/login");
   }, [error, navigate]);
   const links = [
     { href: "/supplier/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
     { href: "/supplier/market", label: "السوق", icon: MapPinned },
+    { href: "/supplier/almond-variants", label: "أصناف اللوز", icon: Wheat },
     { href: "/supplier/portal", label: "التواصل والبلاغات", icon: ClipboardList },
   ];
   return <MainLayout>

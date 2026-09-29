@@ -22,6 +22,7 @@ import {
   SendContactResponse,
 } from "@workspace/api-zod";
 import { directoryDb, refreshSupplierRatings } from "../lib/directory-db";
+import { buildPublicAlmondSupplierFilter, getAlmondItemIds } from "../lib/almond-variants";
 import { getBuyerIdFromRequest } from "../lib/buyer-auth";
 import { getSupplierIdFromRequest } from "../lib/supplier-auth";
 import { recordSupplierStat } from "../lib/supplier-stats";
@@ -229,7 +230,19 @@ router.get("/suppliers", (req, res): void => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { q, city, type, category, rating, package: supplierPackage, verified, sort = "rating" } = parsed.data;
+  const {
+    q, city, type, category, variantForm, variantPreparation, variantSize,
+    rating, package: supplierPackage, verified, sort = "rating",
+  } = parsed.data;
+  const hasAlmondVariantFilter = variantForm !== undefined || variantPreparation !== undefined || variantSize !== undefined;
+  if (hasAlmondVariantFilter && category !== "لوز") {
+    res.status(400).json({ error: "فلاتر أصناف اللوز تتطلب تحديد category=لوز." });
+    return;
+  }
+  if (variantSize !== undefined && variantForm !== "whole") {
+    res.status(400).json({ error: "يُستخدم المقاس فقط مع variantForm=whole." });
+    return;
+  }
   const values: (string | number)[] = [];
   const clauses: string[] = ["s.is_active = 1"];
   if (q) {
@@ -251,59 +264,68 @@ router.get("/suppliers", (req, res): void => {
   }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (category) {
-    const selection = resolvePublicSupplierTaxonomySelection(category);
-    if (selection.itemIds.length || selection.nodeIds.length) {
-      const matches: string[] = [];
-      if (selection.itemIds.length) {
-        const itemPlaceholders = selection.itemIds.map(() => "?").join(", ");
-        matches.push(`
-          EXISTS (
-            SELECT 1 FROM supplier_taxonomy_item_suppliers itemLink
-            WHERE itemLink.supplier_id = s.id
-              AND itemLink.item_id IN (${itemPlaceholders})
-          )
-        `);
-        values.push(...selection.itemIds);
-      }
-      if (selection.nodeIds.length) {
-        const nodePlaceholders = selection.nodeIds.map(() => "?").join(", ");
-        matches.push(`
-          EXISTS (
-            SELECT 1 FROM supplier_taxonomy_supplier_links nodeLink
-            WHERE nodeLink.supplier_id = s.id
-              AND nodeLink.node_id IN (${nodePlaceholders})
-          )
-        `);
-        values.push(...selection.nodeIds);
-      }
-      clauses.push(`(${matches.join(" OR ")})`);
-    } else if (selection.known) {
-      clauses.push("0");
+    if (category === "لوز") {
+      const almondFilter = buildPublicAlmondSupplierFilter(
+        getAlmondItemIds(directoryDb),
+        hasAlmondVariantFilter ? { form: variantForm, preparation: variantPreparation, size: variantSize } : undefined,
+      );
+      clauses.push(almondFilter.sql);
+      values.push(...almondFilter.params);
     } else {
-      const categoryTerms = ({
-        "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
-        "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
-        "علب وتغليف": ["علب وتغليف", "عبوات وتغليف"],
-        "تغليف وعلب": ["علب وتغليف", "عبوات وتغليف", "أكياس مطبوعة", "كراتين مطبوعة"],
-        "معدات وأفران": ["معدات وأفران", "معدات وأدوات"],
-        "أدوات صغيرة": ["أدوات صغيرة", "معدات وأدوات"],
-        "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
-      } as Record<string, string[]>)[category] ?? [category];
-      const patterns = categoryTerms.map((term) => `%${term}%`);
-      const requestCategoryFilters = patterns.map(() => "sr.categories LIKE ?").join(" OR ");
-      const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
-      clauses.push(`(
-        EXISTS (
-          SELECT 1 FROM supplier_requests sr
-          WHERE sr.id = s.request_id AND (${requestCategoryFilters})
-        )
-        OR EXISTS (
-          SELECT 1 FROM products tp
-          JOIN categories tc ON tc.id = tp.category_id
-          WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
-        )
-      )`);
-      values.push(...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
+      const selection = resolvePublicSupplierTaxonomySelection(category);
+      if (selection.itemIds.length || selection.nodeIds.length) {
+        const matches: string[] = [];
+        if (selection.itemIds.length) {
+          const itemPlaceholders = selection.itemIds.map(() => "?").join(", ");
+          matches.push(`
+            EXISTS (
+              SELECT 1 FROM supplier_taxonomy_item_suppliers itemLink
+              WHERE itemLink.supplier_id = s.id
+                AND itemLink.item_id IN (${itemPlaceholders})
+            )
+          `);
+          values.push(...selection.itemIds);
+        }
+        if (selection.nodeIds.length) {
+          const nodePlaceholders = selection.nodeIds.map(() => "?").join(", ");
+          matches.push(`
+            EXISTS (
+              SELECT 1 FROM supplier_taxonomy_supplier_links nodeLink
+              WHERE nodeLink.supplier_id = s.id
+                AND nodeLink.node_id IN (${nodePlaceholders})
+            )
+          `);
+          values.push(...selection.nodeIds);
+        }
+        clauses.push(`(${matches.join(" OR ")})`);
+      } else if (selection.known) {
+        clauses.push("0");
+      } else {
+        const categoryTerms = ({
+          "زبدة ودهون": ["زبدة ودهون", "دهون وزبدة", "زبدة"],
+          "شوكولاتة وكاكاو": ["شوكولاتة وكاكاو", "شوكولاتة", "كاكاو"],
+          "علب وتغليف": ["علب وتغليف", "عبوات وتغليف"],
+          "تغليف وعلب": ["علب وتغليف", "عبوات وتغليف", "أكياس مطبوعة", "كراتين مطبوعة"],
+          "معدات وأفران": ["معدات وأفران", "معدات وأدوات"],
+          "أدوات صغيرة": ["أدوات صغيرة", "معدات وأدوات"],
+          "معدات وأدوات": ["معدات وأفران", "أدوات صغيرة", "معدات وأدوات"],
+        } as Record<string, string[]>)[category] ?? [category];
+        const patterns = categoryTerms.map((term) => `%${term}%`);
+        const requestCategoryFilters = patterns.map(() => "sr.categories LIKE ?").join(" OR ");
+        const productCategoryFilters = patterns.map(() => "(tc.name LIKE ? OR tp.name LIKE ?)").join(" OR ");
+        clauses.push(`(
+          EXISTS (
+            SELECT 1 FROM supplier_requests sr
+            WHERE sr.id = s.request_id AND (${requestCategoryFilters})
+          )
+          OR EXISTS (
+            SELECT 1 FROM products tp
+            JOIN categories tc ON tc.id = tp.category_id
+            WHERE tp.supplier_id = s.id AND (${productCategoryFilters})
+          )
+        )`);
+        values.push(...patterns, ...patterns.flatMap((pattern) => [pattern, pattern]));
+      }
     }
   }
   if (type) {

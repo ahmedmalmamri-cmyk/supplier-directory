@@ -35,6 +35,7 @@ import SupplierLoginPage from '@/pages/supplier-login';
 import SupplierPortalPage from '@/pages/supplier-portal';
 import SupplierDashboardPage from '@/pages/supplier-dashboard';
 import SupplierMarketPage from '@/pages/supplier-market';
+import SupplierAlmondVariantsPage from '@/pages/supplier-almond-variants';
 import LoginChoicePage from '@/pages/login-choice';
 import RequestsPage from '@/pages/requests';
 import NewRequestPage from '@/pages/request-new';
@@ -88,6 +89,7 @@ function Router() {
           <Route path="/supplier/login" component={SupplierLoginPage} />
           <Route path="/supplier/dashboard" component={SupplierDashboardPage} />
           <Route path="/supplier/market" component={SupplierMarketPage} />
+          <Route path="/supplier/almond-variants" component={SupplierAlmondVariantsPage} />
            <Route path="/supplier/inquiries" component={SupplierInquiriesPage} />
           <Route path="/supplier/portal" component={SupplierPortalPage} />
           <Route path="/supplier/:id" component={SupplierProfilePage} />

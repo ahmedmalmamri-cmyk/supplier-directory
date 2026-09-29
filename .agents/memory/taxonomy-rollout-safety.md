@@ -33,6 +33,12 @@ When merging a reviewed duplicate item, repoint legacy mappings and import marke
 
 **How to apply:** Merge only explicitly reviewed duplicates, preserve the canonical primary section, exclude the duplicate's incorrect primary section, record an audit entry, and verify foreign keys before commit.
 
+Present the existing almond forms as one buyer-facing item while retaining their established item identities and links; treat declared form, preparation, and size as an optional supplier-specific layer rather than inferring them from the old item labels.
+
+**Why:** A unified buyer and supplier experience was approved, but removing the established form-specific records would risk losing historical links and bookmarked routes. A broad almond association is not evidence that every precise combination is offered.
+
+**How to apply:** Keep legacy form-specific URLs working; use a single almond choice in new supplier flows and exact declared combinations for precise buyer matches. Suppliers who have not declared combinations remain in broad results only.
+
 The temporary "unclassified items" section used in an earlier rollout was not a permanent public grouping. In the reorganized tree with cake supplies restored, «أصناف أخرى» remains an inactive review root for equipment and other unclear placements.
 
 **Why:** Removing the equipment section and combining mixed old branches makes a confident destination impossible for some items. Restoring cake supplies resolves only the items whose previous cake placement is known.

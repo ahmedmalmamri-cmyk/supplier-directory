@@ -260,6 +260,25 @@ directoryDb.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_supplier_taxonomy_item_suppliers_item
     ON supplier_taxonomy_item_suppliers(item_id, supplier_id);
+  -- Almond variant preferences are an additive layer over existing taxonomy
+  -- item links; they never rewrite item IDs or supplier-item associations.
+  CREATE TABLE IF NOT EXISTS supplier_almond_variant_preferences (
+    supplier_id INTEGER PRIMARY KEY REFERENCES suppliers(id) ON DELETE CASCADE,
+    mode TEXT NOT NULL CHECK (mode IN ('unspecified', 'all', 'selected')),
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS supplier_almond_variant_choices (
+    supplier_id INTEGER NOT NULL REFERENCES supplier_almond_variant_preferences(supplier_id) ON DELETE CASCADE,
+    form TEXT NOT NULL CHECK (form IN ('whole', 'slices', 'powder')),
+    preparation TEXT NOT NULL CHECK (preparation IN ('raw', 'roasted')),
+    size TEXT,
+    CHECK (
+      (form = 'whole' AND size IN ('32', '34', '36'))
+      OR (form IN ('slices', 'powder') AND size IS NULL)
+    )
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_almond_variant_choice
+    ON supplier_almond_variant_choices(supplier_id, form, preparation, COALESCE(size, ''));
   CREATE TABLE IF NOT EXISTS supplier_taxonomy_legacy_item_mappings (
     legacy_item_category_id INTEGER PRIMARY KEY,
     taxonomy_item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
