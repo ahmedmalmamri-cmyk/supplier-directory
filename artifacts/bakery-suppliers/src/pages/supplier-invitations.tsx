@@ -237,7 +237,7 @@ export function SupplierInvitationsPanel() {
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
         const link = `${window.location.origin}${basePath}/invite/${result.token}`;
         const invitation = { url: link, token: result.token };
-        const message = `مرحباً ${result.supplierName}،\nيسر دليل موردي المخابز والحلويات دعوتكم لاستكمال ملف منشأتكم عبر الرابط:\n${link}\nنراجع المعلومات قبل نشرها لضمان دقة الدليل.`;
+        const message = `مرحباً ${result.supplierName}،\nندعوكم لاستكمال ملف منشأتكم في دليل موردي المخابز والحلويات عبر الرابط:\n${link}\nهذا الرابط لاستكمال البيانات، وليس للدخول إلى حساب المورد. ستراجع الإدارة الملف قبل نشره. بعد الموافقة، إذا لم يكن لديكم حساب مفعّل، سترسل الإدارة رابطاً منفصلاً لتعيين كلمة المرور. بعدها يكون الدخول برقم الجوال وكلمة المرور. أما إذا كان حسابكم مفعّلاً فتستمرون باستخدام كلمة المرور الحالية.`;
         if (!openWhatsApp) {
           if (!navigator.clipboard?.writeText) {
             setError("النسخ غير متاح في هذا المتصفح.");
@@ -318,7 +318,7 @@ export function SupplierInvitationsPanel() {
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
   const registrationUrl = publishedPageUrl("/register/supplier");
-  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى اختيار الأصناف المتوفرة لديكم وكتابة تفاصيل منتجاتكم وبيانات منشأتكم. ستراجع الإدارة الطلب قبل قبوله ونشره.`;
+  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كمورد في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى إدخال بيانات منشأتكم وأصنافكم. ستراجع الإدارة الطلب قبل قبوله ونشره. رابط التسجيل ليس رابط دخول؛ بعد الموافقة سترسل الإدارة رابطاً منفصلاً لتعيين كلمة المرور. بعدها يكون الدخول إلى حساب المورد برقم الجوال وكلمة المرور.`;
   const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
   return (
