@@ -62,7 +62,8 @@ function destination(name: string, formerRoot: string): string {
   if (/قوالب|أدوات تزيين|أدوات صغيرة|ملاعق معيارية|أكواب قياس|مبرشة|ملاقط|حبر طابعة|لمبة/.test(name)) return "أصناف أخرى";
   if (/عجين|خبز رقاق|كيك أرمكو|خليط|خلطات|مفرزنات|بسكويت|كاستر|جيلاتين|جيلي|كاتشب|مايونيز|صوص بيتزا|صوص حار|فوندان/.test(name)) return "أصناف أخرى";
   if (/زيت|زبدة|سمن|مارجرين|شورتنج|دهون/.test(name)) return "زيوت وسمن";
-  if (/بيض/.test(name)) return "بيض";
+  // «أبيض» contains the letters «بيض» but is not an egg product.
+  if (/(?:^|\s)بيض(?:$|\s)/u.test(name)) return "بيض";
   if (/حليب|لبن|زبادي|قشطة|كريمة خفق|كريمة طبخ|جبن|أجبان/.test(name)) return "حليب ومشتقاته";
   if (/خمير|محسن|بيكنج|بيكربونات|مانع عفن|مواد رافعة/.test(name)) return "خمائر ومحسنات";
   if (/دقيق|سميد|برغل|نخالة|دخن|شعير|نشا/.test(name)) return "دقيق وحبوب";
@@ -334,6 +335,49 @@ export function stageDecoratingBags(db: DatabaseSync): void {
         .run(otherId, id, ...former);
     }
     db.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)").run(name, now);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export function correctMisclassifiedWhiteFlour(db: DatabaseSync): void {
+  const name = "supplier-taxonomy-correct-white-flour-placement";
+  if (db.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(name)) return;
+  if (!db.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(migrationName)) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const item = db.prepare(`
+      SELECT item.id, item.category_id AS categoryId
+      FROM supplier_taxonomy_items item
+      JOIN supplier_taxonomy_nodes node ON node.id = item.category_id
+      JOIN supplier_taxonomy_nodes root ON root.id = node.parent_id
+      WHERE item.name = ? AND node.name = ? AND root.name = ?
+    `).get("دقيق ابيض", "بيض", "المواد الخام الغذائية") as { id: number; categoryId: number } | undefined;
+    if (item) {
+      const flour = db.prepare(`
+        SELECT node.id
+        FROM supplier_taxonomy_nodes node
+        JOIN supplier_taxonomy_nodes root ON root.id = node.parent_id
+        WHERE node.name = ? AND root.name = ?
+      `).get("دقيق وحبوب", "المواد الخام الغذائية") as { id: number } | undefined;
+      if (!flour) throw new Error("Missing flour and grains category for white flour");
+      const now = new Date().toISOString();
+      db.prepare(`
+        INSERT OR IGNORE INTO items_categories (item_id, category_id, is_primary, created_at)
+        VALUES (?, ?, 0, ?)
+      `).run(item.id, flour.id, now);
+      db.prepare("UPDATE items_categories SET is_primary = 0 WHERE item_id = ?").run(item.id);
+      db.prepare("UPDATE items_categories SET is_primary = 1 WHERE item_id = ? AND category_id = ?")
+        .run(item.id, flour.id);
+      db.prepare("DELETE FROM items_categories WHERE item_id = ? AND category_id = ?")
+        .run(item.id, item.categoryId);
+      db.prepare("UPDATE supplier_taxonomy_items SET category_id = ?, updated_at = ? WHERE id = ?")
+        .run(flour.id, now, item.id);
+    }
+    db.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
+      .run(name, new Date().toISOString());
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

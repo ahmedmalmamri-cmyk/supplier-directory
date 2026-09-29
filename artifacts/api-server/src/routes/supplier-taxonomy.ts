@@ -865,7 +865,18 @@ router.post("/admin/supplier-taxonomy/items/:id/move", (req, res): void => {
     res.status(400).json({ error: !params.success ? params.error.message : !parsed.success ? parsed.error.message : "بيانات غير صالحة." });
     return;
   }
-  updateItem(req, res, params.data.id, { categoryId: parsed.data.categoryId });
+  const existing = getItem(params.data.id);
+  if (!existing) {
+    res.status(404).json({ error: "الصنف غير موجود." });
+    return;
+  }
+  const categoryIds = [...new Set([parsed.data.categoryId, ...existing.categories
+    .filter(category => !category.isPrimary)
+    .map(category => category.id)])];
+  updateItem(req, res, params.data.id, {
+    primaryCategoryId: parsed.data.categoryId,
+    categoryIds,
+  });
 });
 
 router.post("/admin/supplier-taxonomy/items/:id/delete", (req, res): void => {

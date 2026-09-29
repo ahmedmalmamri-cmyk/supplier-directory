@@ -11,7 +11,7 @@ import { migrateRequestsCategoryToSupplierTaxonomy } from "./requests-taxonomy-c
 import { suppliedTaxonomyItems } from "./supplier-taxonomy-seed-items";
 import { isLegacyItemCategoriesRetired } from "./retire-legacy-item-categories";
 import { ensureSupplierOnboardingSchema } from "./supplier-onboarding-schema";
-import { applyFourRootSupplierTaxonomy, correctStagedFoodColorings, stageDecoratingBags } from "./supplier-taxonomy-four-roots";
+import { applyFourRootSupplierTaxonomy, correctMisclassifiedWhiteFlour, correctStagedFoodColorings, stageDecoratingBags } from "./supplier-taxonomy-four-roots";
 import { restoreCakeSupplierTaxonomy } from "./supplier-taxonomy-restore-cake";
 import {
   mergeReviewedAdditionalDuplicates,
@@ -2578,6 +2578,7 @@ if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").ge
 
 migrateRequestsCategoryToSupplierTaxonomy(directoryDb);
 applyFourRootSupplierTaxonomy(directoryDb);
+correctMisclassifiedWhiteFlour(directoryDb);
 correctStagedFoodColorings(directoryDb);
 stageDecoratingBags(directoryDb);
 restoreCakeSupplierTaxonomy(directoryDb);

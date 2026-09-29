@@ -156,7 +156,7 @@ export default function AdminSupplierTaxonomyTab() {
   const createItem = useCreateAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("أُضيف الصنف إلى الأقسام المحددة."), onError: failed } });
   const bulkCreate = useBulkCreateAdminSupplierTaxonomyItems({ mutation: { onSuccess: result => { setBulkText(""); changed(`أُضيف ${fmt(result.added)} صنف؛ تم تخطي ${fmt(result.skipped)} مكرر.`); }, onError: failed } });
   const updateItem = useUpdateAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("حُفظت تغييرات الصنف."), onError: failed } });
-  const moveItem = useMoveAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("تغيّر القسم الأساسي مع الاحتفاظ بالروابط الأخرى."), onError: failed } });
+  const moveItem = useMoveAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("نُقل الصنف مع الحفاظ على روابط مورديه وأقسامه الإضافية."), onError: failed } });
   const deleteItem = useDeleteAdminSupplierTaxonomyItem({ mutation: { onSuccess: () => changed("حُذف الصنف."), onError: failed } });
   const applyMapping = useApplyAdminSupplierTaxonomyLegacyMapping({ mutation: { onSuccess: () => changed("حُفظ الربط بعد المراجعة. لم يتحول الدليل العام إلى التصنيف الجديد.", true), onError: failed } });
   const importLegacy = useImportAdminSupplierTaxonomyLegacyItems({ mutation: {
@@ -285,7 +285,7 @@ export default function AdminSupplierTaxonomyTab() {
             <td className="p-4"><div className="flex flex-wrap gap-1">
                <button type="button" data-testid={`button-edit-taxonomy-item-${item.id}`} className={btn} onClick={() => openItem(item)}><Pencil size={14}/> تعديل الصنف</button>
               <button type="button" data-testid={`button-toggle-taxonomy-item-${item.id}`} disabled={pending} className={btn} onClick={() => updateItem.mutate({id:item.id,data:{isActive:!item.isActive}})}>{item.isActive ? "تعطيل" : "تفعيل"}</button>
-              <button type="button" data-testid={`button-move-taxonomy-item-${item.id}`} className={btn} onClick={() => openMove({kind:"move-item",item})}>تغيير الأساسي</button>
+               <button type="button" data-testid={`button-move-taxonomy-item-${item.id}`} className={btn} onClick={() => openMove({kind:"move-item",item})}>نقل الصنف</button>
               <button type="button" data-testid={`button-delete-taxonomy-item-${item.id}`} className={`${btn} text-destructive`} onClick={() => openDelete({kind:"delete-item",item})}>حذف</button>
             </div></td>
           </tr>)}</tbody>
@@ -384,7 +384,8 @@ export default function AdminSupplierTaxonomyTab() {
             </div>
           </fieldset>
         </>}
-        {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الأساسي الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
+        {modal.kind === "move-item" && <p className="rounded-xl border bg-secondary/20 p-3 text-sm">سينتقل «{modal.item.name}» من «{modal.item.categoryPath}» إلى القسم المختار. تبقى روابط الموردين والأقسام الإضافية كما هي.</p>}
+        {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
         {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{flat.filter(n => n.node.id !== modal.node.id && !n.ancestors.includes(modal.node.id)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "delete-node" && deleteStrategy === "cascade" && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-legacy-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن روابط الموردين المباشرة بالأقسام المحذوفة ستُزال؛ لن تُحذف الأصناف أو روابط الموردين بالأصناف.</label>}
         {modal.kind === "delete-item" && modal.item.supplierCount > 0 && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-item-supplier-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن حذف هذا الصنف سيفقد الموردين ارتباطهم به، ولن تُنقل الروابط إلى صنف آخر تلقائياً.</label>}
