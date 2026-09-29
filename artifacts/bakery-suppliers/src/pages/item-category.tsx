@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, MapPin, Search, ShieldCheck, Star, Users } from "lucide-react";
+import { ChevronLeft, MapPin, Pencil, Search, ShieldCheck, Star, Users } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
 import { getListSuppliersQueryKey, useListSuppliers } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -111,7 +111,7 @@ export default function ItemCategoryPage() {
             {subgroup && item ? <><Link href={groupPath(subgroup, groups)} className="hover:text-primary">{subgroup.name}</Link><ChevronLeft className="h-4 w-4" /></> : null}
             <span className="text-foreground" aria-current="page">{title}</span>
           </nav>
-           <div className="flex items-center gap-5">{!item && Icon && <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-card text-primary shadow-sm"><Icon className="h-12 w-12" strokeWidth={1.5} aria-hidden="true" /></span>}<div><p className="mb-1 text-sm font-bold text-primary">{item ? "الصنف" : subgroup ? "مجموعة فرعية" : "المجموعة الرئيسية"}</p><h1 className="text-3xl font-extrabold md:text-5xl">{title}</h1><p className="mt-2 text-sm text-muted-foreground">{item ? `${item.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف` : `${(subgroup ? subgroup.categoryCount : root.categoryCount).toLocaleString("ar-SA")} أصناف · ${(subgroup ? subgroup.supplierCount : root.supplierCount).toLocaleString("ar-SA")} مورد`}</p></div></div>
+           <div className="flex items-center gap-5">{!item && Icon && <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-card text-primary shadow-sm"><Icon className="h-12 w-12" strokeWidth={1.5} aria-hidden="true" /></span>}<div><p className="mb-1 text-sm font-bold text-primary">{item ? "الصنف" : subgroup ? "مجموعة فرعية" : "المجموعة الرئيسية"}</p><h1 className="text-3xl font-extrabold md:text-5xl">{title}</h1><p className="mt-2 text-sm text-muted-foreground">{item ? `${item.supplierCount.toLocaleString("ar-SA")} مورد في هذا الصنف` : `${(subgroup ? subgroup.categoryCount : root.categoryCount).toLocaleString("ar-SA")} أصناف · ${(subgroup ? subgroup.supplierCount : root.supplierCount).toLocaleString("ar-SA")} مورد`}</p>{!item && <Link href={`/admin/categories?groupId=${subgroup?.id ?? root.id}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline" data-testid="link-manage-group-items"><Pencil className="h-4 w-4" /> للمدير: إضافة الأصناف وتعديلها وحذفها</Link>}</div></div>
         </div></header>
         <div className="container mx-auto min-h-[50vh] px-4 py-10 md:py-14">
           {!item ? <section>

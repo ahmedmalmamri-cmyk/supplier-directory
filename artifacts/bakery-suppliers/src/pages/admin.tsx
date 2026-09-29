@@ -40,7 +40,7 @@ const tabs: { id: Tab; label: string; icon: typeof Store }[] = [
   { id: "invitations", label: "دعوات الموردين", icon: Send },
   { id: "buyer-invitations", label: "دعوات أصحاب الأعمال", icon: UserRound },
   { id: "stats", label: "الإحصائيات", icon: LayoutDashboard },
-  { id: "item-categories", label: "شجرة تصنيفات الموردين الجديدة", icon: FolderTree },
+  { id: "item-categories", label: "إدارة الأصناف والمجموعات", icon: FolderTree },
   { id: "settings", label: "الإعدادات", icon: Settings },
 ];
 

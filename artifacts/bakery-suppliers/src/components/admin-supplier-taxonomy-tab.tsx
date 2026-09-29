@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowDown, ArrowUp, ChevronDown, ChevronLeft, Download, FileText, Folder, FolderOpen, FolderTree, History, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
   useGetAdminSupplierTaxonomyTree, getGetAdminSupplierTaxonomyTreeQueryKey,
+  getListGroupsQueryKey, getListItemCategoriesQueryKey,
   useCreateAdminSupplierTaxonomyNode, useUpdateAdminSupplierTaxonomyNode, useMoveAdminSupplierTaxonomyNode, useDeleteAdminSupplierTaxonomyNode, useReorderAdminSupplierTaxonomyNodes,
   useListAdminSupplierTaxonomyItems, getListAdminSupplierTaxonomyItemsQueryKey,
   useCreateAdminSupplierTaxonomyItem, useBulkCreateAdminSupplierTaxonomyItems, useUpdateAdminSupplierTaxonomyItem, useMoveAdminSupplierTaxonomyItem, useDeleteAdminSupplierTaxonomyItem,
@@ -28,6 +29,14 @@ const fmt = (n: number) => n.toLocaleString("ar-SA");
 const btn = "taxonomy-button";
 const primary = "taxonomy-button taxonomy-button-primary";
 const label = "block text-xs font-extrabold mb-1.5";
+function normalizeItemName(value: string) {
+  return value.trim().replace(/[أإآٱ]/g, "ا").replace(/[\u064B-\u065F\u0670]/g, "").replace(/\s+/g, " ").toLocaleLowerCase("ar");
+}
+function initialCategoryId(): number | null {
+  const value = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("groupId");
+  const id = Number(value);
+  return value && Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 function message(error: unknown) {
   if (error && typeof error === "object" && "data" in error) {
     const data = error.data;
@@ -91,9 +100,9 @@ export default function AdminSupplierTaxonomyTab() {
       nodes.flatMap(node => [{ node, path: path ? `${path} / ${node.name}` : node.name, ancestors }, ...walk(node.children, path ? `${path} / ${node.name}` : node.name, [...ancestors, node.id])]);
     return walk(tree);
   }, [treeQuery.data]);
-  const [view, setView] = useState<"tree" | "items" | "review" | "audit">("tree");
+  const [view, setView] = useState<"tree" | "items" | "review" | "audit">("items");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialCategoryId);
   const [modal, setModal] = useState<Modal | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [name, setName] = useState("");
@@ -108,7 +117,7 @@ export default function AdminSupplierTaxonomyTab() {
   const [deleteStrategy, setDeleteStrategy] = useState<"transfer" | "cascade">("transfer");
   const [ackLinks, setAckLinks] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterCategory, setFilterCategory] = useState(() => String(initialCategoryId() ?? "all"));
   const [primaryOnly, setPrimaryOnly] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [onlyPending, setOnlyPending] = useState(true);
@@ -132,6 +141,8 @@ export default function AdminSupplierTaxonomyTab() {
     setModal(null); setNotice({ text, error: false });
     void client.invalidateQueries({ queryKey: getGetAdminSupplierTaxonomyTreeQueryKey() });
     void client.invalidateQueries({ queryKey: getListAdminSupplierTaxonomyItemsQueryKey() });
+    void client.invalidateQueries({ queryKey: getListGroupsQueryKey() });
+    void client.invalidateQueries({ queryKey: getListItemCategoriesQueryKey() });
     void client.invalidateQueries({ queryKey: getGetAdminSupplierTaxonomyAuditQueryKey() });
     void client.invalidateQueries({ queryKey: getPreviewAdminSupplierTaxonomyLegacyImportQueryKey() });
     if (reviewChanged) void client.invalidateQueries({ queryKey: getListAdminSupplierTaxonomyLegacyReviewQueryKey() });
@@ -180,6 +191,9 @@ export default function AdminSupplierTaxonomyTab() {
     item.categoryId === modal.node.id || flat.find(n => n.node.id === item.categoryId)?.ancestors.includes(modal.node.id));
   const selected = flat.find(n => n.node.id === selectedId);
   const pendingReview = review.filter(row => row.mappedItemId === null).length;
+  const duplicateItem = modal?.kind === "item" && name.trim()
+    ? items.find(item => item.id !== modal.item?.id && normalizeItemName(item.name) === normalizeItemName(name))
+    : undefined;
   const renderBranch = (nodes: SupplierTaxonomyNode[], depth = 0): ReactNode => nodes.map((node, index) => {
     const open = expanded.has(node.id);
     const siblings = nodes.map(n => n.id);
@@ -215,6 +229,9 @@ export default function AdminSupplierTaxonomyTab() {
       if (!clean || !primaryCategory) {
         failed(new Error("اختر القسم الرئيسي للصنف.")); return;
       }
+      if (duplicateItem) {
+        failed(new Error("يوجد صنف بهذا الاسم بالفعل. عدّل الصنف الموجود بدلاً من إنشاء نسخة.")); return;
+      }
       const data = { name: clean, notes: notes.trim() || null, isActive: active,
         categoryIds: [Number(primaryCategory), ...chosenCategories], primaryCategoryId: Number(primaryCategory) };
       modal.item ? updateItem.mutate({ id: modal.item.id, data }) : createItem.mutate({ data });
@@ -234,12 +251,12 @@ export default function AdminSupplierTaxonomyTab() {
   return <section dir="rtl" className="taxonomy-workbench space-y-5" aria-label="شجرة تصنيفات الموردين الجديدة">
     <header className="taxonomy-surface overflow-hidden">
       <div className="flex flex-col justify-between gap-5 bg-secondary/35 p-5 md:flex-row md:items-end md:p-7">
-        <div><div className="mb-2 flex items-center gap-2 text-xs font-extrabold text-primary"><FolderTree size={17}/> إدارة الفهرس / الهيكل الجديد</div><h2 className="text-2xl font-extrabold md:text-3xl">الأقسام والأصناف، في مكانها الصحيح.</h2><p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">ابنِ شجرة أقسام بأي عمق، ثم اربط كل صنف بأقسامه وحدّد القسم الأساسي. راجع ربط التصنيفات القديمة بالموردين قبل أي انتقال للدليل العام.</p></div>
+        <div><div className="mb-2 flex items-center gap-2 text-xs font-extrabold text-primary"><FolderTree size={17}/> إدارة الفهرس</div><h2 className="text-2xl font-extrabold md:text-3xl">أضف الأصناف وعدّلها من هنا.</h2><p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">ابحث عن الصنف لتعديل اسمه أو قسمه، أو أضف صنفاً جديداً. إذا كان الصنف موجوداً في قسم خاطئ، انقله بدلاً من إنشاء نسخة ثانية.</p></div>
         <div className="flex flex-wrap gap-2"><button type="button" data-testid="button-refresh-taxonomy" disabled={refreshing} className={btn} onClick={() => void refresh()}><RefreshCw size={15}/>{refreshing ? "جارٍ التحديث..." : "تحديث"}</button><button type="button" data-testid="button-export-taxonomy" disabled={!!exporting} className={btn} onClick={() => void exportCsv("tree")}><Download size={15}/> CSV الأقسام</button><button type="button" data-testid="button-export-taxonomy-items" disabled={!!exporting} className={btn} onClick={() => void exportCsv("items")}><Download size={15}/> CSV الأصناف</button></div>
       </div>
       <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-4">{[["الأقسام", flat.length], ["الأصناف", items.length], ["روابط الموردين بالأصناف", items.reduce((sum,item) => sum + item.supplierCount,0)], ["بانتظار مراجعة الربط", pendingReview]].map(([title,value]) => <div key={title} className="bg-card p-4"><p className="text-xs text-muted-foreground">{title}</p><strong className="text-2xl" data-testid={`metric-taxonomy-${title}`}>{fmt(Number(value))}</strong></div>)}</div>
     </header>
-    <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4 text-sm"><AlertTriangle size={19} className="mt-1 shrink-0 text-warning"/><p><strong>مساحة إعداد ومراجعة.</strong> إنشاء الأقسام وربط العناصر القديمة هنا لا يعني أن الدليل العام انتقل تلقائياً إلى التصنيف الجديد. راجع الروابط الحالية قبل أي حذف.</p></div>
+    <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/5 p-4 text-sm"><AlertTriangle size={19} className="mt-1 shrink-0 text-warning"/><p><strong>هذه الأصناف تظهر في الدليل العام.</strong> راجع ارتباطات الموردين والتصنيفات القديمة قبل الحذف؛ التعديل أو نقل الصنف يحافظ على هويته وروابطه.</p></div>
     {[treeQuery, itemsQuery, reviewQuery, auditQuery].some(query => query.isError && query.data !== undefined) &&
       <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm">
         <span>تعذر تحديث بعض البيانات؛ نعرض آخر نسخة متاحة وسنعيد المحاولة تلقائياً.</span>
@@ -253,7 +270,7 @@ export default function AdminSupplierTaxonomyTab() {
       {treeQuery.isLoading ? <Skeleton/> : treeQuery.isError && treeQuery.data === undefined ? <Failure retry={() => void treeQuery.refetch()}/> : !tree.length ? <Empty title="الشجرة جاهزة للبناء" detail="أضف قسماً رئيسياً، ثم أنشئ تحته أقساماً فرعية بالعمق المناسب." action={<button type="button" className={primary} onClick={() => openNode()}>إضافة القسم الأول</button>}/> : renderBranch([...tree].sort((a,b) => a.displayOrder - b.displayOrder || a.id - b.id))}
     </div>}
     {view === "items" && <div className="space-y-4"><div className="taxonomy-surface p-4 md:p-5"><div className="flex flex-col justify-between gap-4 md:flex-row md:items-center"><div><h3 className="text-lg font-extrabold">قائمة الأصناف</h3><p className="text-xs text-muted-foreground">{selected ? `القسم المحدد: ${selected.path}` : "ابحث وراجع المسار وحالة كل صنف وروابط مورديه."}</p></div><div className="flex flex-wrap gap-2"><button type="button" data-testid="button-bulk-taxonomy-items" className={btn} onClick={() => { setDestination(String(selectedId ?? "")); setBulkText(""); setModal({kind:"bulk"}); }}><Plus size={15}/> إضافة قائمة</button><button type="button" data-testid="button-create-taxonomy-item" className={primary} onClick={() => openItem()}><Plus size={15}/> صنف جديد</button></div></div>
-      <div className="mt-5 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)_minmax(9rem,11rem)]"><label className="relative"><span className="sr-only">بحث الأصناف</span><Search size={16} className="absolute right-3 top-3.5 text-muted-foreground"/><input data-testid="input-taxonomy-search" className="taxonomy-field pr-10" placeholder="ابحث باسم الصنف أو المسار أو الملاحظات" value={search} onChange={e => setSearch(e.target.value)}/></label><select data-testid="select-taxonomy-category-filter" aria-label="تصفية حسب القسم" className="taxonomy-field" value={filterCategory} onChange={e => {setFilterCategory(e.target.value);setSelectedId(e.target.value === "all" ? null : Number(e.target.value));}}><option value="all">كل الأقسام</option>{flat.map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select><select data-testid="select-taxonomy-status-filter" aria-label="تصفية حسب الحالة" className="taxonomy-field" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">كل الحالات</option><option value="active">نشط</option><option value="inactive">معطّل</option></select></div></div>
+      <div className="mt-5 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)_minmax(9rem,11rem)]"><label className="relative"><span className="sr-only">بحث الأصناف</span><Search size={16} className="absolute right-3 top-3.5 text-muted-foreground"/><input data-testid="input-taxonomy-search" className="taxonomy-field pr-10" placeholder="ابحث باسم الصنف أو المسار أو الملاحظات" value={search} onChange={e => setSearch(e.target.value)}/></label><select data-testid="select-taxonomy-category-filter" aria-label="تصفية حسب القسم" className="taxonomy-field" value={filterCategory} onChange={e => {setFilterCategory(e.target.value);setSelectedId(e.target.value === "all" ? null : Number(e.target.value));}}><option value="all">كل الأقسام</option>{flat.map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select><select data-testid="select-taxonomy-status-filter" aria-label="تصفية حسب الحالة" className="taxonomy-field" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">كل الحالات</option><option value="active">نشط</option><option value="inactive">معطّل</option></select></div>{selected && <button type="button" className="mt-3 text-xs font-bold text-primary hover:underline" onClick={() => { setSelectedId(null); setFilterCategory("all"); }}>ابحث في كل الأقسام قبل إضافة صنف، لتجنب التكرار</button>}</div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" data-testid="checkbox-taxonomy-primary-only" checked={primaryOnly} onChange={event => setPrimaryOnly(event.target.checked)}/> عرض الأصناف الأساسية فقط في القسم المحدد</label>
       {itemsQuery.isLoading || treeQuery.isLoading ? <Skeleton/> : (itemsQuery.isError && itemsQuery.data === undefined) || (treeQuery.isError && treeQuery.data === undefined) ? <Failure retry={() => void refresh()}/> : !filtered.length ? <Empty title="لا توجد أصناف مطابقة" detail={items.length ? "غيّر البحث أو المرشحات لعرض أصناف أخرى." : "أضف صنفاً إلى أحد أقسام الشجرة للبدء."} action={flat.length ? <button type="button" className={primary} onClick={() => openItem()}>إضافة صنف</button> : undefined}/> : <div className="taxonomy-surface overflow-x-auto">
         <table className="w-full min-w-[760px] text-right text-sm">
@@ -266,7 +283,7 @@ export default function AdminSupplierTaxonomyTab() {
             <td className="p-4">{fmt(item.supplierCount)}</td>
             <td className="p-4"><span className={`rounded-full px-2 py-1 text-xs font-bold ${item.isActive ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{item.isActive ? "نشط" : "معطل"}</span></td>
             <td className="p-4"><div className="flex flex-wrap gap-1">
-              <button type="button" data-testid={`button-edit-taxonomy-item-${item.id}`} className={btn} onClick={() => openItem(item)}>إدارة الأقسام</button>
+               <button type="button" data-testid={`button-edit-taxonomy-item-${item.id}`} className={btn} onClick={() => openItem(item)}><Pencil size={14}/> تعديل الصنف</button>
               <button type="button" data-testid={`button-toggle-taxonomy-item-${item.id}`} disabled={pending} className={btn} onClick={() => updateItem.mutate({id:item.id,data:{isActive:!item.isActive}})}>{item.isActive ? "تعطيل" : "تفعيل"}</button>
               <button type="button" data-testid={`button-move-taxonomy-item-${item.id}`} className={btn} onClick={() => openMove({kind:"move-item",item})}>تغيير الأساسي</button>
               <button type="button" data-testid={`button-delete-taxonomy-item-${item.id}`} className={`${btn} text-destructive`} onClick={() => openDelete({kind:"delete-item",item})}>حذف</button>
@@ -324,9 +341,10 @@ export default function AdminSupplierTaxonomyTab() {
           <p className="font-bold text-destructive">لن تُحذف التصنيفات القديمة، ولن تُعرض هذه الأصناف في الدليل العام قبل تصنيفها واعتماد النقل.</p>
         </div>}
         {(modal.kind === "node" || modal.kind === "item") && <><label><span className={label}>الاسم</span><input data-testid="input-taxonomy-name" autoFocus className="taxonomy-field" required maxLength={modal.kind === "node" ? 100 : 120} value={name} onChange={e => setName(e.target.value)}/></label>{modal.kind === "node" ? <><label><span className={label}>رمز القسم (اختياري)</span><input data-testid="input-taxonomy-icon" className="taxonomy-field" maxLength={24} value={icon} onChange={e => setIcon(e.target.value)} placeholder="رمز قصير"/></label><label><span className={label}>الوصف</span><textarea data-testid="input-taxonomy-description" className="taxonomy-field min-h-20" maxLength={500} value={description} onChange={e => setDescription(e.target.value)}/></label></> : <label><span className={label}>ملاحظات داخلية</span><textarea data-testid="input-taxonomy-notes" className="taxonomy-field min-h-20" maxLength={500} value={notes} onChange={e => setNotes(e.target.value)}/></label>}<label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" data-testid="checkbox-taxonomy-active" checked={active} onChange={e => setActive(e.target.checked)}/> نشط</label></>}
+        {modal.kind === "item" && duplicateItem && <div role="alert" className="rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm"><p>«{duplicateItem.name}» موجود بالفعل في {duplicateItem.categoryPath}. عدّل اسمه أو انقله للقسم الصحيح بدلاً من إنشاء صنف مكرر.</p><button type="button" className={`${btn} mt-2`} onClick={() => openItem(duplicateItem)}>تعديل الصنف الموجود</button></div>}
         {modal.kind === "bulk" && <label><span className={label}>اسم واحد في كل سطر (حتى ١٠٠٠ صنف)</span><textarea data-testid="textarea-taxonomy-bulk" className="taxonomy-field min-h-44" value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder={"اكتب اسم الصنف الأول\nواسم الصنف الثاني"}/><span className="text-xs text-muted-foreground">{fmt(bulkText.split(/\r?\n/).map(s => s.trim()).filter(Boolean).length)} اسم مُدخل</span></label>}
         {modal.kind === "delete-node" && <><div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm"><strong>حذف «{modal.node.name}»</strong><p>لن يُحذف أي صنف. ستُزال روابط الأقسام المحذوفة فقط، ويجب اختيار بديل لأي قسم أساسي محذوف.</p></div><div role="radiogroup" aria-label="طريقة الحذف" className="flex flex-col gap-2 text-sm"><label><input type="radio" name="strategy" data-testid="radio-taxonomy-transfer" checked={deleteStrategy === "transfer"} onChange={() => setDeleteStrategy("transfer")}/> نقل الفروع إلى قسم آخر وحذف هذا القسم فقط</label><label><input type="radio" name="strategy" data-testid="radio-taxonomy-cascade" checked={deleteStrategy === "cascade"} onChange={() => setDeleteStrategy("cascade")}/> حذف هذا القسم وفروعه مع إبقاء الأصناف</label></div></>}
-        {modal.kind === "delete-item" && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm">سيُحذف الصنف «{modal.item.name}». عدد الموردين المرتبطين به: <strong>{fmt(modal.item.supplierCount)}</strong>. تأكد من مراجعة الروابط قبل المتابعة.</div>}
+        {modal.kind === "delete-item" && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm">حذف «{modal.item.name}» نهائي. سيختفي من الدليل وتُزال روابطه بالأقسام والموردين وأي مراجعات قديمة مرتبطة به. عدد مورديه: <strong>{fmt(modal.item.supplierCount)}</strong>. لتصحيح اسم أو قسم، استخدم «تعديل الصنف» بدلاً من الحذف.</div>}
         {modal.kind === "mapping" && <div className="rounded-xl border bg-secondary/30 p-3 text-sm">التصنيف القديم: <strong>{modal.legacy.legacyName}</strong> · {fmt(modal.legacy.supplierCount)} مورد<br/>الصنف الجديد: <strong>{items.find(i => i.id === Number(destination))?.name ?? "غير محدد"}</strong><p className="mt-2 text-xs text-muted-foreground">تأكيد الربط لا ينقل الدليل العام تلقائياً.</p></div>}
         {modal.kind === "node" && !modal.node && <label><span className={label}>القسم الأب (اختياري للقسم الرئيسي)</span><select data-testid="select-taxonomy-parent" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">قسم رئيسي</option>{flat.map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "item" && <>
@@ -369,7 +387,8 @@ export default function AdminSupplierTaxonomyTab() {
         {(modal.kind === "move-item" || modal.kind === "bulk" || (modal.kind === "delete-node" && (deleteStrategy === "transfer" || deletingPrimaryItems))) && <label><span className={label}>{modal.kind === "delete-node" ? "القسم الأساسي البديل (خارج الشجرة المحذوفة)" : modal.kind === "move-item" ? "القسم الأساسي الجديد" : "القسم"}</span><select data-testid="select-taxonomy-destination" required className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}>{nodeOptions(modal.kind === "delete-node" ? modal.node.id : undefined)}</select></label>}
         {modal.kind === "move-node" && <label><span className={label}>القسم الأب الجديد</span><select data-testid="select-taxonomy-destination" className="taxonomy-field" value={destination} onChange={e => setDestination(e.target.value)}><option value="">جذر الشجرة</option>{flat.filter(n => n.node.id !== modal.node.id && !n.ancestors.includes(modal.node.id)).map(n => <option key={n.node.id} value={n.node.id}>{n.path}</option>)}</select></label>}
         {modal.kind === "delete-node" && deleteStrategy === "cascade" && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-legacy-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن روابط الموردين المباشرة بالأقسام المحذوفة ستُزال؛ لن تُحذف الأصناف أو روابط الموردين بالأصناف.</label>}
-        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && !primaryCategory) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
+        {modal.kind === "delete-item" && modal.item.supplierCount > 0 && <label className="flex gap-2 rounded-xl border border-destructive/25 p-3 text-sm"><input type="checkbox" data-testid="checkbox-confirm-item-supplier-links" checked={ackLinks} onChange={e => setAckLinks(e.target.checked)}/> أفهم أن حذف هذا الصنف سيفقد الموردين ارتباطهم به، ولن تُنقل الروابط إلى صنف آخر تلقائياً.</label>}
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><button type="button" data-testid="button-cancel-taxonomy" disabled={pending} className={btn} onClick={() => setModal(null)}>إلغاء</button><button type="submit" data-testid="button-submit-taxonomy" disabled={pending || (modal.kind === "legacy-import" && !importPreviewQuery.data?.readyToImportCount) || (modal.kind === "item" && (!primaryCategory || !!duplicateItem)) || (modal.kind === "delete-item" && modal.item.supplierCount > 0 && !ackLinks) || (modal.kind === "delete-node" && ((deleteStrategy === "cascade" && (!ackLinks || (deletingPrimaryItems && !destination))) || (deleteStrategy === "transfer" && !destination))) || (modal.kind === "mapping" && !destination) || (modal.kind === "bulk" && (!destination || !bulkText.trim())) || (modal.kind === "move-item" && !destination)} className={primary}>{pending ? "جارٍ الحفظ..." : modal.kind === "legacy-import" ? "تأكيد النقل" : modal.kind.startsWith("delete") ? "تأكيد الحذف" : modal.kind === "mapping" ? "تأكيد الربط" : "حفظ التغييرات"}</button></div>
       </form>
     </div></div>}
   </section>;
