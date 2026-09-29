@@ -9,8 +9,9 @@ import { SupplierFilterControls, SUPPLIER_TYPES } from "@/components/suppliers/S
 import { categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { getGroupIcon } from "@/lib/group-icons";
 import { trackEvent } from "@/lib/analytics";
-import { AlmondVariantFilters, type AlmondFormFilter, type AlmondPreparationFilter, type AlmondSizeFilter } from "@/components/suppliers/AlmondVariantFilters";
+import { type AlmondFormFilter, type AlmondPreparationFilter, type AlmondSizeFilter } from "@/components/suppliers/AlmondVariantFilters";
 import { CatalogFilters, CatalogOfferList, type CatalogItemOption } from "@/components/suppliers/catalog/CatalogFilters";
+import { DynamicItemFilters, type AttributeSelections } from "@/components/suppliers/catalog/DynamicItemFilters";
 
 const isAlmondCategory = (name: string) => ["لوز", "لوز حب", "لوز شرائح", "لوز مطحون"].includes(name);
 const initialVariantForm = (value: string | null): AlmondFormFilter => value === "whole" || value === "slices" || value === "powder" ? value : "";
@@ -31,6 +32,9 @@ export default function SuppliersPage() {
   const [rating, setRating] = useState(initialParams.get("rating") ?? "");
   const [catalogItemId, setCatalogItemId] = useState(initialParams.get("itemId") ?? "");
   const [catalogSubtypeId, setCatalogSubtypeId] = useState(initialParams.get("subtypeId") ?? "");
+  const [formId, setFormId] = useState<number | null>(null);
+  const [selectedAlmondShape, setSelectedAlmondShape] = useState<AlmondFormFilter>("");
+  const [attributeSelections, setAttributeSelections] = useState<AttributeSelections>({});
   const initialPackage = initialParams.get("package");
   const [supplierPackage, setSupplierPackage] = useState<"" | "verified" | "featured">(initialPackage === "verified" || initialPackage === "featured" ? initialPackage : "");
   const [sort, setSort] = useState<"newest" | "rating" | "alphabetical">("rating");
@@ -39,25 +43,28 @@ export default function SuppliersPage() {
 
   const { categories: itemCategories, groups, roots: categoryRoots, isLoading: isLoadingCategories, error: categoriesError } = useTaxonomy();
   const { data: allSuppliers } = useListSuppliers({ sort: "rating" });
+  const attributeOptionIds = Object.values(attributeSelections);
   const supplierFilters = {
       ...(debouncedSearch ? { q: debouncedSearch } : {}),
       ...(category ? { category } : {}),
-      ...(category === "لوز" && almondForm ? { variantForm: almondForm } : {}),
+      ...(category === "لوز" && !formId && almondForm ? { variantForm: almondForm } : {}),
       ...(category === "لوز" && almondPreparation ? { variantPreparation: almondPreparation } : {}),
-      ...(category === "لوز" && almondForm === "whole" && almondSize ? { variantSize: almondSize } : {}),
+      ...(category === "لوز" && (formId || almondForm === "whole") && almondSize ? { variantSize: almondSize } : {}),
       ...(city ? { city } : {}),
       ...(type ? { type } : {}),
       ...(rating ? { rating: Number(rating) } : {}),
       ...(supplierPackage ? { package: supplierPackage } : {}),
       ...(catalogSubtypeId && /^\d+$/.test(catalogSubtypeId) ? { subtypeId: Number(catalogSubtypeId) } : {}),
+       ...(formId ? { formId } : {}),
+       ...(attributeOptionIds.length ? { attributeOptionIds } : {}),
       sort,
     };
   const { data: suppliers, isLoading, error } = useListSuppliers(supplierFilters);
   const lastTrackedFilter = useRef("");
   useEffect(() => {
-    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage || almondForm || almondPreparation || almondSize || catalogItemId || catalogSubtypeId) || sort !== "rating";
+    const hasActiveFilter = Boolean(debouncedSearch || category || city || type || rating || supplierPackage || almondForm || almondPreparation || almondSize || catalogItemId || catalogSubtypeId || formId || attributeOptionIds.length) || sort !== "rating";
     if (!hasActiveFilter || isLoading || error || !suppliers) return;
-    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, hasAlmondForm: Boolean(almondForm), hasAlmondPreparation: Boolean(almondPreparation), hasAlmondSize: Boolean(almondSize), hasCatalogItem: Boolean(catalogItemId), hasCatalogSubtype: Boolean(catalogSubtypeId), sort });
+    const key = JSON.stringify({ debouncedSearch, category, city, type, rating, supplierPackage, hasAlmondForm: Boolean(almondForm), hasAlmondPreparation: Boolean(almondPreparation), hasAlmondSize: Boolean(almondSize), hasCatalogItem: Boolean(catalogItemId), hasCatalogSubtype: Boolean(catalogSubtypeId), formId, attributeOptionIds, sort });
     if (lastTrackedFilter.current === key) return;
     lastTrackedFilter.current = key;
     trackEvent("supplier_directory_filtered", {
@@ -71,7 +78,7 @@ export default function SuppliersPage() {
       sort,
       results_count: suppliers.length,
     });
-  }, [almondForm, almondPreparation, almondSize, catalogItemId, catalogSubtypeId, category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type]);
+  }, [almondForm, almondPreparation, almondSize, catalogItemId, catalogSubtypeId, category, city, debouncedSearch, error, isLoading, rating, sort, supplierPackage, suppliers, type, formId, attributeOptionIds.join(",")]);
   const cities = useMemo(
     () => Array.from(new Set((allSuppliers ?? []).map((supplier) => supplier.city))).sort((a, b) => a.localeCompare(b, "ar")),
     [allSuppliers],
@@ -90,6 +97,7 @@ export default function SuppliersPage() {
     }
     return Array.from(options.values()).sort((a, b) => a.name.localeCompare(b.name, "ar"));
   }, [allSuppliers]);
+  const isAlmondContext = category === "لوز" && (!catalogItemId || /^لوز(?:$|\s)/.test(catalogItems.find((item) => String(item.id) === catalogItemId)?.name ?? ""));
   const visibleSuppliers = (suppliers ?? []).filter((supplier) => {
     return !catalogItemId || supplier.offeredSubtypes.some((offer) => String(offer.itemId) === catalogItemId);
   });
@@ -101,6 +109,9 @@ export default function SuppliersPage() {
     setSupplierPackage("");
     setCatalogItemId("");
     setCatalogSubtypeId("");
+    setFormId(null);
+    setSelectedAlmondShape("");
+    setAttributeSelections({});
     setAlmondForm("");
     setAlmondPreparation("");
     setAlmondSize("");
@@ -124,7 +135,7 @@ export default function SuppliersPage() {
               placeholder="ابحث باسم المورد أو الصنف بالعربية أو الإنجليزية..."
               className="w-full h-12 pl-4 pr-12 rounded-lg border bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none shadow-sm transition-all"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setFormId(null); setAttributeSelections({}); }}
             />
             <Search className="w-5 h-5 absolute right-4 top-3.5 text-muted-foreground" />
           </div>
@@ -149,18 +160,48 @@ export default function SuppliersPage() {
               onItemChange={(value) => {
                 setCatalogItemId(value);
                 setCatalogSubtypeId("");
+                 setFormId(null);
+                 setSelectedAlmondShape("");
+                 setAttributeSelections({});
+                 setAlmondForm("");
+                 setAlmondSize("");
               }}
               onSubtypeChange={setCatalogSubtypeId}
             />
-            {category === "لوز" && <AlmondVariantFilters
-              form={almondForm}
-              onFormChange={(value) => { setAlmondForm(value); if (value !== "whole") setAlmondSize(""); }}
-              preparation={almondPreparation}
-              onPreparationChange={setAlmondPreparation}
-              size={almondSize}
-              onSizeChange={setAlmondSize}
-            />}
-            {category === "لوز" && <p className="mx-auto mt-3 max-w-5xl text-right text-sm leading-6 text-muted-foreground" data-testid="text-almond-directory-scope">البحث العام عن اللوز يشمل الموردين المسجلين حتى إن لم يحددوا تفاصيل الخيارات. الفلاتر الدقيقة لا تعرض إلا الموردين الذين أعلنوا عن تركيبة مطابقة.</p>}
+            <DynamicItemFilters
+              itemId={catalogItemId && /^\d+$/.test(catalogItemId) ? Number(catalogItemId) : undefined}
+              category={category}
+              q={debouncedSearch}
+              formId={formId}
+              onFormChange={(id, _name, legacyShape) => {
+                setFormId(id);
+                if (category === "لوز") {
+                  setAlmondForm("");
+                  setSelectedAlmondShape(id ? legacyShape ?? "" : "");
+                  if (legacyShape !== "whole") setAlmondSize("");
+                }
+              }}
+              attributes={attributeSelections}
+              onAttributesChange={setAttributeSelections}
+              legacyAlmondForm={isAlmondContext && !formId ? almondForm : undefined}
+              onLegacyAlmondFormChange={isAlmondContext ? (value) => { setFormId(null); setSelectedAlmondShape(""); setAlmondForm(value); if (value !== "whole") setAlmondSize(""); } : undefined}
+            />
+            {isAlmondContext && <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-right" aria-label="خيارات اللوز التقليدية">
+              {almondForm && !formId && <p className="mb-3 text-sm text-muted-foreground">شكل الرابط القديم: {almondForm === "whole" ? "حب" : almondForm === "slices" ? "شرائح" : "مطحون"} <button type="button" data-testid="button-clear-legacy-almond-form" onClick={() => { setAlmondForm(""); setAlmondSize(""); }} className="font-bold text-primary underline">مسح الشكل</button></p>}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-bold">التحضير
+                  <select data-testid="filter-almond-preparation" value={almondPreparation} onChange={(event) => setAlmondPreparation(event.target.value as AlmondPreparationFilter)} className="mt-1 block h-11 w-full rounded-xl border border-input bg-background px-3 font-normal">
+                    <option value="">ني أو محمص</option><option value="raw">ني</option><option value="roasted">محمص</option>
+                  </select>
+                </label>
+                <label className="text-sm font-bold">مقاس الحب
+                  <select data-testid="filter-almond-size" value={almondSize} onChange={(event) => setAlmondSize(event.target.value as AlmondSizeFilter)} disabled={formId ? selectedAlmondShape !== "whole" : almondForm !== "whole"} className="mt-1 block h-11 w-full rounded-xl border border-input bg-background px-3 font-normal disabled:opacity-60">
+                    <option value="">كل المقاسات</option><option value="32">32</option><option value="34">34</option><option value="36">36</option>
+                  </select>
+                </label>
+              </div>
+            </section>}
+            {isAlmondContext && <p className="mx-auto mt-3 max-w-5xl text-right text-sm leading-6 text-muted-foreground" data-testid="text-almond-directory-scope">البحث العام عن اللوز يشمل الموردين المسجلين حتى إن لم يحددوا تفاصيل الخيارات. الفلاتر الدقيقة لا تعرض إلا الموردين الذين أعلنوا عن تركيبة مطابقة.</p>}
           </div>
         </div>
       </div>
@@ -254,6 +295,12 @@ export default function SuppliersPage() {
                     </div>
                   </div>
                   <CatalogOfferList offers={catalogOffers} />
+                   {catalogOffers.some((offer) => offer.formNameAr || offer.attributeOptions?.length) && <ul className="mt-2 space-y-1 text-xs text-muted-foreground" aria-label="أشكال وسمات العروض">
+                     {catalogOffers.filter((offer) => offer.formNameAr || offer.attributeOptions?.length).map((offer) => <li key={offer.offerId ?? offer.id}> {offer.itemName}، {offer.nameAr}: {[
+                       offer.formNameAr && `الشكل: ${offer.formNameAr}`,
+                       ...(offer.attributeOptions ?? []).map((option) => `${option.attributeNameAr}: ${option.optionNameAr}`),
+                     ].filter(Boolean).join(" · ")}</li>)}
+                   </ul>}
                 </div>
               </Link>
             );})}

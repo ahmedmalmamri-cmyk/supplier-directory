@@ -2,15 +2,33 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Link } from "wouter";
 import { Lightbulb, MapPin, Search as SearchIcon, Star } from "lucide-react";
 import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
-import { getSearchDirectoryQueryKey, useSearchDirectory } from "@workspace/api-client-react";
+import { getListSuppliersQueryKey, getSearchDirectoryQueryKey, useListSuppliers, useSearchDirectory } from "@workspace/api-client-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { categoryBreadcrumb, categoryPath, useTaxonomy } from "@/components/categories/taxonomy";
 import { trackEvent } from "@/lib/analytics";
 import { CatalogOfferList } from "@/components/suppliers/catalog/CatalogFilters";
+import { DynamicItemFilters, type AttributeSelections } from "@/components/suppliers/catalog/DynamicItemFilters";
 
 export default function SearchPage() {
   const q = new URLSearchParams(window.location.search).get("q") || "";
+  const [selectedOptions, setSelectedOptions] = useState<{ query: string; formId: number | null; attributes: AttributeSelections }>({
+    query: q,
+    formId: null,
+    attributes: {},
+  });
+  const formId = selectedOptions.query === q ? selectedOptions.formId : null;
+  const attributeSelections = selectedOptions.query === q ? selectedOptions.attributes : {};
+  const attributeOptionIds = Object.values(attributeSelections);
+  const isRefined = Boolean(formId || attributeOptionIds.length);
+  const filterParams = {
+    q,
+    ...(formId ? { formId } : {}),
+    ...(attributeOptionIds.length ? { attributeOptionIds } : {}),
+  };
+  const { data: refinedSuppliers, isLoading: isLoadingRefined, error: refinedError, refetch: refetchRefined } = useListSuppliers(filterParams, {
+    query: { enabled: Boolean(q && isRefined), queryKey: getListSuppliersQueryKey(filterParams) },
+  });
   const initialMessage = /زبدة/.test(q)
     ? "أبحث عن زبدة نيوزيلندية بكميات كبيرة.\nهل تتوفر لديكم؟"
     : `السلام عليكم، أبحث عن ${q}. هل يتوفر لديكم؟`;
@@ -18,7 +36,7 @@ export default function SearchPage() {
     { q },
     { query: { enabled: true, queryKey: getSearchDirectoryQueryKey({ q }) } }
   );
-  const suppliers = data?.suppliers ?? [];
+  const suppliers = isRefined ? refinedSuppliers ?? [] : data?.suppliers ?? [];
   const trackedQuery = useRef("");
   useEffect(() => {
     const normalizedQuery = q.trim();
@@ -26,9 +44,9 @@ export default function SearchPage() {
     trackedQuery.current = normalizedQuery;
     trackEvent("directory_search_completed", {
       query_length: normalizedQuery.length,
-      results_count: suppliers.length,
+      results_count: data.suppliers.length,
     });
-  }, [data, q, suppliers.length]);
+  }, [data, q]);
   const { categories, groups, isLoading: isLoadingTaxonomy, error: taxonomyError, refetch: refetchTaxonomy } = useTaxonomy();
   const matchingCategories = useMemo(() => {
     const term = q.trim().toLocaleLowerCase("ar");
@@ -92,8 +110,18 @@ export default function SearchPage() {
                   <h1 className="mt-1 text-2xl font-extrabold md:text-3xl">نتائج البحث ({supplierCountLabel(suppliers.length)})</h1>
                 </div>
               </div>
-              {error ? (
-                <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-destructive">حدث خطأ في البحث عن الموردين.</div>
+              <DynamicItemFilters
+                q={q}
+                formId={formId}
+                onFormChange={(id) => setSelectedOptions((previous) => ({ query: q, formId: id, attributes: previous.query === q ? previous.attributes : {} }))}
+                attributes={attributeSelections}
+                onAttributesChange={(attributes) => setSelectedOptions((previous) => ({ query: q, formId: previous.query === q ? previous.formId : null, attributes }))}
+              />
+              {isRefined && <button type="button" data-testid="button-clear-search-options" onClick={() => setSelectedOptions({ query: q, formId: null, attributes: {} })} className="my-3 text-sm font-bold text-primary underline">مسح خيارات الصنف</button>}
+              {isRefined && isLoadingRefined ? (
+                <div role="status" aria-label="جارٍ تنقيح الموردين"><LoadingSpinner className="min-h-40" /></div>
+              ) : (isRefined ? refinedError : error) ? (
+                <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-destructive">حدث خطأ في البحث عن الموردين. {isRefined && <button type="button" data-testid="button-retry-refined-suppliers" onClick={() => void refetchRefined()} className="font-bold underline">إعادة المحاولة</button>}</div>
               ) : suppliers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center text-muted-foreground">
                   <p className="font-bold text-foreground">لا يوجد موردون معتمدون يطابقون بحثك حالياً.</p>
@@ -104,11 +132,12 @@ export default function SearchPage() {
                   {suppliers.map((supplier) => {
                     const rating = Number(supplier.googleRating || supplier.averageRating || 0);
                     const normalizedQuery = q.trim().toLocaleLowerCase();
-                    const matchingOffers = supplier.offeredSubtypes.filter((offer) =>
-                      `${offer.itemName} ${offer.itemNameEn ?? ""} ${offer.nameAr} ${offer.nameEn}`
-                        .toLocaleLowerCase()
-                        .includes(normalizedQuery),
-                    );
+                    const matchingOffers = supplier.offeredSubtypes.filter((offer) => {
+                      const matchesQuery = `${offer.itemName} ${offer.itemNameEn ?? ""} ${offer.nameAr} ${offer.nameEn}`
+                        .toLocaleLowerCase().includes(normalizedQuery);
+                      return matchesQuery && (!formId || offer.formId === formId)
+                        && attributeOptionIds.every((id) => offer.attributeOptions?.some((option) => option.id === id));
+                    });
                     return (
                       <article key={supplier.id} className="rounded-2xl border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                         <Link href={`/supplier/${supplier.id}`} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -130,6 +159,12 @@ export default function SearchPage() {
                           </div>
                         </Link>
                         <CatalogOfferList offers={matchingOffers} />
+                        {matchingOffers.some((offer) => offer.formNameAr || offer.attributeOptions?.length) && <ul className="mt-2 space-y-1 text-xs text-muted-foreground" aria-label="أشكال وسمات العروض">
+                          {matchingOffers.filter((offer) => offer.formNameAr || offer.attributeOptions?.length).map((offer) => <li key={offer.offerId ?? offer.id}>{offer.itemName}، {offer.nameAr}: {[
+                            offer.formNameAr && `الشكل: ${offer.formNameAr}`,
+                            ...(offer.attributeOptions ?? []).map((option) => `${option.attributeNameAr}: ${option.optionNameAr}`),
+                          ].filter(Boolean).join(" · ")}</li>)}
+                        </ul>}
                         <div className="mt-5 flex items-center gap-2">
                           <ProtectedWhatsAppButton
                             supplierId={supplier.id}

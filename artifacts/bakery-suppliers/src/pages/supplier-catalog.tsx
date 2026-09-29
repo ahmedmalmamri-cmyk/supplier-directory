@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { AlertCircle, ArrowLeft, BookOpen, Check, CheckCircle2, ChevronDown, CircleHelp, Clock3, Layers3, PackagePlus, Pencil, Plus, Search, Send, Trash2, X } from "lucide-react";
-import { getGetSupplierCatalogQueryKey, useGetSupplierCatalog, useCreateSupplierCatalogOffer, useUpdateSupplierCatalogOffer, useDeleteSupplierCatalogOffer, useCreateSupplierCatalogMasterProposal, type SupplierCatalogOfferInput } from "@workspace/api-client-react";
+import { getGetSupplierCatalogQueryKey, useGetSupplierCatalog, useCreateSupplierCatalogOffer, useUpdateSupplierCatalogOffer, useDeleteSupplierCatalogOffer, useCreateSupplierCatalogMasterProposal, type SupplierCatalogOfferInput, type SupplierCatalogOfferPriceInput, type CatalogItemForm, type CatalogItemAttribute } from "@workspace/api-client-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useSupplierAuth } from "@/lib/supplier-auth";
 
 type Status = "approved" | "pending" | "rejected";
 type Subtype = { id: number; itemId?: number; nameAr: string; nameEn: string; status?: Status };
-type MasterItem = { id: number; name: string; nameAr?: string; nameEn?: string; subtypes?: Subtype[] };
-type Offer = { id: number; itemId: number; subtypeId: number | null; itemName?: string; subtypeNameAr?: string; subtypeNameEn?: string; subtype?: Subtype | null; newSubtype?: { nameAr: string; nameEn: string } | null; price: number | null; status: Status; isActive?: boolean; removedAt?: string | null; rejectionReason?: string | null };
+type MasterItem = { id: number; name: string; nameAr?: string; nameEn?: string; subtypes?: Subtype[]; forms: CatalogItemForm[]; attributes: CatalogItemAttribute[] };
+type Offer = { id: number; itemId: number; subtypeId: number | null; itemName?: string; subtypeNameAr?: string; subtypeNameEn?: string; subtype?: Subtype | null; newSubtype?: { nameAr: string; nameEn: string } | null; price: number | null; status: Status; isActive?: boolean; removedAt?: string | null; rejectionReason?: string | null; formId?: number | null; formNameAr?: string | null; attributeOptionIds?: number[] };
 type MasterProposal = { id: number; nameAr: string; nameEn: string; status: Status; rejectionReason?: string | null };
 type Catalog = { profileComplete: boolean; items: MasterItem[]; subtypes?: Subtype[]; offers: Offer[]; masterProposals?: MasterProposal[] };
 const catalogKey = getGetSupplierCatalogQueryKey();
@@ -50,6 +50,46 @@ function Field({ label, value, onChange, placeholder, latin = false, testId }: {
   return <label className="block text-sm font-bold">{label}<input data-testid={testId} value={value} onChange={event => onChange(event.target.value)} dir={latin ? "ltr" : "rtl"} maxLength={120} placeholder={placeholder} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-medium outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/10" /></label>;
 }
 
+function OfferConfiguration({ item, formId, onFormChange, selections, onSelectionChange, scope = "new" }: { item: MasterItem; formId: number | null; onFormChange: (id: number) => void; selections: Record<number, number>; onSelectionChange: (attributeId: number, optionId: number | null) => void; scope?: string }) {
+  const forms = item.forms.filter(form => form.isActive || form.id === formId);
+  const attributes = item.attributes.filter(attribute => attribute.isActive && (attribute.options.some(option => option.isActive) || selections[attribute.id]));
+  return <div className="space-y-5 border-t border-border pt-5">
+    <fieldset>
+      <legend className="text-sm font-extrabold">الشكل المتاح <span className="text-destructive">*</span> <span className="font-medium text-muted-foreground">(مطلوب لهذا العرض)</span></legend>
+      <p className="mt-1 text-xs leading-6 text-muted-foreground">اختر شكل المنتج الفعلي، لا نوعه الفرعي. لكل عرض شكل واحد.</p>
+      {forms.length ? <div className="mt-3 flex flex-wrap gap-2">{forms.map(form => <label key={form.id} className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-bold transition-colors ${formId === form.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:border-primary/50"}`}><input type="radio" name={`offer-form-${scope}`} value={form.id} data-testid={`input-offer-form-${scope}-${form.id}`} checked={formId === form.id} onChange={() => onFormChange(form.id)} className="accent-primary" /><span>{form.nameAr}{!form.isActive && " (غير متاح للعروض الجديدة)"}</span><span dir="ltr" className="text-xs font-normal opacity-70">{form.nameEn}</span></label>)}</div> : <p role="status" className="mt-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-xs leading-6 text-muted-foreground">لم تُضف الإدارة أشكالاً لهذا الصنف بعد. لا يمكن نشر عرض له حتى يتوفر شكل للاختيار.</p>}
+    </fieldset>
+    {attributes.length > 0 && <fieldset className="rounded-2xl border border-border bg-secondary/20 p-4">
+      <legend className="px-1 text-sm font-extrabold">تفاصيل إضافية <span className="font-medium text-muted-foreground">(اختيارية)</span></legend>
+      <p className="mb-4 text-xs leading-6 text-muted-foreground">حدد فقط المواصفات التي تنطبق على ما تورّده؛ يمكنك ترك أي منها دون اختيار.</p>
+      <div className="grid gap-3 sm:grid-cols-2">{attributes.map(attribute => <label key={attribute.id} className="block text-xs font-bold">{attribute.nameAr}<select data-testid={`select-offer-attribute-${scope}-${attribute.id}`} value={selections[attribute.id] ?? ""} onChange={event => onSelectionChange(attribute.id, event.target.value ? Number(event.target.value) : null)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-medium outline-none focus:border-primary"><option value="">غير محدد</option>{attribute.options.filter(option => option.isActive || option.id === selections[attribute.id]).map(option => <option key={option.id} value={option.id}>{option.nameAr}{!option.isActive && " (غير متاح للعروض الجديدة)"}</option>)}</select></label>)}</div>
+    </fieldset>}
+  </div>;
+}
+
+function offerSelections(offer: Offer, item?: MasterItem): Record<number, number> {
+  const selected = new Set(offer.attributeOptionIds ?? []);
+  return Object.fromEntries((item?.attributes ?? []).filter(attribute => attribute.isActive).flatMap(attribute => {
+    const option = attribute.options.find(candidate => selected.has(candidate.id));
+    return option ? [[attribute.id, option.id]] : [];
+  }));
+}
+
+function OfferDetails({ offer, item }: { offer: Offer; item?: MasterItem }) {
+  const formName = offer.formNameAr || item?.forms.find(form => form.id === offer.formId)?.nameAr;
+  const selectedOptions = (offer.attributeOptionIds ?? []).map(id => {
+    for (const attribute of item?.attributes ?? []) {
+      const option = attribute.options.find(candidate => candidate.id === id);
+      if (option) return { id, label: `${attribute.nameAr}: ${option.nameAr}` };
+    }
+    return { id, label: `خيار #${id}` };
+  });
+  return <div className="mt-2 flex flex-wrap gap-1.5 text-xs" data-testid={`text-offer-configuration-${offer.id}`}>
+    <span className="rounded-lg bg-primary/5 px-2.5 py-1 font-bold text-primary">الشكل: {formName ?? (offer.formId ? `#${offer.formId}` : "لم يُحدّد سابقاً")}</span>
+    {selectedOptions.map(option => <span key={option.id} className="rounded-lg bg-secondary px-2.5 py-1 text-foreground">{option.label}</span>)}
+  </div>;
+}
+
 export default function SupplierCatalogPage() {
   const { supplier, isLoading } = useSupplierAuth();
   const [, navigate] = useLocation();
@@ -69,11 +109,15 @@ export default function SupplierCatalogPage() {
   const [nameAr, setNameAr] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [price, setPrice] = useState("");
+  const [formId, setFormId] = useState<number | null>(null);
+  const [attributeSelections, setAttributeSelections] = useState<Record<number, number>>({});
   const [masterOpen, setMasterOpen] = useState(false);
   const [masterAr, setMasterAr] = useState("");
   const [masterEn, setMasterEn] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingPrice, setEditingPrice] = useState("");
+  const [editingFormId, setEditingFormId] = useState<number | null>(null);
+  const [editingAttributes, setEditingAttributes] = useState<Record<number, number>>({});
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
@@ -87,7 +131,7 @@ export default function SupplierCatalogPage() {
   }, [query.error, navigate]);
   const catalog: Catalog | undefined = query.data && {
     profileComplete: query.data.profileComplete,
-    items: query.data.masters.map(master => ({ id: master.id, name: master.name, nameEn: master.nameEn ?? undefined, subtypes: master.subtypes })),
+    items: query.data.masters.map(master => ({ id: master.id, name: master.name, nameEn: master.nameEn ?? undefined, subtypes: master.subtypes, forms: master.forms ?? [], attributes: master.attributes ?? [] })),
     offers: query.data.masters.flatMap(master => master.offers.map(offer => {
       const subtype = master.subtypes.find(type => type.id === offer.subtypeId);
       return { ...offer, itemId: master.id, itemName: master.name, subtypeNameAr: subtype?.nameAr, subtypeNameEn: subtype?.nameEn, status: (subtype?.status === "rejected" ? "rejected" : offer.eligibilityStatus === "pending" || !subtype || subtype.status === "pending" ? "pending" : "approved") as Status };
@@ -108,7 +152,7 @@ export default function SupplierCatalogPage() {
   const counts = { approved: offers.filter(offer => offer.status === "approved").length, pending: offers.filter(offer => offer.status === "pending").length, rejected: offers.filter(offer => offer.status === "rejected").length };
   const busy = addOffer.isPending || changePrice.isPending || removeOffer.isPending || proposeMaster.isPending;
 
-  const clearForm = () => { setSelectedSubtype(null); setSubtypeSearch(""); setNameAr(""); setNameEn(""); setPrice(""); setNewSubtypeOpen(false); setSubtypeOpen(false); };
+  const clearForm = () => { setSelectedSubtype(null); setSubtypeSearch(""); setNameAr(""); setNameEn(""); setPrice(""); setFormId(null); setAttributeSelections({}); setNewSubtypeOpen(false); setSubtypeOpen(false); };
   const chooseItem = (id: number) => { setItemId(id); clearForm(); setFeedback(null); };
   const submitOffer = async (event: FormEvent) => {
     event.preventDefault();
@@ -117,8 +161,13 @@ export default function SupplierCatalogPage() {
     if (parsed === undefined) return setFeedback({ kind: "error", text: "أدخل سعراً صالحاً لا يقل عن صفر، أو اترك الحقل فارغاً." });
     if (!itemId || (!selectedSubtype && !newSubtypeOpen)) return setFeedback({ kind: "error", text: "اختر نوعاً معتمداً أو اقترح نوعاً جديداً." });
     if (newSubtypeOpen && (!nameAr.trim() || !nameEn.trim())) return setFeedback({ kind: "error", text: "اكتب اسم النوع بالعربية والإنجليزية قبل الإضافة." });
+    if (!formId || !currentItem?.forms.some(form => form.id === formId && form.isActive)) return setFeedback({ kind: "error", text: "اختر شكلاً متاحاً لهذا الصنف قبل إضافة العرض." });
     try {
-      const input: SupplierCatalogOfferInput = { itemId, ...(newSubtypeOpen ? { newSubtype: { nameAr: nameAr.trim(), nameEn: nameEn.trim() } } : { subtypeId: selectedSubtype!.id }), price: parsed };
+      const attributeOptionIds = currentItem.attributes.filter(attribute => attribute.isActive).flatMap(attribute => {
+        const optionId = attributeSelections[attribute.id];
+        return attribute.options.some(option => option.id === optionId && option.isActive) ? [optionId] : [];
+      });
+      const input: SupplierCatalogOfferInput = { itemId, formId, attributeOptionIds, ...(newSubtypeOpen ? { newSubtype: { nameAr: nameAr.trim(), nameEn: nameEn.trim() } } : { subtypeId: selectedSubtype!.id }), price: parsed };
       await addOffer.mutateAsync({ data: input });
       clearForm();
       setFeedback({ kind: "success", text: newSubtypeOpen ? "أُضيف العرض وأُرسل النوع الجديد للمراجعة. لن يظهر للمشترين حتى اعتماده." : "أُضيف العرض إلى قائمتك بنجاح." });
@@ -134,12 +183,37 @@ export default function SupplierCatalogPage() {
       setFeedback({ kind: "success", text: "وصل اقتراح الصنف الرئيسي للمراجعة. الأصناف المعتمدة لا تتغير أسماؤها." });
     } catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "تعذر إرسال الاقتراح." }); }
   };
-  const savePrice = async (id: number) => {
+  const startEditing = (offer: Offer) => {
+    setEditingId(offer.id);
+    setEditingPrice(offer.price?.toString() ?? "");
+    setEditingFormId(offer.formId ?? null);
+    setEditingAttributes(offerSelections(offer, items.find(item => item.id === offer.itemId)));
+    setRemovingId(null);
+    setFeedback(null);
+  };
+  const saveOffer = async (offer: Offer) => {
     const parsed = parsePrice(editingPrice);
     if (parsed === undefined) return setFeedback({ kind: "error", text: "أدخل سعراً صالحاً لا يقل عن صفر، أو اترك الحقل فارغاً." });
+    const item = items.find(candidate => candidate.id === offer.itemId);
+    if (!item) return setFeedback({ kind: "error", text: "تعذر العثور على الصنف المرتبط بالعرض." });
+    const previousSelections = offerSelections(offer, item);
+    const attributesChanged = JSON.stringify(previousSelections) !== JSON.stringify(editingAttributes);
+    const formChanged = editingFormId !== (offer.formId ?? null);
+    if (formChanged && (!editingFormId || !item.forms.some(form => form.id === editingFormId && form.isActive))) return setFeedback({ kind: "error", text: "اختر شكلاً متاحاً لهذا الصنف." });
+    const data: SupplierCatalogOfferPriceInput = {};
+    if (parsed !== offer.price) data.price = parsed;
+    if (formChanged) data.formId = editingFormId!;
+    if (attributesChanged) {
+      const selectedIds = Object.entries(editingAttributes).map(([attributeId, optionId]) => {
+        const attribute = item.attributes.find(candidate => candidate.id === Number(attributeId));
+        return attribute?.isActive && attribute.options.some(option => option.id === optionId && option.isActive) ? optionId : null;
+      }).filter((id): id is number => id !== null);
+      data.attributeOptionIds = selectedIds;
+    }
+    if (!Object.keys(data).length) { setEditingId(null); return; }
     setFeedback(null);
-    try { await changePrice.mutateAsync({ id, data: { price: parsed } }); setEditingId(null); setFeedback({ kind: "success", text: "تم تحديث السعر." }); }
-    catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "تعذر تحديث السعر." }); }
+    try { await changePrice.mutateAsync({ id: offer.id, data }); setEditingId(null); setFeedback({ kind: "success", text: "تم تحديث العرض." }); }
+    catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "تعذر تحديث العرض." }); }
   };
   const confirmRemove = async (id: number) => {
     setFeedback(null);
@@ -166,17 +240,44 @@ export default function SupplierCatalogPage() {
             <div className="max-h-[420px] overflow-y-auto p-2">{displayedItems.length ? displayedItems.map(item => <button type="button" key={item.id} data-testid={`button-select-master-${item.id}`} onClick={() => chooseItem(item.id)} className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-4 py-2 text-start text-sm font-bold transition-colors ${itemId === item.id ? "bg-primary text-primary-foreground" : "hover:bg-secondary/60"}`}><span>{item.nameAr ?? item.name}</span><span className="shrink-0 text-xs opacity-60">{item.nameEn}</span></button>) : <p className="px-4 py-8 text-center text-sm text-muted-foreground">لا يوجد صنف مطابق. يمكنك اقتراح صنف جديد أدناه.</p>}</div>
             <div className="border-t border-border p-3"><button type="button" data-testid="button-toggle-master-proposal" onClick={() => setMasterOpen(!masterOpen)} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-extrabold text-primary hover:bg-primary/5"><span className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> اقترح صنفاً رئيسياً جديداً</span><ChevronDown className={`h-4 w-4 transition-transform ${masterOpen ? "rotate-180" : ""}`} /></button>{masterOpen && <form onSubmit={submitMaster} className="mt-3 space-y-3 rounded-xl bg-secondary/35 p-4"><p className="text-xs leading-6 text-muted-foreground">اقتراحك يذهب للمراجعة؛ لا يغيّر أسماء الأصناف المعتمدة.</p><Field label="الاسم بالعربية" value={masterAr} onChange={setMasterAr} placeholder="اسم الصنف المقترح" testId="input-master-name-ar" /><Field label="الاسم بالإنجليزية" value={masterEn} onChange={setMasterEn} placeholder="Master category name" latin testId="input-master-name-en" /><button type="submit" data-testid="button-submit-master-proposal" disabled={busy || !masterAr.trim() || !masterEn.trim()} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-50"><Send className="h-3.5 w-3.5" />{proposeMaster.isPending ? "جارٍ الإرسال..." : "إرسال للمراجعة"}</button></form>}</div>
           </section>
-          <section className="supplier-panel p-5 md:p-6" aria-labelledby="offer-heading"><div className="flex items-start gap-3"><PackagePlus className="mt-1 h-5 w-5 text-primary" /><div><p className="text-xs font-extrabold text-primary">إضافة عرض</p><h2 id="offer-heading" className="mt-0.5 text-xl font-extrabold">{currentItem ? currentItem.nameAr ?? currentItem.name : "ابدأ باختيار صنف رئيسي"}</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">يمكنك إضافة عدة أنواع تحت الصنف نفسه. السعر اختياري ويمكن تغييره لاحقاً.</p></div></div>
+           <section className="supplier-panel p-5 md:p-6" aria-labelledby="offer-heading"><div className="flex items-start gap-3"><PackagePlus className="mt-1 h-5 w-5 text-primary" /><div><p className="text-xs font-extrabold text-primary">إضافة عرض</p><h2 id="offer-heading" className="mt-0.5 text-xl font-extrabold">{currentItem ? currentItem.nameAr ?? currentItem.name : "ابدأ باختيار صنف رئيسي"}</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">النوع يحدد المنتج، والشكل يحدد صورته المورّدة، والتفاصيل الإضافية اختيارية. السعر اختياري ويمكن تغييره لاحقاً.</p></div></div>
             {currentItem ? <form onSubmit={submitOffer} className="mt-6 space-y-5"><div><label htmlFor="subtype-search" className="text-sm font-extrabold">النوع الفرعي المعتمد</label><div className="relative mt-2"><Search className="absolute start-3.5 top-3.5 h-4 w-4 text-muted-foreground" /><input id="subtype-search" role="combobox" aria-autocomplete="list" aria-expanded={subtypeOpen} aria-controls="catalog-subtype-options" autoComplete="off" data-testid="input-search-subtype" value={selectedSubtype && !subtypeOpen ? selectedSubtype.nameAr : subtypeSearch} onChange={event => { setSubtypeSearch(event.target.value); setSelectedSubtype(null); setSubtypeOpen(true); setNewSubtypeOpen(false); }} onFocus={() => { setSubtypeOpen(true); if (selectedSubtype) { setSubtypeSearch(""); setSelectedSubtype(null); } }} onKeyDown={event => { if (event.key === "Escape") setSubtypeOpen(false); if (event.key === "Enter" && subtypeOpen && matches.length) { event.preventDefault(); setSelectedSubtype(matches[0].type); setSubtypeOpen(false); setSubtypeSearch(""); } }} placeholder="ابحث بالعربية أو الإنجليزية..." className="h-12 w-full rounded-xl border border-input bg-background pe-4 ps-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10" />{selectedSubtype && <Check className="absolute end-3.5 top-3.5 h-4 w-4 text-success" />}</div>
               {subtypeOpen && !newSubtypeOpen && <div id="catalog-subtype-options" role="listbox" className="mt-1 max-h-56 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-warm-lg">{matches.length ? matches.map(({ type }) => <button type="button" role="option" aria-selected={selectedSubtype?.id === type.id} key={type.id} data-testid={`button-select-subtype-${type.id}`} onClick={() => { setSelectedSubtype(type); setSubtypeOpen(false); setSubtypeSearch(""); }} className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-start text-sm hover:bg-secondary"><span className="font-bold">{type.nameAr}</span><span dir="ltr" className="text-xs text-muted-foreground">{type.nameEn}</span></button>) : <p className="px-3 py-4 text-xs text-muted-foreground">لم نعثر على نوع مطابق؛ يمكنك اقتراحه أدناه.</p>}</div>}
               <button type="button" data-testid="button-toggle-new-subtype" onClick={() => { setNewSubtypeOpen(!newSubtypeOpen); setSelectedSubtype(null); setSubtypeOpen(false); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline"><Plus className="h-3.5 w-3.5" />{newSubtypeOpen ? "العودة إلى الأنواع المعتمدة" : "النوع غير موجود؟ اقترح نوعاً جديداً"}</button></div>
               {newSubtypeOpen && <div className="grid gap-3 rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:grid-cols-2"><div className="sm:col-span-2"><p className="text-sm font-extrabold">اقتراح نوع جديد</p><p className="text-xs text-muted-foreground">يظل العرض قيد المراجعة حتى اعتماد النوع.</p></div><Field label="اسم النوع بالعربية" value={nameAr} onChange={setNameAr} placeholder="مثال: لوز شرائح" testId="input-subtype-name-ar" /><Field label="اسم النوع بالإنجليزية" value={nameEn} onChange={setNameEn} placeholder="Subtype name" latin testId="input-subtype-name-en" /></div>}
-              <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-[1fr_auto] sm:items-end"><label className="block text-sm font-bold">السعر المقترح <span className="font-medium text-muted-foreground">(اختياري، ر.س)</span><input type="number" min="0" step="any" inputMode="decimal" data-testid="input-offer-price" value={price} onChange={event => setPrice(event.target.value)} placeholder="اتركه فارغاً إذا لم تحدد سعراً" className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary" /></label><button type="submit" data-testid="button-add-catalog-offer" disabled={busy || (!selectedSubtype && !newSubtypeOpen) || (newSubtypeOpen && (!nameAr.trim() || !nameEn.trim()))} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"><Plus className="h-4 w-4" />{addOffer.isPending ? "جارٍ الإضافة..." : "أضف العرض"}</button></div>
+               <OfferConfiguration item={currentItem} formId={formId} onFormChange={setFormId} selections={attributeSelections} onSelectionChange={(attributeId, optionId) => setAttributeSelections(previous => { const next = { ...previous }; if (optionId === null) delete next[attributeId]; else next[attributeId] = optionId; return next; })} />
+               <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-[1fr_auto] sm:items-end"><label className="block text-sm font-bold">السعر المقترح <span className="font-medium text-muted-foreground">(اختياري، ر.س)</span><input type="number" min="0" step="any" inputMode="decimal" data-testid="input-offer-price" value={price} onChange={event => setPrice(event.target.value)} placeholder="اتركه فارغاً إذا لم تحدد سعراً" className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary" /></label><button type="submit" data-testid="button-add-catalog-offer" disabled={busy || !formId || !currentItem.forms.some(form => form.id === formId && form.isActive) || (!selectedSubtype && !newSubtypeOpen) || (newSubtypeOpen && (!nameAr.trim() || !nameEn.trim()))} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"><Plus className="h-4 w-4" />{addOffer.isPending ? "جارٍ الإضافة..." : "أضف العرض"}</button></div>
             </form> : <div className="mt-8 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-secondary/20 px-6 text-center"><Layers3 className="mb-3 h-7 w-7 text-primary/60" /><p className="font-bold">اختر صنفاً من القائمة</p><p className="mt-1 text-sm text-muted-foreground">ثم حدد نوعاً معتمداً أو أرسل اقتراحاً جديداً.</p></div>}
           </section>
         </div>
         <section className="supplier-panel mt-5 overflow-hidden" aria-labelledby="offers-heading"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5 md:px-6"><div><p className="text-xs font-extrabold text-primary">إعلاناتك</p><h2 id="offers-heading" className="mt-1 text-xl font-extrabold">الأنواع التي توردها <span className="text-base text-muted-foreground">({offers.length.toLocaleString("ar-SA")})</span></h2></div><div className="flex gap-1 overflow-x-auto rounded-xl bg-secondary/50 p-1 text-xs font-bold">{(["all", "approved", "pending", "rejected"] as const).map(key => <button type="button" key={key} data-testid={`button-filter-offers-${key}`} onClick={() => setFilter(key)} className={`shrink-0 rounded-lg px-3 py-2 transition-colors ${filter === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{key === "all" ? `الكل ${offers.length}` : `${statusInfo(key).text} ${counts[key]}`}</button>)}</div></div>
-          {visibleOffers.length ? <div className="divide-y divide-border">{visibleOffers.map(offer => <div key={offer.id} data-testid={`row-catalog-offer-${offer.id}`} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{offer.subtype?.nameAr ?? offer.subtypeNameAr ?? offer.newSubtype?.nameAr ?? "نوع مقترح"}</strong><StatusBadge status={offer.status} /></div><p className="mt-1 text-xs text-muted-foreground">{offer.itemName ?? items.find(item => item.id === offer.itemId)?.nameAr ?? items.find(item => item.id === offer.itemId)?.name ?? "صنف رئيسي"}{(offer.subtype?.nameEn ?? offer.subtypeNameEn ?? offer.newSubtype?.nameEn) && <span dir="ltr"> · {offer.subtype?.nameEn ?? offer.subtypeNameEn ?? offer.newSubtype?.nameEn}</span>}</p>{offer.status === "rejected" && offer.rejectionReason && <p className="mt-1 text-xs text-destructive">سبب الرفض: {offer.rejectionReason}</p>}</div><div className="flex flex-wrap items-center gap-2 md:justify-end">{editingId === offer.id ? <div className="flex flex-wrap items-center gap-2"><input type="number" min="0" step="any" inputMode="decimal" aria-label="السعر الجديد بالريال" data-testid={`input-edit-price-${offer.id}`} value={editingPrice} onChange={event => setEditingPrice(event.target.value)} placeholder="بدون سعر" className="h-9 w-32 rounded-lg border border-input bg-background px-2 text-sm outline-none focus:border-primary" /><button type="button" data-testid={`button-save-price-${offer.id}`} disabled={busy} onClick={() => void savePrice(offer.id)} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50">{changePrice.isPending ? "جارٍ الحفظ..." : "حفظ"}</button><button type="button" data-testid={`button-cancel-price-${offer.id}`} onClick={() => setEditingId(null)} className="rounded-lg border px-3 py-2 text-xs font-bold">إلغاء</button></div> : <><span className="me-1 text-sm font-bold" data-testid={`text-offer-price-${offer.id}`}>{priceLabel(offer.price)}</span><button type="button" aria-label={`تعديل سعر ${offer.subtype?.nameAr ?? offer.subtypeNameAr ?? "العرض"}`} data-testid={`button-edit-price-${offer.id}`} disabled={busy} onClick={() => { setEditingId(offer.id); setEditingPrice(offer.price?.toString() ?? ""); setRemovingId(null); }} className="rounded-lg border p-2 text-muted-foreground hover:bg-secondary disabled:opacity-50"><Pencil className="h-4 w-4" /></button></>}{removingId === offer.id ? <div className="flex items-center gap-2 rounded-lg bg-destructive/5 px-2 py-1"><span className="text-xs font-bold text-destructive">إزالة العرض؟</span><button type="button" data-testid={`button-confirm-remove-${offer.id}`} disabled={busy} onClick={() => void confirmRemove(offer.id)} className="rounded-md bg-destructive px-2 py-1 text-xs font-bold text-destructive-foreground disabled:opacity-50">تأكيد</button><button type="button" data-testid={`button-cancel-remove-${offer.id}`} onClick={() => setRemovingId(null)} className="text-xs font-bold">إلغاء</button></div> : <button type="button" aria-label={`إزالة العرض ${offer.subtype?.nameAr ?? offer.subtypeNameAr ?? ""}`} data-testid={`button-remove-offer-${offer.id}`} disabled={busy} onClick={() => { setRemovingId(offer.id); setEditingId(null); }} className="rounded-lg border p-2 text-muted-foreground hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}</div></div>)}</div> : <div className="px-6 py-12 text-center"><PackagePlus className="mx-auto h-8 w-8 text-primary/50" /><h3 className="mt-3 font-extrabold">{offers.length ? "لا توجد عروض بهذه الحالة" : "قائمتك لم تبدأ بعد"}</h3><p className="mt-1 text-sm text-muted-foreground">{offers.length ? "اختر حالة أخرى للاطلاع على عروضك." : "اختر صنفاً رئيسياً من الأعلى وأضف أول نوع تورّده."}</p></div>}</section>
+          {visibleOffers.length ? <div className="divide-y divide-border">{visibleOffers.map(offer => {
+            const item = items.find(candidate => candidate.id === offer.itemId);
+            return <div key={offer.id} data-testid={`row-catalog-offer-${offer.id}`} className="px-5 py-4 md:px-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{offer.subtype?.nameAr ?? offer.subtypeNameAr ?? offer.newSubtype?.nameAr ?? "نوع مقترح"}</strong><StatusBadge status={offer.status} /></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{offer.itemName ?? item?.nameAr ?? item?.name ?? "صنف رئيسي"}{(offer.subtype?.nameEn ?? offer.subtypeNameEn ?? offer.newSubtype?.nameEn) && <span dir="ltr"> · {offer.subtype?.nameEn ?? offer.subtypeNameEn ?? offer.newSubtype?.nameEn}</span>}</p>
+                  <OfferDetails offer={offer} item={item} />
+                  {offer.status === "rejected" && offer.rejectionReason && <p className="mt-1 text-xs text-destructive">سبب الرفض: {offer.rejectionReason}</p>}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                  <span className="me-1 text-sm font-bold" data-testid={`text-offer-price-${offer.id}`}>{priceLabel(offer.price)}</span>
+                  <button type="button" aria-label={`تعديل عرض ${offer.subtype?.nameAr ?? offer.subtypeNameAr ?? "العرض"}`} aria-expanded={editingId === offer.id} data-testid={`button-edit-price-${offer.id}`} disabled={busy} onClick={() => editingId === offer.id ? setEditingId(null) : startEditing(offer)} className="rounded-lg border p-2 text-muted-foreground hover:bg-secondary disabled:opacity-50"><Pencil className="h-4 w-4" /></button>
+                  {removingId === offer.id ? <div className="flex items-center gap-2 rounded-lg bg-destructive/5 px-2 py-1"><span className="text-xs font-bold text-destructive">إزالة العرض؟</span><button type="button" data-testid={`button-confirm-remove-${offer.id}`} disabled={busy} onClick={() => void confirmRemove(offer.id)} className="rounded-md bg-destructive px-2 py-1 text-xs font-bold text-destructive-foreground disabled:opacity-50">تأكيد</button><button type="button" data-testid={`button-cancel-remove-${offer.id}`} onClick={() => setRemovingId(null)} className="text-xs font-bold">إلغاء</button></div> : <button type="button" aria-label={`إزالة العرض ${offer.subtype?.nameAr ?? offer.subtypeNameAr ?? ""}`} data-testid={`button-remove-offer-${offer.id}`} disabled={busy} onClick={() => { setRemovingId(offer.id); setEditingId(null); }} className="rounded-lg border p-2 text-muted-foreground hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}
+                </div>
+              </div>
+              {editingId === offer.id && item && <form data-testid={`form-edit-offer-${offer.id}`} onSubmit={event => { event.preventDefault(); void saveOffer(offer); }} className="mt-5 space-y-5 rounded-2xl border border-border bg-secondary/15 p-4 md:p-5">
+                <div><h3 className="text-sm font-extrabold">تعديل تفاصيل العرض</h3><p className="mt-1 text-xs leading-6 text-muted-foreground">يمكنك إضافة شكل لعرض قديم دون حذفه. لا تتغير التفاصيل التي لم تعدلها.</p></div>
+                <OfferConfiguration item={item} scope={`edit-${offer.id}`} formId={editingFormId} onFormChange={setEditingFormId} selections={editingAttributes} onSelectionChange={(attributeId, optionId) => setEditingAttributes(previous => { const next = { ...previous }; if (optionId === null) delete next[attributeId]; else next[attributeId] = optionId; return next; })} />
+                <div className="flex flex-wrap items-end gap-3 border-t border-border pt-4">
+                  <label className="block text-sm font-bold">السعر المقترح <span className="font-medium text-muted-foreground">(اختياري، ر.س)</span><input type="number" min="0" step="any" inputMode="decimal" data-testid={`input-edit-price-${offer.id}`} value={editingPrice} onChange={event => setEditingPrice(event.target.value)} placeholder="بدون سعر" className="mt-1.5 h-10 w-40 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary" /></label>
+                  <button type="submit" data-testid={`button-save-price-${offer.id}`} disabled={busy} className="h-10 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground disabled:opacity-50">{changePrice.isPending ? "جارٍ الحفظ..." : "حفظ التعديلات"}</button>
+                  <button type="button" data-testid={`button-cancel-price-${offer.id}`} onClick={() => setEditingId(null)} className="h-10 rounded-xl border border-border px-4 text-xs font-bold">إلغاء</button>
+                </div>
+              </form>}
+            </div>;
+          })}</div> : <div className="px-6 py-12 text-center"><PackagePlus className="mx-auto h-8 w-8 text-primary/50" /><h3 className="mt-3 font-extrabold">{offers.length ? "لا توجد عروض بهذه الحالة" : "قائمتك لم تبدأ بعد"}</h3><p className="mt-1 text-sm text-muted-foreground">{offers.length ? "اختر حالة أخرى للاطلاع على عروضك." : "اختر صنفاً رئيسياً من الأعلى وأضف أول نوع تورّده."}</p></div>}</section>
         <div className="mt-5 grid gap-5 md:grid-cols-[1fr_.75fr]"><section className="supplier-panel p-5 md:p-6"><h2 className="flex items-center gap-2 text-base font-extrabold"><Send className="h-4 w-4 text-primary" /> اقتراحات الأصناف</h2>{(catalog.masterProposals?.length || pendingSubtypes.length) ? <div className="mt-4 divide-y divide-border">{catalog.masterProposals?.map(proposal => <div key={`master-${proposal.id}`} data-testid={`row-master-proposal-${proposal.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="text-sm font-bold">{proposal.nameAr} <span dir="ltr" className="font-medium text-muted-foreground">/ {proposal.nameEn}</span></p><p className="text-xs text-muted-foreground">صنف رئيسي جديد</p>{proposal.rejectionReason && <p className="text-xs text-destructive">{proposal.rejectionReason}</p>}</div><StatusBadge status={proposal.status} /></div>)}{pendingSubtypes.map(proposal => <div key={`subtype-${proposal.id}`} data-testid={`row-subtype-proposal-${proposal.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="text-sm font-bold">{proposal.nameAr} <span dir="ltr" className="font-medium text-muted-foreground">/ {proposal.nameEn}</span></p><p className="text-xs text-muted-foreground">نوع تحت {items.find(item => item.id === proposal.itemId)?.name ?? "صنف رئيسي"}</p></div><StatusBadge status="pending" /></div>)}</div> : <p className="mt-3 text-sm text-muted-foreground">لا توجد اقتراحات أصناف حالياً.</p>}</section><aside className="rounded-[1.5rem] border border-primary/15 bg-secondary/50 p-5 md:p-6"><h2 className="flex items-center gap-2 text-base font-extrabold"><CircleHelp className="h-5 w-5 text-primary" /> عن دقة الإعلانات</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">ما تضيفه هنا يصف نطاق توريدك، لا الكميات المتاحة الآن ولا وعداً بسعر نهائي. تحقق من السعر والمخزون وموعد التسليم مباشرة مع المشتري.</p></aside></div>
       </>}
     </div>

@@ -21,3 +21,4 @@
 - [Deferred services section](deferred-services-section.md) — hide services and its children from product discovery without deleting data or precommitting to a paid tier.
 - [Catalog supplier eligibility](catalog-supplier-eligibility.md) — approved subtype offers gate every supplier discovery/contact path, including legacy suppliers; do not disable supplier logins to enforce it.
 - [API integration test execution](api-integration-test-execution.md) — native TS test execution cannot resolve this workspace's extensionless ESM imports; use the project's bundled test script.
+- [Catalog forms and legacy almonds](catalog-forms-legacy-almonds.md) — keep legacy almond item IDs and filters while combining their forms in buyer UI; default forms bridge older masters.

@@ -255,12 +255,98 @@ directoryDb.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
     subtype_id INTEGER NOT NULL REFERENCES supplier_catalog_subtypes(id) ON DELETE RESTRICT,
+    form_id INTEGER REFERENCES supplier_catalog_item_forms(id) ON DELETE RESTRICT,
+    variant_key TEXT NOT NULL DEFAULT '',
     price REAL CHECK (price IS NULL OR price >= 0),
     last_updated TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
   );
   CREATE INDEX IF NOT EXISTS idx_supplier_catalog_offers_supplier
     ON supplier_catalog_offers(supplier_id, is_active, subtype_id);
+  CREATE TABLE IF NOT EXISTS supplier_catalog_item_forms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    name_ar TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE (item_id, name_ar),
+    UNIQUE (item_id, name_en)
+  );
+  CREATE INDEX IF NOT EXISTS idx_catalog_item_forms_item_active
+    ON supplier_catalog_item_forms(item_id, is_active, id);
+  DROP TRIGGER IF EXISTS supplier_catalog_item_default_form;
+  CREATE TRIGGER supplier_catalog_item_default_form
+  AFTER INSERT ON supplier_taxonomy_items
+  BEGIN
+    INSERT OR IGNORE INTO supplier_catalog_item_forms (item_id, name_ar, name_en, created_at)
+    VALUES (
+      NEW.id,
+      CASE NEW.name
+        WHEN 'لوز حب' THEN 'حب'
+        WHEN 'لوز شرائح' THEN 'شرائح'
+        WHEN 'لوز مطحون' THEN 'مطحون'
+        ELSE 'قياسي'
+      END,
+      CASE NEW.name
+        WHEN 'لوز حب' THEN 'Whole'
+        WHEN 'لوز شرائح' THEN 'Sliced'
+        WHEN 'لوز مطحون' THEN 'Ground'
+        ELSE 'Standard'
+      END,
+      strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+    INSERT OR IGNORE INTO supplier_catalog_item_forms (item_id, name_ar, name_en, created_at)
+    SELECT NEW.id, form.nameAr, form.nameEn, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM (
+      SELECT 'صحيح' AS nameAr, 'Whole' AS nameEn WHERE NEW.name IN ('بندق', 'جوز')
+      UNION ALL SELECT 'مطحون', 'Ground' WHERE NEW.name IN ('بندق', 'فستق')
+      UNION ALL SELECT 'مجروش', 'Crushed' WHERE NEW.name IN ('بندق', 'جوز', 'فستق')
+      UNION ALL SELECT 'مفروم', 'Chopped' WHERE NEW.name = 'جوز'
+      UNION ALL SELECT 'حب', 'Whole' WHERE NEW.name = 'فستق'
+    ) form;
+    UPDATE supplier_catalog_item_forms
+    SET is_active = 0
+    WHERE item_id = NEW.id AND name_ar = 'قياسي'
+      AND NEW.name IN ('بندق', 'جوز', 'فستق')
+      AND NOT EXISTS (
+        SELECT 1 FROM supplier_catalog_offers offer
+        WHERE offer.form_id = supplier_catalog_item_forms.id
+      );
+  END;
+  CREATE TABLE IF NOT EXISTS supplier_catalog_item_attributes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES supplier_taxonomy_items(id) ON DELETE CASCADE,
+    name_ar TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE (item_id, name_ar),
+    UNIQUE (item_id, name_en)
+  );
+  CREATE INDEX IF NOT EXISTS idx_catalog_item_attributes_item_active
+    ON supplier_catalog_item_attributes(item_id, is_active, id);
+  CREATE TABLE IF NOT EXISTS supplier_catalog_item_attribute_options (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attribute_id INTEGER NOT NULL REFERENCES supplier_catalog_item_attributes(id) ON DELETE CASCADE,
+    name_ar TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE (attribute_id, name_ar),
+    UNIQUE (attribute_id, name_en)
+  );
+  CREATE INDEX IF NOT EXISTS idx_catalog_attribute_options_attribute_active
+    ON supplier_catalog_item_attribute_options(attribute_id, is_active, id);
+  CREATE TABLE IF NOT EXISTS supplier_catalog_offer_attributes (
+    offer_id INTEGER NOT NULL REFERENCES supplier_catalog_offers(id) ON DELETE CASCADE,
+    attribute_id INTEGER NOT NULL REFERENCES supplier_catalog_item_attributes(id) ON DELETE RESTRICT,
+    option_id INTEGER NOT NULL REFERENCES supplier_catalog_item_attribute_options(id) ON DELETE RESTRICT,
+    PRIMARY KEY (offer_id, attribute_id),
+    UNIQUE (offer_id, option_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_catalog_offer_attributes_option
+    ON supplier_catalog_offer_attributes(option_id, offer_id);
   CREATE TABLE IF NOT EXISTS supplier_catalog_master_proposals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name_ar TEXT NOT NULL,
@@ -2648,3 +2734,189 @@ restoreCakeSupplierTaxonomy(directoryDb);
 mergeReviewedSugarDuplicate(directoryDb);
 mergeReviewedAdditionalDuplicates(directoryDb);
 linkCakeBoxToMultipleSections(directoryDb);
+
+const supplierCatalogFormsMigration = "supplier-catalog-item-forms-and-attributes-v1";
+if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(supplierCatalogFormsMigration)) {
+  const offerColumns = directoryDb.prepare("PRAGMA table_info(supplier_catalog_offers)")
+    .all() as Array<{ name: string }>;
+  if (!offerColumns.some((column) => column.name === "form_id")) {
+    directoryDb.exec("ALTER TABLE supplier_catalog_offers ADD COLUMN form_id INTEGER REFERENCES supplier_catalog_item_forms(id)");
+  }
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const items = directoryDb.prepare(`
+      SELECT id, name FROM supplier_taxonomy_items ORDER BY id
+    `).all() as Array<{ id: number; name: string }>;
+    const insertForm = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_catalog_item_forms (item_id, name_ar, name_en, created_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    const formsByItem = new Map<number, string>();
+    for (const item of items) {
+      const form = item.name === "لوز حب" ? ["حب", "Whole"]
+        : item.name === "لوز شرائح" ? ["شرائح", "Sliced"]
+          : item.name === "لوز مطحون" ? ["مطحون", "Ground"]
+            : ["قياسي", "Standard"];
+      insertForm.run(item.id, form[0], form[1], now);
+      formsByItem.set(item.id, form[0]);
+    }
+    const itemIds = new Map(items.map((item) => [item.name, item.id]));
+    const hazelnutId = itemIds.get("بندق");
+    const walnutId = itemIds.get("جوز");
+    if (hazelnutId) {
+      for (const [nameAr, nameEn] of [
+        ["صحيح", "Whole"],
+        ["مطحون", "Ground"],
+        ["مجروش", "Crushed"],
+      ]) insertForm.run(hazelnutId, nameAr, nameEn, now);
+    }
+    if (walnutId) {
+      for (const [nameAr, nameEn] of [
+        ["صحيح", "Whole"],
+        ["مفروم", "Chopped"],
+        ["مجروش", "Crushed"],
+      ]) insertForm.run(walnutId, nameAr, nameEn, now);
+    }
+    const seedAttribute = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_catalog_item_attributes
+        (item_id, name_ar, name_en, created_at) VALUES (?, ?, ?, ?)
+    `);
+    const seedOption = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_catalog_item_attribute_options
+        (attribute_id, name_ar, name_en, created_at) VALUES (?, ?, ?, ?)
+    `);
+    if (hazelnutId) {
+      for (const [nameAr, nameEn, options] of [
+        ["اللون", "Color", [["أبيض", "White"], ["أحمر", "Red"]]],
+        ["التحميص", "Roasting", [["ني", "Raw"], ["محمص", "Roasted"]]],
+      ] as const) {
+        seedAttribute.run(hazelnutId, nameAr, nameEn, now);
+        const attribute = directoryDb.prepare(`
+          SELECT id FROM supplier_catalog_item_attributes WHERE item_id = ? AND name_ar = ?
+        `).get(hazelnutId, nameAr) as { id: number };
+        for (const [optionAr, optionEn] of options) {
+          seedOption.run(attribute.id, optionAr, optionEn, now);
+        }
+      }
+    }
+    for (const [itemId, formName] of formsByItem) {
+      const form = directoryDb.prepare(`
+        SELECT id FROM supplier_catalog_item_forms WHERE item_id = ? AND name_ar = ? AND is_active = 1
+      `).get(itemId, formName) as { id: number } | undefined;
+      if (!form) throw new Error(`Default form missing for taxonomy item ${itemId}`);
+      directoryDb.prepare(`
+        UPDATE supplier_catalog_offers
+        SET form_id = ?
+        WHERE form_id IS NULL
+          AND subtype_id IN (SELECT id FROM supplier_catalog_subtypes WHERE item_id = ?)
+      `).run(form.id, itemId);
+    }
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
+      .run(supplierCatalogFormsMigration, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const supplierCatalogVariantIdentityMigration = "supplier-catalog-offer-variant-identity-v1";
+if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(supplierCatalogVariantIdentityMigration)) {
+  const offerColumns = directoryDb.prepare("PRAGMA table_info(supplier_catalog_offers)")
+    .all() as Array<{ name: string }>;
+  if (!offerColumns.some((column) => column.name === "variant_key")) {
+    directoryDb.exec("ALTER TABLE supplier_catalog_offers ADD COLUMN variant_key TEXT NOT NULL DEFAULT ''");
+  }
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const offers = directoryDb.prepare(`
+      SELECT offer.id, offer.supplier_id AS supplierId, offer.subtype_id AS subtypeId,
+        offer.form_id AS formId, offer.is_active AS isActive, selected.option_id AS optionId
+      FROM supplier_catalog_offers offer
+      LEFT JOIN supplier_catalog_offer_attributes selected ON selected.offer_id = offer.id
+      ORDER BY offer.id, selected.option_id
+    `).all() as Array<{
+      id: number; supplierId: number; subtypeId: number; formId: number | null;
+      isActive: number; optionId: number | null;
+    }>;
+    const grouped = new Map<number, {
+      supplierId: number; subtypeId: number; formId: number | null; isActive: number; optionIds: number[];
+    }>();
+    for (const row of offers) {
+      const current = grouped.get(row.id) ?? {
+        supplierId: row.supplierId, subtypeId: row.subtypeId, formId: row.formId,
+        isActive: row.isActive, optionIds: [],
+      };
+      if (row.optionId !== null) current.optionIds.push(row.optionId);
+      grouped.set(row.id, current);
+    }
+    const setVariantKey = directoryDb.prepare(`
+      UPDATE supplier_catalog_offers SET variant_key = ? WHERE id = ?
+    `);
+    const activeIdentities = new Map<string, number>();
+    const deactivateDuplicate = directoryDb.prepare(`
+      UPDATE supplier_catalog_offers SET is_active = 0 WHERE id = ?
+    `);
+    for (const [offerId, identity] of grouped) {
+      const variantKey = identity.optionIds.sort((a, b) => a - b).join(",");
+      setVariantKey.run(variantKey, offerId);
+      if (!identity.isActive || identity.formId === null) continue;
+      const key = `${identity.supplierId}:${identity.subtypeId}:${identity.formId}:${variantKey}`;
+      if (activeIdentities.has(key)) deactivateDuplicate.run(offerId);
+      else activeIdentities.set(key, offerId);
+    }
+    directoryDb.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_catalog_offer_active_variant
+      ON supplier_catalog_offers(supplier_id, subtype_id, form_id, variant_key)
+      WHERE is_active = 1 AND form_id IS NOT NULL
+    `);
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
+      .run(supplierCatalogVariantIdentityMigration, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+const curatedNutFormsMigration = "supplier-catalog-curated-nut-forms-v1";
+if (!directoryDb.prepare("SELECT 1 FROM directory_migrations WHERE name = ?").get(curatedNutFormsMigration)) {
+  const now = new Date().toISOString();
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const curatedItems = directoryDb.prepare(`
+      SELECT id, name FROM supplier_taxonomy_items WHERE name IN ('بندق', 'جوز', 'فستق')
+    `).all() as Array<{ id: number; name: string }>;
+    const formsByName: Record<string, Array<[string, string]>> = {
+      بندق: [["صحيح", "Whole"], ["مطحون", "Ground"], ["مجروش", "Crushed"]],
+      جوز: [["صحيح", "Whole"], ["مفروم", "Chopped"], ["مجروش", "Crushed"]],
+      فستق: [["حب", "Whole"], ["مطحون", "Ground"], ["مجروش", "Crushed"]],
+    };
+    const insertForm = directoryDb.prepare(`
+      INSERT OR IGNORE INTO supplier_catalog_item_forms (item_id, name_ar, name_en, created_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    const hideUnreferencedNeutralForm = directoryDb.prepare(`
+      UPDATE supplier_catalog_item_forms
+      SET is_active = 0
+      WHERE item_id = ? AND name_ar = 'قياسي' AND NOT EXISTS (
+        SELECT 1 FROM supplier_catalog_offers offer
+        WHERE offer.form_id = supplier_catalog_item_forms.id
+      )
+    `);
+    for (const item of curatedItems) {
+      for (const [nameAr, nameEn] of formsByName[item.name] ?? []) {
+        insertForm.run(item.id, nameAr, nameEn, now);
+      }
+      hideUnreferencedNeutralForm.run(item.id);
+    }
+    directoryDb.prepare("INSERT INTO directory_migrations (name, applied_at) VALUES (?, ?)")
+      .run(curatedNutFormsMigration, now);
+    directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+}

@@ -21,6 +21,9 @@ import type {
 
 import type {
   ActivityLogEntry,
+  AdminCatalogAttributeInput,
+  AdminCatalogAttributeOptionsInput,
+  AdminCatalogFormInput,
   AdminCategoryStats,
   AdminItemCategory,
   AdminLoginInput,
@@ -50,6 +53,10 @@ import type {
   BuyerMeResponse,
   BuyerRegisterInput,
   CatalogBilingualNames,
+  CatalogItemAttribute,
+  CatalogItemAttributeOption,
+  CatalogItemFilterOptions,
+  CatalogItemForm,
   CategoryDetail,
   ContactInput,
   ContactResponse,
@@ -57,6 +64,7 @@ import type {
   ExportSupplierInvitationsParams,
   FetchCategoryParams,
   GetBuyerItemInquiryMatchesParams,
+  GetCatalogItemFiltersParams,
   GetSupplierActivationParams,
   Group,
   GroupDeleteResponse,
@@ -4558,6 +4566,14 @@ export const getListSuppliersUrl = (params?: ListSuppliersParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["attributeOptionIds"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
 
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : String(value))
@@ -4620,6 +4636,84 @@ export function useListSuppliers<TData = Awaited<ReturnType<typeof listSuppliers
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListSuppliersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCatalogItemFiltersUrl = (params?: GetCatalogItemFiltersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/catalog/item-filters?${stringifiedParams}` : `/api/catalog/item-filters`
+}
+
+export const getCatalogItemFilters = async (params?: GetCatalogItemFiltersParams, options?: Parameters<typeof customFetch>[1]): Promise<CatalogItemFilterOptions[]> => {
+
+  return customFetch<CatalogItemFilterOptions[]>(getGetCatalogItemFiltersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogItemFiltersQueryKey = (params?: GetCatalogItemFiltersParams,) => {
+    return [
+    `/api/catalog/item-filters`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCatalogItemFiltersQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogItemFilters>>, TError = ErrorType<void>>(params?: GetCatalogItemFiltersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogItemFilters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogItemFiltersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogItemFilters>>> = ({ signal }) => getCatalogItemFilters(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogItemFilters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCatalogItemFiltersQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogItemFilters>>>
+export type GetCatalogItemFiltersQueryError = ErrorType<void>
+
+
+
+export function useGetCatalogItemFilters<TData = Awaited<ReturnType<typeof getCatalogItemFilters>>, TError = ErrorType<void>>(
+ params?: GetCatalogItemFiltersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogItemFilters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCatalogItemFiltersQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -6122,6 +6216,255 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateAdminSupplierCatalogSubtypeMutationOptions(options));
+    }
+
+export const getCreateAdminCatalogItemFormUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/catalog/masters/${id}/forms`
+}
+
+export const createAdminCatalogItemForm = async (id: number,
+    adminCatalogFormInput: AdminCatalogFormInput, options?: Parameters<typeof customFetch>[1]): Promise<CatalogItemForm> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CatalogItemForm>(getCreateAdminCatalogItemFormUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminCatalogFormInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminCatalogItemFormMutationKey = () => ['createAdminCatalogItemForm'] as const;
+
+export const getCreateAdminCatalogItemFormMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemForm>>, TError,CreateAdminCatalogItemFormMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemForm>>, TError,CreateAdminCatalogItemFormMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminCatalogItemFormMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminCatalogItemForm>>, CreateAdminCatalogItemFormMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createAdminCatalogItemForm(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminCatalogItemFormMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminCatalogItemForm>>>
+    export type CreateAdminCatalogItemFormMutationBody = BodyType<AdminCatalogFormInput>
+    export type CreateAdminCatalogItemFormMutationError = ErrorType<void>
+    export type CreateAdminCatalogItemFormMutationVariables = {id: number;data: BodyType<AdminCatalogFormInput>}
+
+    export const useCreateAdminCatalogItemForm = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemForm>>, TError,CreateAdminCatalogItemFormMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminCatalogItemForm>>,
+        TError,
+        CreateAdminCatalogItemFormMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminCatalogItemFormMutationOptions(options));
+    }
+
+export const getCreateAdminCatalogItemAttributeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/catalog/masters/${id}/attributes`
+}
+
+export const createAdminCatalogItemAttribute = async (id: number,
+    adminCatalogAttributeInput: AdminCatalogAttributeInput, options?: Parameters<typeof customFetch>[1]): Promise<CatalogItemAttribute> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CatalogItemAttribute>(getCreateAdminCatalogItemAttributeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminCatalogAttributeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminCatalogItemAttributeMutationKey = () => ['createAdminCatalogItemAttribute'] as const;
+
+export const getCreateAdminCatalogItemAttributeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>, TError,CreateAdminCatalogItemAttributeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>, TError,CreateAdminCatalogItemAttributeMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminCatalogItemAttributeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>, CreateAdminCatalogItemAttributeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createAdminCatalogItemAttribute(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminCatalogItemAttributeMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>>
+    export type CreateAdminCatalogItemAttributeMutationBody = BodyType<AdminCatalogAttributeInput>
+    export type CreateAdminCatalogItemAttributeMutationError = ErrorType<void>
+    export type CreateAdminCatalogItemAttributeMutationVariables = {id: number;data: BodyType<AdminCatalogAttributeInput>}
+
+    export const useCreateAdminCatalogItemAttribute = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>, TError,CreateAdminCatalogItemAttributeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminCatalogItemAttribute>>,
+        TError,
+        CreateAdminCatalogItemAttributeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminCatalogItemAttributeMutationOptions(options));
+    }
+
+export const getCreateAdminCatalogAttributeOptionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/catalog/attributes/${id}/options`
+}
+
+export const createAdminCatalogAttributeOptions = async (id: number,
+    adminCatalogAttributeOptionsInput: AdminCatalogAttributeOptionsInput, options?: Parameters<typeof customFetch>[1]): Promise<CatalogItemAttributeOption[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CatalogItemAttributeOption[]>(getCreateAdminCatalogAttributeOptionsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminCatalogAttributeOptionsInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminCatalogAttributeOptionsMutationKey = () => ['createAdminCatalogAttributeOptions'] as const;
+
+export const getCreateAdminCatalogAttributeOptionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>, TError,CreateAdminCatalogAttributeOptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>, TError,CreateAdminCatalogAttributeOptionsMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminCatalogAttributeOptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>, CreateAdminCatalogAttributeOptionsMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createAdminCatalogAttributeOptions(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminCatalogAttributeOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>>
+    export type CreateAdminCatalogAttributeOptionsMutationBody = BodyType<AdminCatalogAttributeOptionsInput>
+    export type CreateAdminCatalogAttributeOptionsMutationError = ErrorType<void>
+    export type CreateAdminCatalogAttributeOptionsMutationVariables = {id: number;data: BodyType<AdminCatalogAttributeOptionsInput>}
+
+    export const useCreateAdminCatalogAttributeOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>, TError,CreateAdminCatalogAttributeOptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminCatalogAttributeOptions>>,
+        TError,
+        CreateAdminCatalogAttributeOptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminCatalogAttributeOptionsMutationOptions(options));
     }
 
 export const getReviewAdminSupplierCatalogSubtypeUrl = (id: number,) => {

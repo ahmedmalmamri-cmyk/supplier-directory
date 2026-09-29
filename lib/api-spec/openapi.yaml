@@ -1057,6 +1057,20 @@ paths:
           description: Filter suppliers offering an approved subtype by catalog subtype ID
           schema: { type: integer, minimum: 1 }
         - in: query
+          name: formId
+          required: false
+          description: Filter to a public active offer declaring this form
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: attributeOptionIds
+          required: false
+          description: All selected values must belong to the same matching public active offer
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: integer, minimum: 1 }
+        - in: query
           name: variantForm
           description: Precise almond form filter; only valid with category="لوز"
           schema: { type: string, enum: [whole, slices, powder] }
@@ -1088,6 +1102,29 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Supplier" }
+  /catalog/item-filters:
+    get:
+      operationId: getCatalogItemFilters
+      tags: [directory]
+      parameters:
+        - in: query
+          name: itemId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: category
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: Active forms and item-scoped attributes for each matched master item, independent of supplier presence
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemFilterOptions" }
+        "400": { description: Invalid or conflicting item selection }
   /suppliers/{id}:
     get:
       operationId: getSupplier
@@ -1314,6 +1351,7 @@ paths:
         "400": { description: Invalid price }
         "401": { description: Supplier authentication required }
         "404": { description: Offer not found }
+        "409": { description: "Another active offer already has this subtype, form, and attribute-value set" }
     delete:
       operationId: deleteSupplierCatalogOffer
       tags: [supplier]
@@ -1420,6 +1458,80 @@ paths:
         "401": { description: Admin authentication required }
         "404": { description: Master not found }
         "409": { description: Duplicate subtype }
+  /admin/catalog/masters/{id}/forms:
+    post:
+      operationId: createAdminCatalogItemForm
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogFormInput" }
+      responses:
+        "201":
+          description: Form scoped to the selected master item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogItemForm" }
+        "400": { description: Invalid bilingual form name }
+        "401": { description: Admin authentication required }
+        "404": { description: Master item not found }
+        "409": { description: Duplicate form in this master item }
+  /admin/catalog/masters/{id}/attributes:
+    post:
+      operationId: createAdminCatalogItemAttribute
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogAttributeInput" }
+      responses:
+        "201":
+          description: Item-scoped extra attribute with its allowed values
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogItemAttribute" }
+        "400": { description: Invalid attribute or option list }
+        "401": { description: Admin authentication required }
+        "404": { description: Master item not found }
+        "409": { description: Duplicate attribute or option }
+  /admin/catalog/attributes/{id}/options:
+    post:
+      operationId: createAdminCatalogAttributeOptions
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogAttributeOptionsInput" }
+      responses:
+        "201":
+          description: Values added to the owning item-scoped attribute
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemAttributeOption" }
+        "400": { description: Invalid option list }
+        "401": { description: Admin authentication required }
+        "404": { description: Attribute not found }
+        "409": { description: Duplicate option }
   /admin/catalog/subtypes/{id}/review:
     patch:
       operationId: reviewAdminSupplierCatalogSubtype
@@ -2037,7 +2149,7 @@ components:
         isApproved: { type: boolean }
     SupplierCatalogOffer:
       type: object
-      required: [id, subtypeId, price, lastUpdated, isActive, eligibilityStatus]
+      required: [id, subtypeId, price, lastUpdated, isActive, eligibilityStatus, formId, formNameAr, attributeOptionIds]
       properties:
         id: { type: integer }
         subtypeId: { type: integer }
@@ -2045,9 +2157,14 @@ components:
         lastUpdated: { type: string, format: date-time }
         isActive: { type: boolean }
         eligibilityStatus: { type: string, enum: [eligible, pending] }
+        formId: { type: ["integer", "null"] }
+        formNameAr: { type: ["string", "null"] }
+        attributeOptionIds:
+          type: array
+          items: { type: integer }
     SupplierCatalogMaster:
       type: object
-      required: [id, name, nameEn, subtypes, offers]
+      required: [id, name, nameEn, subtypes, offers, forms, attributes]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -2058,6 +2175,12 @@ components:
         offers:
           type: array
           items: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
     SupplierCatalogPendingSubtypeProposal:
       allOf:
         - $ref: "#/components/schemas/CatalogBilingualNames"
@@ -2097,17 +2220,102 @@ components:
               items: { $ref: "#/components/schemas/SupplierCatalogPendingMasterProposal" }
     SupplierCatalogOfferInput:
       type: object
-      required: [itemId]
+      required: [itemId, formId]
       properties:
         itemId: { type: integer, minimum: 1 }
+        formId: { type: integer, minimum: 1 }
+        attributeOptionIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
         subtypeId: { type: integer, minimum: 1 }
         newSubtype: { $ref: "#/components/schemas/CatalogBilingualNames" }
         price: { type: ["number", "null"], minimum: 0 }
+    CatalogItemForm:
+      type: object
+      required: [id, itemId, nameAr, nameEn, isActive]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+    CatalogItemAttributeOption:
+      type: object
+      required: [id, attributeId, nameAr, nameEn, isActive]
+      properties:
+        id: { type: integer }
+        attributeId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+    CatalogItemAttribute:
+      type: object
+      required: [id, itemId, nameAr, nameEn, isActive, options]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttributeOption" }
+    CatalogItemOfferAttributeValue:
+      type: object
+      required: [id, attributeId, attributeNameAr, optionNameAr, optionNameEn]
+      properties:
+        id: { type: integer }
+        attributeId: { type: integer }
+        attributeNameAr: { type: string }
+        optionNameAr: { type: string }
+        optionNameEn: { type: string }
+    CatalogItemFilterOptions:
+      type: object
+      required: [id, name, nameEn, forms, attributes]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
+    AdminCatalogFormInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+    AdminCatalogAttributeInput:
+      type: object
+      required: [nameAr, nameEn, options]
+      properties:
+        nameAr: { type: string, minLength: 1, maxLength: 120 }
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+        options:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CatalogBilingualNames" }
+    AdminCatalogAttributeOptionsInput:
+      type: object
+      required: [options]
+      properties:
+        options:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CatalogBilingualNames" }
     SupplierCatalogOfferPriceInput:
       type: object
-      required: [price]
+      minProperties: 1
       properties:
         price: { type: ["number", "null"], minimum: 0 }
+        formId: { type: integer, minimum: 1 }
+        attributeOptionIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
     SupplierCatalogOfferDeleteResponse:
       type: object
       required: [id, isActive]
@@ -2126,7 +2334,7 @@ components:
             status: { type: string, enum: [pending] }
     AdminSupplierCatalogMaster:
       type: object
-      required: [id, nameAr, nameEn, categoryId, categoryName, isActive]
+      required: [id, nameAr, nameEn, categoryId, categoryName, isActive, forms, attributes]
       properties:
         id: { type: integer }
         nameAr: { type: string }
@@ -2134,6 +2342,12 @@ components:
         categoryId: { type: integer }
         categoryName: { type: string }
         isActive: { type: boolean }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
     AdminSupplierCatalogMasterInput:
       allOf:
         - $ref: "#/components/schemas/CatalogBilingualNames"
@@ -2852,6 +3066,7 @@ components:
             type: object
             required: [id, itemId, nameAr, nameEn, itemName, itemNameEn, price, lastUpdated]
             properties:
+              offerId: { type: integer }
               id: { type: integer }
               itemId: { type: integer }
               nameAr: { type: string }
@@ -2860,6 +3075,11 @@ components:
               itemNameEn: { type: ["string", "null"] }
               price: { type: ["number", "null"], minimum: 0 }
               lastUpdated: { type: string, format: date-time }
+              formId: { type: ["integer", "null"] }
+              formNameAr: { type: ["string", "null"] }
+              attributeOptions:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemOfferAttributeValue" }
     AlmondVariant:
       type: object
       required: [form, preparation, size]

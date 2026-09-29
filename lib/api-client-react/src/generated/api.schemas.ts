@@ -54,6 +54,36 @@ export interface SupplierCatalogOffer {
   lastUpdated: string;
   isActive: boolean;
   eligibilityStatus: SupplierCatalogOfferEligibilityStatus;
+  /** @nullable */
+  formId: number | null;
+  /** @nullable */
+  formNameAr: string | null;
+  attributeOptionIds: number[];
+}
+
+export interface CatalogItemForm {
+  id: number;
+  itemId: number;
+  nameAr: string;
+  nameEn: string;
+  isActive: boolean;
+}
+
+export interface CatalogItemAttributeOption {
+  id: number;
+  attributeId: number;
+  nameAr: string;
+  nameEn: string;
+  isActive: boolean;
+}
+
+export interface CatalogItemAttribute {
+  id: number;
+  itemId: number;
+  nameAr: string;
+  nameEn: string;
+  isActive: boolean;
+  options: CatalogItemAttributeOption[];
 }
 
 export interface SupplierCatalogMaster {
@@ -63,6 +93,8 @@ export interface SupplierCatalogMaster {
   nameEn: string | null;
   subtypes: SupplierCatalogSubtype[];
   offers: SupplierCatalogOffer[];
+  forms: CatalogItemForm[];
+  attributes: CatalogItemAttribute[];
 }
 
 export type SupplierCatalogPendingSubtypeProposal = CatalogBilingualNames & {
@@ -101,6 +133,10 @@ export interface SupplierCatalogOfferInput {
   /** @minimum 1 */
   itemId: number;
   /** @minimum 1 */
+  formId: number;
+  /** @items.minimum 1 */
+  attributeOptionIds?: number[];
+  /** @minimum 1 */
   subtypeId?: number;
   newSubtype?: CatalogBilingualNames;
   /**
@@ -110,12 +146,61 @@ export interface SupplierCatalogOfferInput {
   price?: number | null;
 }
 
+export interface CatalogItemOfferAttributeValue {
+  id: number;
+  attributeId: number;
+  attributeNameAr: string;
+  optionNameAr: string;
+  optionNameEn: string;
+}
+
+export interface CatalogItemFilterOptions {
+  id: number;
+  name: string;
+  /** @nullable */
+  nameEn: string | null;
+  forms: CatalogItemForm[];
+  attributes: CatalogItemAttribute[];
+}
+
+export type AdminCatalogFormInput = CatalogBilingualNames;
+
+export interface AdminCatalogAttributeInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nameAr: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nameEn: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  options: CatalogBilingualNames[];
+}
+
+export interface AdminCatalogAttributeOptionsInput {
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  options: CatalogBilingualNames[];
+}
+
 export interface SupplierCatalogOfferPriceInput {
   /**
      * @minimum 0
      * @nullable
      */
-  price: number | null;
+  price?: number | null;
+  /** @minimum 1 */
+  formId?: number;
+  /** @items.minimum 1 */
+  attributeOptionIds?: number[];
 }
 
 export interface SupplierCatalogOfferDeleteResponse {
@@ -145,6 +230,8 @@ export interface AdminSupplierCatalogMaster {
   categoryId: number;
   categoryName: string;
   isActive: boolean;
+  forms: CatalogItemForm[];
+  attributes: CatalogItemAttribute[];
 }
 
 export type AdminSupplierCatalogMasterInput = CatalogBilingualNames & {
@@ -1115,6 +1202,7 @@ export interface ActivityLogEntry {
 }
 
 export type SupplierOfferedSubtypesItem = {
+  offerId?: number;
   id: number;
   itemId: number;
   nameAr: string;
@@ -1128,6 +1216,11 @@ export type SupplierOfferedSubtypesItem = {
      */
   price: number | null;
   lastUpdated: string;
+  /** @nullable */
+  formId?: number | null;
+  /** @nullable */
+  formNameAr?: string | null;
+  attributeOptions?: CatalogItemOfferAttributeValue[];
 };
 
 export interface Supplier {
@@ -1934,6 +2027,16 @@ category?: string;
  */
 subtypeId?: number;
 /**
+ * Filter to a public active offer declaring this form
+ * @minimum 1
+ */
+formId?: number;
+/**
+ * All selected values must belong to the same matching public active offer
+ * @items.minimum 1
+ */
+attributeOptionIds?: number[];
+/**
  * Precise almond form filter; only valid with category="لوز"
  */
 variantForm?: ListSuppliersVariantForm;
@@ -1997,6 +2100,21 @@ export const ListSuppliersSort = {
   rating: 'rating',
   alphabetical: 'alphabetical',
 } as const;
+
+export type GetCatalogItemFiltersParams = {
+/**
+ * @minimum 1
+ */
+itemId?: number;
+/**
+ * @maxLength 120
+ */
+category?: string;
+/**
+ * @maxLength 120
+ */
+q?: string;
+};
 
 export type ListBuyerInvitationsParams = {
 status?: ListBuyerInvitationsStatus;

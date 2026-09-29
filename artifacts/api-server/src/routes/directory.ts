@@ -60,15 +60,23 @@ const productSelect = `
 const normalizeSuppliers = (rows: Record<string, unknown>[]) =>
   rows.map((row) => ({ ...row, isVerified: Boolean(row.isVerified), isFeatured: Boolean(row.isFeatured), hasWhatsApp: Boolean(row.hasWhatsApp) }));
 
+function almondVariantFormForItem(itemName: string | undefined): "whole" | "slices" | "powder" | undefined {
+  if (itemName === "لوز حب") return "whole";
+  if (itemName === "لوز شرائح") return "slices";
+  if (itemName === "لوز مطحون") return "powder";
+  return undefined;
+}
+
 function attachPublicOfferedSubtypes<T extends Record<string, unknown>>(suppliers: T[]) {
   if (!suppliers.length) return suppliers.map((supplier) => ({ ...supplier, offeredSubtypes: [] }));
   const ids = suppliers.map((supplier) => Number(supplier.id));
   const offers = directoryDb.prepare(`
-    SELECT catalogOffer.supplier_id AS supplierId,
+    SELECT catalogOffer.supplier_id AS supplierId, catalogOffer.id AS offerId,
       catalogSubtype.id, catalogSubtype.item_id AS itemId,
       catalogSubtype.name_ar AS nameAr, catalogSubtype.name_en AS nameEn,
       catalogItem.name AS itemName, catalogItem.name_en AS itemNameEn,
-      catalogOffer.price, catalogOffer.last_updated AS lastUpdated
+      catalogOffer.price, catalogOffer.last_updated AS lastUpdated,
+      catalogOffer.form_id AS formId, catalogForm.name_ar AS formNameAr
     FROM supplier_catalog_offers catalogOffer
     JOIN supplier_catalog_subtypes catalogSubtype
       ON catalogSubtype.id = catalogOffer.subtype_id
@@ -76,15 +84,40 @@ function attachPublicOfferedSubtypes<T extends Record<string, unknown>>(supplier
       ON catalogItem.id = catalogSubtype.item_id AND catalogItem.is_active = 1
     JOIN supplier_taxonomy_nodes catalogNode
       ON catalogNode.id = catalogItem.category_id AND catalogNode.is_active = 1
+    LEFT JOIN supplier_catalog_item_forms catalogForm ON catalogForm.id = catalogOffer.form_id
     WHERE ${publicCatalogOfferEligibilitySql()}
       AND catalogOffer.supplier_id IN (${ids.map(() => "?").join(", ")})
     ORDER BY catalogItem.name, catalogSubtype.name_ar, catalogSubtype.id
-  `).all(...ids) as Array<Record<string, unknown> & { supplierId: number }>;
+  `).all(...ids) as Array<Record<string, unknown> & { supplierId: number; offerId: number }>;
+  const offerIds = offers.map((offer) => offer.offerId);
+  const offerAttributes = offerIds.length ? directoryDb.prepare(`
+    SELECT selected.offer_id AS offerId, option.id, attribute.id AS attributeId,
+      attribute.name_ar AS attributeNameAr, option.name_ar AS optionNameAr,
+      option.name_en AS optionNameEn
+    FROM supplier_catalog_offer_attributes selected
+    JOIN supplier_catalog_item_attribute_options option
+      ON option.id = selected.option_id AND option.is_active = 1
+    JOIN supplier_catalog_item_attributes attribute
+      ON attribute.id = selected.attribute_id AND attribute.is_active = 1
+    WHERE selected.offer_id IN (${offerIds.map(() => "?").join(", ")})
+    ORDER BY attribute.id, option.id
+  `).all(...offerIds) as Array<Record<string, unknown> & { offerId: number }>
+    : [];
+  const attributesByOffer = new Map<number, Array<Record<string, unknown>>>();
+  for (const selected of offerAttributes) {
+    const { offerId, ...attribute } = selected;
+    const entries = attributesByOffer.get(offerId) ?? [];
+    entries.push(attribute);
+    attributesByOffer.set(offerId, entries);
+  }
   const bySupplier = new Map<number, Array<Record<string, unknown>>>();
   for (const offer of offers) {
     const { supplierId, ...offeredSubtype } = offer;
     const entries = bySupplier.get(supplierId) ?? [];
-    entries.push(offeredSubtype);
+    entries.push({
+      ...offeredSubtype,
+      attributeOptions: attributesByOffer.get(offer.offerId) ?? [],
+    });
     bySupplier.set(supplierId, entries);
   }
   return suppliers.map((supplier) => ({
@@ -268,7 +301,11 @@ router.get("/categories/:id", (req, res): void => {
 });
 
 router.get("/suppliers", (req, res): void => {
-  const parsed = ListSuppliersQueryParams.safeParse(req.query);
+  const queryForValidation = { ...req.query };
+  if (typeof req.query.attributeOptionIds === "string") {
+    queryForValidation.attributeOptionIds = [req.query.attributeOptionIds];
+  }
+  const parsed = ListSuppliersQueryParams.safeParse(queryForValidation);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -286,13 +323,90 @@ router.get("/suppliers", (req, res): void => {
     }
     subtypeId = Number(rawSubtypeId);
   }
+  const rawFormId = req.query.formId;
+  let formId: number | undefined;
+  if (rawFormId !== undefined) {
+    if (Array.isArray(rawFormId) || typeof rawFormId !== "string" || !/^[1-9]\d*$/.test(rawFormId)) {
+      res.status(400).json({ error: "معرّف الشكل غير صالح." });
+      return;
+    }
+    formId = Number(rawFormId);
+  }
+  const rawAttributeOptionIds = req.query.attributeOptionIds;
+  const rawOptionValues = rawAttributeOptionIds === undefined
+    ? []
+    : Array.isArray(rawAttributeOptionIds) ? rawAttributeOptionIds : [rawAttributeOptionIds];
+  if (rawOptionValues.length > 20 || rawOptionValues.some((value) =>
+    typeof value !== "string" || !/^[1-9]\d*$/.test(value))) {
+    res.status(400).json({ error: "قيم السمات المحددة غير صالحة." });
+    return;
+  }
+  const attributeOptionIds = [...new Set(rawOptionValues.map(Number))];
+  if (attributeOptionIds.length !== rawOptionValues.length) {
+    res.status(400).json({ error: "لا تكرر قيم السمات." });
+    return;
+  }
+  let filterItemId: number | undefined;
+  let dynamicCategoryItemIds: number[] | undefined;
+  let dynamicQueryItemIds: number[] | undefined;
+  let dynamicAlmondVariantForm: "whole" | "slices" | "powder" | undefined;
+  if (formId !== undefined || attributeOptionIds.length) {
+    const form = formId === undefined ? undefined : directoryDb.prepare(`
+      SELECT id, item_id AS itemId FROM supplier_catalog_item_forms
+      WHERE id = ? AND is_active = 1
+    `).get(formId) as { id: number; itemId: number } | undefined;
+    if (formId !== undefined && !form) {
+      res.status(400).json({ error: "الشكل المحدد غير متاح." });
+      return;
+    }
+    const options = attributeOptionIds.length
+      ? directoryDb.prepare(`
+          SELECT option.id, attribute.item_id AS itemId
+          FROM supplier_catalog_item_attribute_options option
+          JOIN supplier_catalog_item_attributes attribute
+            ON attribute.id = option.attribute_id AND attribute.is_active = 1
+          WHERE option.is_active = 1 AND option.id IN (${attributeOptionIds.map(() => "?").join(", ")})
+        `).all(...attributeOptionIds) as Array<{ id: number; itemId: number }>
+      : [];
+    const optionItems = new Set(options.map((option) => option.itemId));
+    if (options.length !== attributeOptionIds.length || optionItems.size > 1) {
+      res.status(400).json({ error: "قيم السمات يجب أن تتبع صنفاً رئيسياً واحداً ومتاحاً." });
+      return;
+    }
+    filterItemId = form?.itemId ?? [...optionItems][0];
+    if (category === "لوز" && form && filterItemId !== undefined) {
+      const item = directoryDb.prepare("SELECT name FROM supplier_taxonomy_items WHERE id = ?")
+        .get(filterItemId) as { name: string } | undefined;
+      dynamicAlmondVariantForm = almondVariantFormForItem(item?.name);
+    }
+    if (form && optionItems.size && !optionItems.has(form.itemId)) {
+      res.status(400).json({ error: "الشكل وقيم السمات المحددة لا تتبع الصنف نفسه." });
+      return;
+    }
+    if (filterItemId !== undefined && category) {
+      const categorySelection = category === "لوز"
+        ? { known: true, itemIds: getAlmondItemIds(directoryDb) }
+        : resolvePublicSupplierTaxonomySelection(category);
+      if (categorySelection.known || categorySelection.itemIds.length) {
+        dynamicCategoryItemIds = categorySelection.itemIds;
+      }
+    }
+    if (filterItemId !== undefined && q) {
+      const querySelection = resolvePublicSupplierTaxonomySelection(q);
+      if (querySelection.itemIds.length) dynamicQueryItemIds = querySelection.itemIds;
+    }
+  }
   const hasAlmondVariantFilter = variantForm !== undefined || variantPreparation !== undefined || variantSize !== undefined;
   if (hasAlmondVariantFilter && category !== "لوز") {
     res.status(400).json({ error: "فلاتر أصناف اللوز تتطلب تحديد category=لوز." });
     return;
   }
-  if (variantSize !== undefined && variantForm !== "whole") {
-    res.status(400).json({ error: "يُستخدم المقاس فقط مع variantForm=whole." });
+  if (variantForm !== undefined && dynamicAlmondVariantForm && variantForm !== dynamicAlmondVariantForm) {
+    res.status(400).json({ error: "شكل اللوز الديناميكي لا يطابق variantForm المحدد." });
+    return;
+  }
+  if (variantSize !== undefined && variantForm !== "whole" && dynamicAlmondVariantForm !== "whole") {
+    res.status(400).json({ error: "يُستخدم المقاس فقط مع شكل اللوز الكامل." });
     return;
   }
   const values: (string | number)[] = [];
@@ -341,11 +455,92 @@ router.get("/suppliers", (req, res): void => {
     )`);
     values.push(subtypeId);
   }
+  if (formId !== undefined || attributeOptionIds.length) {
+    clauses.push(`EXISTS (
+      SELECT 1 FROM supplier_catalog_offers configuredOffer
+      JOIN supplier_catalog_subtypes configuredSubtype ON configuredSubtype.id = configuredOffer.subtype_id
+      JOIN supplier_taxonomy_items configuredItem
+        ON configuredItem.id = configuredSubtype.item_id AND configuredItem.is_active = 1
+      JOIN supplier_taxonomy_nodes configuredNode
+        ON configuredNode.id = configuredItem.category_id AND configuredNode.is_active = 1
+      WHERE configuredOffer.supplier_id = s.id
+        AND ${publicCatalogOfferEligibilitySql("configuredOffer", "configuredSubtype", "configuredItem", "configuredNode")}
+        ${formId !== undefined ? "AND configuredOffer.form_id = ?" : ""}
+        ${filterItemId !== undefined ? "AND configuredItem.id = ?" : ""}
+        ${subtypeId !== undefined ? "AND configuredSubtype.id = ?" : ""}
+        ${dynamicCategoryItemIds !== undefined
+          ? dynamicCategoryItemIds.length
+            ? `AND configuredItem.id IN (${dynamicCategoryItemIds.map(() => "?").join(", ")})`
+            : "AND 0"
+          : ""}
+        ${dynamicQueryItemIds !== undefined
+          ? dynamicQueryItemIds.length
+            ? `AND configuredItem.id IN (${dynamicQueryItemIds.map(() => "?").join(", ")})`
+            : "AND 0"
+          : ""}
+        ${attributeOptionIds.length ? `AND (
+          SELECT COUNT(DISTINCT configuredOfferAttribute.option_id)
+          FROM supplier_catalog_offer_attributes configuredOfferAttribute
+          JOIN supplier_catalog_item_attribute_options configuredOption
+            ON configuredOption.id = configuredOfferAttribute.option_id AND configuredOption.is_active = 1
+          JOIN supplier_catalog_item_attributes configuredAttribute
+            ON configuredAttribute.id = configuredOfferAttribute.attribute_id
+              AND configuredAttribute.is_active = 1
+              AND configuredAttribute.item_id = configuredItem.id
+          WHERE configuredOfferAttribute.offer_id = configuredOffer.id
+            AND configuredOfferAttribute.option_id IN (${attributeOptionIds.map(() => "?").join(", ")})
+        ) = ?` : ""}
+        ${type ? `AND (
+          lower(configuredSubtype.name_ar) LIKE lower(?) OR lower(configuredSubtype.name_en) LIKE lower(?)
+          OR lower(configuredItem.name) LIKE lower(?) OR lower(COALESCE(configuredItem.name_en, '')) LIKE lower(?)
+          OR lower(configuredNode.name) LIKE lower(?)
+        )` : ""}
+        ${q ? `AND (
+          lower(s.name) LIKE lower(?) OR lower(s.description) LIKE lower(?) OR lower(s.city) LIKE lower(?)
+          OR EXISTS (
+            SELECT 1 FROM supplier_requests queryRequest
+            WHERE queryRequest.id = s.request_id
+              AND (lower(queryRequest.categories) LIKE lower(?) OR lower(queryRequest.business_type) LIKE lower(?))
+          )
+          OR EXISTS (
+            SELECT 1 FROM products queryProduct
+            JOIN categories queryCategory ON queryCategory.id = queryProduct.category_id
+            WHERE queryProduct.supplier_id = s.id
+              AND (lower(queryProduct.name) LIKE lower(?) OR lower(queryProduct.country_of_origin) LIKE lower(?)
+                OR lower(queryCategory.name) LIKE lower(?))
+          )
+          OR (
+            lower(configuredSubtype.name_ar) LIKE lower(?) OR lower(configuredSubtype.name_en) LIKE lower(?)
+            OR lower(configuredItem.name) LIKE lower(?) OR lower(COALESCE(configuredItem.name_en, '')) LIKE lower(?)
+            OR lower(configuredNode.name) LIKE lower(?)
+          )
+        )` : ""}
+    )`);
+    if (formId !== undefined) values.push(formId);
+    if (filterItemId !== undefined) values.push(filterItemId);
+    if (subtypeId !== undefined) values.push(subtypeId);
+    if (dynamicCategoryItemIds?.length) values.push(...dynamicCategoryItemIds);
+    if (dynamicQueryItemIds?.length) values.push(...dynamicQueryItemIds);
+    if (attributeOptionIds.length) values.push(...attributeOptionIds, attributeOptionIds.length);
+    if (type) {
+      const pattern = `%${type}%`;
+      values.push(pattern, pattern, pattern, pattern, pattern);
+    }
+    if (q) {
+      const pattern = `%${q}%`;
+      values.push(...Array.from({ length: 13 }, () => pattern));
+    }
+  }
   if (city) { clauses.push("s.city = ?"); values.push(city); }
   if (category) {
     if (category === "لوز") {
       const almondItemIds = getAlmondItemIds(directoryDb);
-      const requestedAlmondItemIds = variantForm === undefined
+      const effectiveAlmondForm = variantForm ?? (
+        variantPreparation !== undefined || variantSize !== undefined
+          ? dynamicAlmondVariantForm
+          : undefined
+      );
+      const requestedAlmondItemIds = effectiveAlmondForm === undefined
         ? almondItemIds
         : (directoryDb.prepare(`
             SELECT id FROM supplier_taxonomy_items
@@ -353,12 +548,13 @@ router.get("/suppliers", (req, res): void => {
               AND lower(trim(name)) = lower(?)
           `).all(
             ...almondItemIds,
-            variantForm === "whole" ? "لوز حب" : variantForm === "slices" ? "لوز شرائح" : "لوز مطحون",
+            effectiveAlmondForm === "whole" ? "لوز حب"
+              : effectiveAlmondForm === "slices" ? "لوز شرائح" : "لوز مطحون",
           ) as Array<{ id: number }>).map(({ id }) => id);
       const almondFilter = hasAlmondVariantFilter
         ? buildPublicAlmondSupplierFilter(
             almondItemIds,
-            { form: variantForm, preparation: variantPreparation, size: variantSize },
+            { form: effectiveAlmondForm, preparation: variantPreparation, size: variantSize },
           )
         : undefined;
       const offeredAlmonds = requestedAlmondItemIds.length ? `
