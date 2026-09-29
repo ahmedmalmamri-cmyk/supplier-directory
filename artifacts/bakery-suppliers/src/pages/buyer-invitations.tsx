@@ -63,7 +63,7 @@ export function BuyerInvitationsPanel() {
   const markSent = useMarkBuyerInvitationSent();
   const accountStatus = useUpdateInvitedBuyerAccountStatus();
   const registrationUrl = publishedPageUrl("/register/buyer");
-  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كصاحب عمل في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nيرجى تعبئة البيانات وإنشاء حسابكم.`;
+  const registrationMessage = `السلام عليكم، ندعوكم للتسجيل كصاحب عمل في دليل موردي المخابز والحلويات عبر الرابط:\n${registrationUrl}\nأدخل بيانات منشأتك وأنشئ كلمة مرور من صفحة التسجيل. بعد إتمام التسجيل يُنشأ حسابك ويُسجَّل دخولك تلقائياً. في المرات القادمة ادخل برقم الجوال وكلمة المرور من صفحة دخول أصحاب الأعمال؛ هذا رابط تسجيل وليس رابط دخول دائم.`;
   const whatsAppShareUrl = `https://wa.me/?text=${encodeURIComponent(registrationMessage)}`;
 
   const refresh = () => {
