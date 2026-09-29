@@ -385,8 +385,32 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
   const [accessEditing, setAccessEditing] = useState<{ supplierId: number; password: string } | null>(null);
   const generateInvitation = useGenerateSupplierInvitation();
   const markInvitationSentMutation = useMarkSupplierInvitationSent();
-  const [invitationFallbacks, setInvitationFallbacks] = useState<Record<number, string>>({});
+  const [invitationFallbacks, setInvitationFallbacks] = useState<Record<number, { token: string; whatsappUrl: string; activated: boolean }>>({});
   const [invitationError, setInvitationError] = useState("");
+
+  const activateInvitation = (supplierId: number, token: string, whatsappUrl: string, popup: Window | null) => {
+    markInvitationSentMutation.mutate({ id: supplierId, data: { token } }, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListSupplierInvitationsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetSupplierInvitationStatsQueryKey() });
+        if (popup && !popup.closed) {
+          popup.location.href = whatsappUrl;
+          setInvitationFallbacks((current) => {
+            const next = { ...current };
+            delete next[supplierId];
+            return next;
+          });
+        } else {
+          setInvitationFallbacks((current) => ({ ...current, [supplierId]: { token: "", whatsappUrl, activated: true } }));
+        }
+      },
+      onError: (error) => {
+        popup?.close();
+        setInvitationFallbacks((current) => ({ ...current, [supplierId]: { token, whatsappUrl, activated: false } }));
+        setInvitationError(error instanceof Error ? error.message : "تعذر تفعيل رابط الدعوة. بقي الرابط السابق صالحاً.");
+      },
+    });
+  };
 
   const sendInvitation = (supplier: Supplier) => {
     if (isDevelopmentPreview()) {
@@ -417,10 +441,9 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
           return;
         }
         if (popup && !popup.closed) {
-          popup.location.href = whatsappUrl;
-          markInvitationSent(supplier.id);
+          activateInvitation(supplier.id, result.token, whatsappUrl, popup);
         } else {
-          setInvitationFallbacks((current) => ({ ...current, [supplier.id]: whatsappUrl }));
+          setInvitationFallbacks((current) => ({ ...current, [supplier.id]: { token: result.token, whatsappUrl, activated: false } }));
         }
       },
       onError: (error) => {
@@ -430,13 +453,23 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
     });
   };
 
-  const markInvitationSent = (supplierId: number) => {
-    markInvitationSentMutation.mutate({ id: supplierId }, {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: getListSupplierInvitationsQueryKey() });
-        void queryClient.invalidateQueries({ queryKey: getGetSupplierInvitationStatsQueryKey() });
-      },
-    });
+  const openInvitationFallback = (supplierId: number) => {
+    const fallback = invitationFallbacks[supplierId];
+    if (!fallback) return;
+    setInvitationError("");
+    if (fallback.activated) {
+      const popup = window.open(fallback.whatsappUrl, "_blank");
+      if (popup) popup.opener = null;
+      else setInvitationError("تعذر فتح نافذة واتساب. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.");
+      return;
+    }
+    const popup = window.open("about:blank", "_blank");
+    if (!popup) {
+      setInvitationError("تعذر فتح نافذة جديدة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى؛ بقي الرابط السابق صالحاً.");
+      return;
+    }
+    popup.opener = null;
+    activateInvitation(supplierId, fallback.token, fallback.whatsappUrl, popup);
   };
 
   const openOrderEditor = async (supplierId: number) => {
@@ -504,7 +537,7 @@ function DirectoryTab({ suppliers, settings, onAction }: { suppliers: Supplier[]
         </div>
         <div className="flex flex-wrap gap-2">
           <button data-testid={`button-send-invitation-${supplier.id}`} type="button" disabled={generateInvitation.isPending || markInvitationSentMutation.isPending} onClick={() => sendInvitation(supplier)} className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"><Send className="inline h-4 w-4 ml-1" /> {generateInvitation.isPending ? "جاري إنشاء الرابط..." : "إرسال دعوة"}</button>
-          {invitationFallbacks[supplier.id] && <a href={invitationFallbacks[supplier.id]} target="_blank" rel="noopener noreferrer" onClick={() => markInvitationSent(supplier.id)} className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-bold text-primary">فتح رسالة الدعوة في واتساب</a>}
+          {invitationFallbacks[supplier.id] && <button type="button" disabled={markInvitationSentMutation.isPending} onClick={() => openInvitationFallback(supplier.id)} className="rounded-lg border border-primary/30 px-3 py-2 text-sm font-bold text-primary disabled:opacity-60">فتح رسالة الدعوة في واتساب</button>}
           <button type="button" onClick={() => setEditing({ id: supplier.id, name: supplier.name, city: supplier.city, description: supplier.description, phone: supplier.phone, whatsapp: supplier.whatsapp })} className="rounded-lg border px-3 py-2 text-sm font-bold">تعديل</button>
            <button type="button" onClick={() => setNewProduct({ supplierId: supplier.id, name: "", categoryId: "", imageUrl: "", imageDataUrl: "" })} className="rounded-lg border px-3 py-2 text-sm font-bold"><Plus className="inline h-4 w-4 ml-1" /> إضافة منتج</button>
           <button type="button" onClick={() => void openOrderEditor(supplier.id)} className="rounded-lg border px-3 py-2 text-sm font-bold"><GripVertical className="inline h-4 w-4 ml-1" /> {orderLoading === supplier.id ? "جاري التحميل..." : "ترتيب المنتجات"}</button>

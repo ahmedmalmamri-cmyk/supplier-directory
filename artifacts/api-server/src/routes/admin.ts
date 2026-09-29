@@ -13,6 +13,7 @@ import {
   GetAdminItemCategoryDeletionPreviewParams,
   GetAdminItemCategoryDeletionPreviewResponse,
   ListRegistrationInterestsResponse,
+  MarkSupplierInvitationSentBody,
   PermanentlyDeleteAdminItemCategoryParams,
   PermanentlyDeleteAdminItemCategoryResponse,
 } from "@workspace/api-zod";
@@ -773,46 +774,108 @@ router.post("/admin/suppliers/:id/invite", (req, res): void => {
     res.status(400).json({ error: "معرّف المورد غير صالح." });
     return;
   }
-  const supplier = directoryDb.prepare(`
-    SELECT id, name, whatsapp, invite_completed_at AS inviteCompletedAt,
-      (SELECT status FROM supplier_requests r WHERE r.invited_supplier_id = suppliers.id
-       ORDER BY r.id DESC LIMIT 1) AS latestRequestStatus
-    FROM suppliers WHERE id = ?
-  `).get(supplierId) as { id: number; name: string; whatsapp: string; inviteCompletedAt: string | null; latestRequestStatus: string | null } | undefined;
-  if (!supplier) {
-    res.status(404).json({ error: "المورد غير موجود." });
-    return;
-  }
-  if (supplier.inviteCompletedAt && supplier.latestRequestStatus !== "rejected") {
-    res.status(409).json({ error: "أكمل المورد هذه الدعوة بالفعل." });
-    return;
-  }
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  directoryDb.prepare(`
-    UPDATE suppliers SET invite_token = ?, invite_sent_at = NULL,
-      invite_opened_at = NULL, invite_completed_at = NULL WHERE id = ?
-  `).run(tokenHash, supplierId);
+  let failure: { status: number; message: string } | null = null;
+  let supplier: {
+    id: number;
+    name: string;
+    whatsapp: string;
+    inviteCompletedAt: string | null;
+    latestRequestStatus: string | null;
+  } | undefined;
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    supplier = directoryDb.prepare(`
+      SELECT id, name, whatsapp, invite_completed_at AS inviteCompletedAt,
+        (SELECT status FROM supplier_requests r WHERE r.invited_supplier_id = suppliers.id
+         ORDER BY r.id DESC LIMIT 1) AS latestRequestStatus
+      FROM suppliers WHERE id = ?
+    `).get(supplierId) as typeof supplier;
+    if (!supplier) {
+      failure = { status: 404, message: "المورد غير موجود." };
+    } else if (supplier.inviteCompletedAt && supplier.latestRequestStatus !== "rejected") {
+      failure = { status: 409, message: "أكمل المورد هذه الدعوة بالفعل." };
+    } else {
+      directoryDb.prepare(`
+        UPDATE suppliers SET pending_invite_token_hash = ? WHERE id = ?
+      `).run(tokenHash, supplierId);
+    }
+    if (failure) directoryDb.exec("ROLLBACK");
+    else directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  if (failure) {
+    res.status(failure.status).json({ error: failure.message });
+    return;
+  }
+  if (!supplier) return;
+  res.set("Cache-Control", "no-store");
   res.json({ supplierId, token, supplierName: supplier.name, whatsapp: supplier.whatsapp });
 });
 
 router.post("/admin/suppliers/:id/invite-sent", (req, res): void => {
   if (!requireAdmin(req, res)) return;
   const supplierId = Number(req.params.id);
-  const supplier = directoryDb.prepare(
-    "SELECT id, invite_token AS inviteToken, invite_completed_at AS inviteCompletedAt FROM suppliers WHERE id = ?",
-  ).get(supplierId) as { id: number; inviteToken: string | null; inviteCompletedAt: string | null } | undefined;
-  if (!supplier) {
-    res.status(404).json({ error: "المورد غير موجود." });
+  if (!Number.isInteger(supplierId) || supplierId <= 0) {
+    res.status(400).json({ error: "معرّف المورد غير صالح." });
     return;
   }
-  if (!supplier.inviteToken || supplier.inviteCompletedAt) {
-    res.status(409).json({ error: "أنشئ رابط دعوة صالحاً قبل تسجيل الإرسال." });
+  const parsedBody = MarkSupplierInvitationSentBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: "أرسل رمز رابط الدعوة الجديد لتسجيل فتح رابط الإرسال." });
     return;
   }
-  directoryDb.prepare(
-    "UPDATE suppliers SET invite_sent_at = COALESCE(invite_sent_at, ?) WHERE id = ?",
-  ).run(new Date().toISOString(), supplierId);
+  const token = parsedBody.data.token;
+  const pendingTokenHash = createHash("sha256").update(token).digest("hex");
+  const now = new Date().toISOString();
+  let failure: { status: number; message: string } | null = null;
+  directoryDb.exec("BEGIN IMMEDIATE");
+  try {
+    const supplier = directoryDb.prepare(`
+      SELECT id, pending_invite_token_hash AS pendingInviteTokenHash,
+        invite_completed_at AS inviteCompletedAt,
+        (SELECT status FROM supplier_requests r WHERE r.invited_supplier_id = suppliers.id
+         ORDER BY r.id DESC LIMIT 1) AS latestRequestStatus
+      FROM suppliers WHERE id = ?
+    `).get(supplierId) as {
+      id: number;
+      pendingInviteTokenHash: string | null;
+      inviteCompletedAt: string | null;
+      latestRequestStatus: string | null;
+    } | undefined;
+    if (!supplier) {
+      failure = { status: 404, message: "المورد غير موجود." };
+    } else if (supplier.pendingInviteTokenHash !== pendingTokenHash) {
+      failure = { status: 409, message: "رابط الدعوة غير صالح أو لم يعد الرابط المعلّق الأحدث." };
+    } else if (supplier.inviteCompletedAt && supplier.latestRequestStatus !== "rejected") {
+      failure = { status: 409, message: "أكمل المورد هذه الدعوة بالفعل." };
+    } else {
+      const promoted = directoryDb.prepare(`
+        UPDATE suppliers
+        SET invite_token = pending_invite_token_hash,
+          pending_invite_token_hash = NULL,
+          invite_sent_at = ?,
+          invite_opened_at = NULL,
+          invite_completed_at = NULL
+        WHERE id = ? AND pending_invite_token_hash = ?
+      `).run(now, supplierId, pendingTokenHash);
+      if (!promoted.changes) {
+        failure = { status: 409, message: "رابط الدعوة غير صالح أو لم يعد الرابط المعلّق الأحدث." };
+      }
+    }
+    if (failure) directoryDb.exec("ROLLBACK");
+    else directoryDb.exec("COMMIT");
+  } catch (error) {
+    directoryDb.exec("ROLLBACK");
+    throw error;
+  }
+  if (failure) {
+    res.status(failure.status).json({ error: failure.message });
+    return;
+  }
   res.json({ success: true, message: "تم تسجيل فتح رابط الإرسال. لا يمكن للنظام التحقق من إرسال الرسالة فعلياً." });
 });
 

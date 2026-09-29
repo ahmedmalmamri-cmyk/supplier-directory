@@ -4,6 +4,7 @@
 - [Supplier invitation review](supplier-invitation-review.md) — keep submitted invite data separate until admin approval publishes supplier profile changes.
 - [Supplier account activation](supplier-account-activation.md) — only issue one-use, 48-hour password setup links after approval; never overwrite active supplier access.
 - [Supplier WhatsApp share link](supplier-share-link.md) — share a public registration URL without claiming to know the chosen contact or message delivery.
+- [Personal supplier invitation replacement](personal-supplier-invitation-replacement.md) — keep the previous link valid while a replacement is prepared; activate the new link at handoff, not generation.
 - [WhatsApp invitation focus](whatsapp-popup-clipboard.md) — avoid clipboard writes after opening a popup; use an international number and prefilled message instead.
 - [Supplier source attribution](supplier-source-attribution.md) — classify only known creation sources; old records with ambiguous origins remain unattributed.
 - [Item-category group headings](item-category-group-headings.md) — use the latest 11-root/6-cake-subgroup mapping; preserve old records despite illustrative counts.

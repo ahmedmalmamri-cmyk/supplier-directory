@@ -1853,6 +1853,15 @@ export interface SupplierInvitationLink {
   whatsapp: string;
 }
 
+export interface SupplierInvitationActivationInput {
+  /**
+     * @minLength 32
+     * @maxLength 64
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  token: string;
+}
+
 export interface SupplierInvite {
   supplierName: string;
   initialCity: string;

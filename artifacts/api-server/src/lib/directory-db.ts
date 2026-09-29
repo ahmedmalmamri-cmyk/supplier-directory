@@ -93,6 +93,7 @@ directoryDb.exec(`
     is_featured INTEGER NOT NULL DEFAULT 0,
      added_via TEXT NOT NULL DEFAULT 'legacy',
     invite_token TEXT,
+    pending_invite_token_hash TEXT,
     invite_sent_at TEXT,
     invite_opened_at TEXT,
     invite_completed_at TEXT,
@@ -844,6 +845,9 @@ if (!supplierColumns.some((column) => column.name === "hours_note")) {
 if (!supplierColumns.some((column) => column.name === "invite_token")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_token TEXT");
 }
+if (!supplierColumns.some((column) => column.name === "pending_invite_token_hash")) {
+  directoryDb.exec("ALTER TABLE suppliers ADD COLUMN pending_invite_token_hash TEXT");
+}
 if (!supplierColumns.some((column) => column.name === "invite_sent_at")) {
   directoryDb.exec("ALTER TABLE suppliers ADD COLUMN invite_sent_at TEXT");
 }
@@ -858,7 +862,9 @@ if (!supplierColumns.some((column) => column.name === "added_via")) {
 }
 directoryDb.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_invite_token
-  ON suppliers (invite_token) WHERE invite_token IS NOT NULL
+  ON suppliers (invite_token) WHERE invite_token IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_pending_invite_token_hash
+  ON suppliers (pending_invite_token_hash) WHERE pending_invite_token_hash IS NOT NULL
 `);
 
 const sugarPasteGoogleInfoMigration = directoryDb.prepare(

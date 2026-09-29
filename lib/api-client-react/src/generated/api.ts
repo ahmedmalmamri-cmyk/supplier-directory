@@ -126,6 +126,7 @@ import type {
   SupplierCatalogSubtype,
   SupplierDetail,
   SupplierInvitation,
+  SupplierInvitationActivationInput,
   SupplierInvitationDraftInput,
   SupplierInvitationLink,
   SupplierInvitationOptions,
@@ -8571,14 +8572,29 @@ export const getMarkSupplierInvitationSentUrl = (id: number,) => {
   return `/api/admin/suppliers/${id}/invite-sent`
 }
 
-export const markSupplierInvitationSent = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
+export const markSupplierInvitationSent = async (id: number,
+    supplierInvitationActivationInput: SupplierInvitationActivationInput, options?: Parameters<typeof customFetch>[1]): Promise<BasicSuccessResponse> => {
 
-  return customFetch<BasicSuccessResponse>(getMarkSupplierInvitationSentUrl(id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BasicSuccessResponse>(getMarkSupplierInvitationSentUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supplierInvitationActivationInput)
   }
 );}
 
@@ -8603,9 +8619,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof markSupplierInvitationSent>>, MarkSupplierInvitationSentMutationVariables> = (props) => {
-          const {id} = props ?? {};
+          const {id,data} = props ?? {};
 
-          return  markSupplierInvitationSent(id,requestOptions)
+          return  markSupplierInvitationSent(id,data,requestOptions)
         }
 
 
@@ -8616,9 +8632,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type MarkSupplierInvitationSentMutationResult = NonNullable<Awaited<ReturnType<typeof markSupplierInvitationSent>>>
-
+    export type MarkSupplierInvitationSentMutationBody = BodyType<SupplierInvitationActivationInput>
     export type MarkSupplierInvitationSentMutationError = ErrorType<void>
-    export type MarkSupplierInvitationSentMutationVariables = {id: number}
+    export type MarkSupplierInvitationSentMutationVariables = {id: number;data: BodyType<SupplierInvitationActivationInput>}
 
     export const useMarkSupplierInvitationSent = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSupplierInvitationSent>>, TError,MarkSupplierInvitationSentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

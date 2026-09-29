@@ -43,6 +43,8 @@ import { isDevelopmentPreview, publishedPageUrl } from "@/lib/public-site-url";
 
 type InvitationStatus = "unsent" | "sent" | "completed";
 type Draft = { name: string; whatsapp: string; city: string };
+type InvitationLink = { url: string; token: string };
+type WhatsAppFallback = InvitationLink & { whatsappUrl: string; activated: boolean };
 
 const tabs: { id: InvitationStatus; label: string; hint: string }[] = [
   { id: "unsent", label: "غير مرسلة", hint: "مسودات جاهزة للإرسال" },
@@ -59,8 +61,9 @@ export function SupplierInvitationsPanel() {
   const [manualPhoneError, setManualPhoneError] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [links, setLinks] = useState<Record<number, string>>({});
-  const [whatsAppFallbacks, setWhatsAppFallbacks] = useState<Record<number, string>>({});
+  const [links, setLinks] = useState<Record<number, InvitationLink>>({});
+  const [pendingLinks, setPendingLinks] = useState<Record<number, InvitationLink>>({});
+  const [whatsAppFallbacks, setWhatsAppFallbacks] = useState<Record<number, WhatsAppFallback>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const invitations = useListSupplierInvitations({ status });
@@ -108,33 +111,102 @@ export function SupplierInvitationsPanel() {
     setMessage("أرسل رسالة الاختبار من واتساب بنفسك؛ لا يستطيع الموقع تأكيد وصولها.");
   };
 
-  const markInvitationSent = (supplierId: number, successMessage: string) => {
-    markSent.mutate({ id: supplierId }, {
+  const activateInvitation = (
+    supplierId: number,
+    invitation: InvitationLink,
+    successMessage: string,
+    onActivated?: () => void,
+    onActivationError?: () => void,
+  ) => {
+    markSent.mutate({ id: supplierId, data: { token: invitation.token } }, {
       onSuccess: () => {
+        setLinks((current) => ({ ...current, [supplierId]: invitation }));
+        setPendingLinks((current) => {
+          const next = { ...current };
+          delete next[supplierId];
+          return next;
+        });
         setNotice(successMessage);
         refresh();
+        onActivated?.();
       },
-      onError: (markError) => setError(markError instanceof Error ? markError.message : "تعذر تسجيل فتح رابط الدعوة."),
+      onError: (markError) => {
+        const detail = markError instanceof Error ? markError.message : "تعذر تفعيل رابط الدعوة.";
+        setError(`${detail} لا تشارك الرابط الجديد؛ بقي الرابط السابق صالحاً.`);
+        onActivationError?.();
+      },
       onSettled: () => setBusyId(null),
     });
   };
 
-  const openWhatsAppFallback = (supplierId: number) => {
+  const reserveBlankWindow = () => {
+    try {
+      const popup = window.open("about:blank", "_blank");
+      if (popup) popup.opener = null;
+      return popup;
+    } catch {
+      return null;
+    }
+  };
+
+  const navigatePopup = (popup: Window | null, url: string) => {
+    if (!popup || popup.closed) return false;
+    try {
+      popup.location.href = url;
+      return true;
+    } catch {
+      popup.close();
+      return false;
+    }
+  };
+
+  const openWhatsAppFallback = (supplierId: number, fallback: WhatsAppFallback) => {
     setError("");
-    setBusyId(supplierId);
-    markSent.mutate({ id: supplierId }, {
-      onSuccess: () => {
+    setNotice("");
+    const popup = reserveBlankWindow();
+    if (!popup) {
+      setError("تعذر فتح نافذة جديدة. اسمح بالنوافذ المنبثقة ثم حاول مجدداً.");
+      return;
+    }
+    if (fallback.activated) {
+      if (navigatePopup(popup, fallback.whatsappUrl)) {
         setWhatsAppFallbacks((current) => {
           const next = { ...current };
           delete next[supplierId];
           return next;
         });
-        setNotice("تم فتح واتساب. أرسل الرسالة يدوياً؛ لا يستطيع الموقع تأكيد الإرسال.");
-        refresh();
+        setNotice("تم فتح واتساب. أرسل الرسالة يدوياً؛ لا يستطيع الموقع تأكيد الإرسال أو وصولها.");
+      } else {
+        setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: fallback }));
+        setError("تعذر فتح واتساب في النافذة الجديدة. اضغط للمتابعة مجدداً.");
+      }
+      return;
+    }
+    setBusyId(supplierId);
+    activateInvitation(
+      supplierId,
+      fallback,
+      "تم فتح واتساب. أرسل الرسالة يدوياً؛ لا يستطيع الموقع تأكيد الإرسال أو وصولها.",
+      () => {
+        if (navigatePopup(popup, fallback.whatsappUrl)) {
+          setWhatsAppFallbacks((current) => {
+            const next = { ...current };
+            delete next[supplierId];
+            return next;
+          });
+        } else {
+          setWhatsAppFallbacks((current) => ({
+            ...current,
+            [supplierId]: { ...fallback, activated: true },
+          }));
+          setNotice("فُعّل الرابط، لكن تعذر فتح واتساب تلقائياً. اضغط «متابعة الإرسال عبر واتساب» مجدداً.");
+        }
       },
-      onError: (markError) => setError(markError instanceof Error ? markError.message : "تعذر تسجيل فتح رابط الدعوة."),
-      onSettled: () => setBusyId(null),
-    });
+      () => {
+        popup.close();
+        setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: fallback }));
+      },
+    );
   };
 
   const makeLink = (supplierId: number, openWhatsApp = false, recipientWhatsApp?: string) => {
@@ -154,20 +226,17 @@ export function SupplierInvitationsPanel() {
       delete next[supplierId];
       return next;
     });
-    const popup = openWhatsApp ? (() => {
-      try {
-        const opened = window.open("about:blank", "_blank");
-        if (opened) opened.opener = null;
-        return opened;
-      } catch {
-        return null;
-      }
-    })() : null;
+    setPendingLinks((current) => {
+      const next = { ...current };
+      delete next[supplierId];
+      return next;
+    });
+    const popup = openWhatsApp ? reserveBlankWindow() : null;
     generate.mutate({ id: supplierId }, {
       onSuccess: (result) => {
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
         const link = `${window.location.origin}${basePath}/invite/${result.token}`;
-        setLinks((current) => ({ ...current, [supplierId]: link }));
+        const invitation = { url: link, token: result.token };
         const message = `مرحباً ${result.supplierName}،\nيسر دليل موردي المخابز والحلويات دعوتكم لاستكمال ملف منشأتكم عبر الرابط:\n${link}\nنراجع المعلومات قبل نشرها لضمان دقة الدليل.`;
         if (!openWhatsApp) {
           if (!navigator.clipboard?.writeText) {
@@ -175,8 +244,9 @@ export function SupplierInvitationsPanel() {
             setBusyId(null);
             return;
           }
+          setPendingLinks((current) => ({ ...current, [supplierId]: invitation }));
           void navigator.clipboard.writeText(link)
-            .then(() => markInvitationSent(supplierId, "تم إنشاء الرابط ونسخه. شاركه مع المورد لإكمال التسجيل."))
+            .then(() => activateInvitation(supplierId, invitation, "تم إنشاء الرابط ونسخه. شاركه مع المورد لإكمال التسجيل."))
             .catch(() => {
               setError("تعذر نسخ الرابط تلقائياً. اسمح للمتصفح بالنسخ ثم حاول مجدداً.");
               setBusyId(null);
@@ -191,20 +261,27 @@ export function SupplierInvitationsPanel() {
             setError(invalidSaudiPhoneMessage);
             return;
           }
+          const fallback = { ...invitation, whatsappUrl, activated: false };
+          setPendingLinks((current) => ({ ...current, [supplierId]: invitation }));
           if (popup && !popup.closed) {
-            try {
-              popup.location.href = whatsappUrl;
-            } catch {
-              popup.close();
-              setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: whatsappUrl }));
-              setNotice("تم إنشاء الدعوة، لكن تعذر فتح نافذة واتساب تلقائياً. اضغط «متابعة الإرسال عبر واتساب» في بطاقة المورد.");
-              setBusyId(null);
-              return;
-            }
-            markInvitationSent(supplierId, "تم فتح واتساب. أرسل الرسالة يدوياً؛ لا يستطيع الموقع تأكيد الإرسال.");
+            activateInvitation(
+              supplierId,
+              invitation,
+              "تم فتح واتساب. أرسل الرسالة يدوياً؛ لا يستطيع الموقع تأكيد الإرسال أو وصولها.",
+              () => {
+                if (!navigatePopup(popup, whatsappUrl)) {
+                  setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: { ...fallback, activated: true } }));
+                  setNotice("فُعّل الرابط، لكن تعذر فتح واتساب تلقائياً. اضغط «متابعة الإرسال عبر واتساب» في بطاقة المورد.");
+                }
+              },
+              () => {
+                popup.close();
+                setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: fallback }));
+              },
+            );
           } else {
-            setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: whatsappUrl }));
-            setNotice("تم إنشاء الدعوة، لكن المتصفح منع فتح واتساب تلقائياً. اضغط «متابعة الإرسال عبر واتساب» في بطاقة المورد.");
+            setWhatsAppFallbacks((current) => ({ ...current, [supplierId]: fallback }));
+            setNotice("تم إنشاء رابط الدعوة. اضغط «متابعة الإرسال عبر واتساب» في بطاقة المورد لتفعيله وفتح واتساب.");
             setBusyId(null);
           }
         }
@@ -217,15 +294,26 @@ export function SupplierInvitationsPanel() {
     });
   };
 
-  const copyExisting = (supplierId: number, link: string) => {
+  const copyExisting = (supplierId: number, link: InvitationLink) => {
     if (!navigator.clipboard?.writeText) {
       setError("النسخ غير متاح في هذا المتصفح.");
       return;
     }
-    void navigator.clipboard.writeText(link).then(() => {
-      setNotice("تم نسخ رابط الدعوة.");
-      markSent.mutate({ id: supplierId }, { onSuccess: refresh, onError: (markError) => setError(markError instanceof Error ? markError.message : "تعذر تسجيل الإرسال.") });
-    }).catch(() => setError("تعذر نسخ الرابط. تحقق من أذونات المتصفح وحاول مجدداً."));
+    const pending = pendingLinks[supplierId];
+    const linkToCopy = pending ?? link;
+    setError("");
+    setBusyId(supplierId);
+    void navigator.clipboard.writeText(linkToCopy.url).then(() => {
+      if (pending) {
+        activateInvitation(supplierId, pending, "تم نسخ الرابط وتفعيله. شاركه مع المورد لإكمال التسجيل.");
+      } else {
+        setNotice("تم نسخ رابط الدعوة.");
+        setBusyId(null);
+      }
+    }).catch(() => {
+      setError("تعذر نسخ الرابط. تحقق من أذونات المتصفح وحاول مجدداً.");
+      setBusyId(null);
+    });
   };
 
   const currentItems = useMemo(() => invitations.data ?? [], [invitations.data]);
@@ -243,7 +331,7 @@ export function SupplierInvitationsPanel() {
           <div className="mb-2 flex items-center gap-2 text-primary"><Send className="h-5 w-5" /><span className="text-sm font-bold">مسار دعوة الموردين</span></div>
           <h2 className="text-2xl font-extrabold">دعوات استكمال الملف</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">أرسل رابطاً خاصاً للمورد ليضيف بياناته بنفسه، ثم راجع الطلب قبل نشره في الدليل.</p>
-          <p className="mt-2 text-xs text-muted-foreground">تُسجل الدعوة عند نسخ الرابط أو فتح واتساب؛ لا يستطيع التطبيق التحقق من إرسال الرسالة أو وصولها.</p>
+           <p className="mt-2 text-xs text-muted-foreground">عند نسخ رابط جديد أو فتحه في واتساب، يُفعّل ويُبطل رابط الدعوة السابق للمورد إن وجد. لا يستطيع التطبيق التحقق من إرسال الرسالة أو وصولها.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button data-testid="button-add-supplier-invitation" type="button" onClick={() => setShowDraft((value) => !value)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-warm transition-transform hover:-translate-y-0.5">
@@ -331,7 +419,7 @@ export function SupplierInvitationsPanel() {
           <a data-testid={`link-export-invitations-${status}`} href={`/api/admin/invitations/export?status=${status}`} download className="inline-flex items-center gap-2 self-start rounded-lg border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted sm:self-auto"><Download className="h-4 w-4" /> تنزيل CSV</a>
         </div>
         <div className="border-b px-4 py-3 text-xs text-muted-foreground">{tabs.find((item) => item.id === status)?.hint} · {currentItems.length} مورد</div>
-        {invitations.isLoading ? <InvitationSkeleton /> : invitations.isError ? <div className="p-10 text-center text-sm text-destructive">تعذر تحميل الدعوات. <button data-testid="button-retry-invitations" type="button" onClick={() => void invitations.refetch()} className="font-bold underline">إعادة المحاولة</button></div> : currentItems.length === 0 ? <div className="p-12 text-center"><Send className="mx-auto mb-3 h-9 w-9 text-muted-foreground/40" /><h3 className="font-bold">لا توجد دعوات في هذه القائمة</h3><p className="mt-1 text-sm text-muted-foreground">أضف مورداً جديداً لتبدأ.</p></div> : <div className="divide-y">{currentItems.map((item) => <InvitationRow key={item.supplierId} item={item} link={links[item.supplierId]} whatsAppFallback={whatsAppFallbacks[item.supplierId]} busy={busyId === item.supplierId} onGenerate={() => makeLink(item.supplierId)} onWhatsApp={() => makeLink(item.supplierId, true, item.whatsapp)} onWhatsAppFallback={() => openWhatsAppFallback(item.supplierId)} onCopy={() => links[item.supplierId] && copyExisting(item.supplierId, links[item.supplierId])} />)}</div>}
+        {invitations.isLoading ? <InvitationSkeleton /> : invitations.isError ? <div className="p-10 text-center text-sm text-destructive">تعذر تحميل الدعوات. <button data-testid="button-retry-invitations" type="button" onClick={() => void invitations.refetch()} className="font-bold underline">إعادة المحاولة</button></div> : currentItems.length === 0 ? <div className="p-12 text-center"><Send className="mx-auto mb-3 h-9 w-9 text-muted-foreground/40" /><h3 className="font-bold">لا توجد دعوات في هذه القائمة</h3><p className="mt-1 text-sm text-muted-foreground">أضف مورداً جديداً لتبدأ.</p></div> : <div className="divide-y">{currentItems.map((item) => <InvitationRow key={item.supplierId} item={item} link={links[item.supplierId] ?? pendingLinks[item.supplierId]} whatsAppFallback={whatsAppFallbacks[item.supplierId]} busy={busyId === item.supplierId} onGenerate={() => makeLink(item.supplierId)} onWhatsApp={() => makeLink(item.supplierId, true, item.whatsapp)} onWhatsAppFallback={() => whatsAppFallbacks[item.supplierId] && openWhatsAppFallback(item.supplierId, whatsAppFallbacks[item.supplierId])} onCopy={() => (links[item.supplierId] || pendingLinks[item.supplierId]) && copyExisting(item.supplierId, links[item.supplierId] ?? pendingLinks[item.supplierId])} />)}</div>}
       </div>
     </section>
   );
@@ -361,7 +449,7 @@ function StatCard({ label, value, icon, accent }: { label: string; value?: strin
   return <div data-testid={`stat-invitation-${label}`} className="rounded-2xl border bg-card p-4 shadow-sm"><div className={`mb-3 flex items-center gap-2 text-xs font-bold ${accent}`}>{icon}{label}</div><div className="text-2xl font-extrabold">{value ?? "—"}</div></div>;
 }
 
-function InvitationRow({ item, link, whatsAppFallback, busy, onGenerate, onWhatsApp, onWhatsAppFallback, onCopy }: { item: { supplierId: number; name: string; city: string; whatsapp: string; inviteSentAt: string | null; inviteOpenedAt: string | null; inviteCompletedAt: string | null; requestStatus: string | null }; link?: string; whatsAppFallback?: string; busy: boolean; onGenerate: () => void; onWhatsApp: () => void; onWhatsAppFallback: () => void; onCopy: () => void }) {
+function InvitationRow({ item, link, whatsAppFallback, busy, onGenerate, onWhatsApp, onWhatsAppFallback, onCopy }: { item: { supplierId: number; name: string; city: string; whatsapp: string; inviteSentAt: string | null; inviteOpenedAt: string | null; inviteCompletedAt: string | null; requestStatus: string | null }; link?: InvitationLink; whatsAppFallback?: WhatsAppFallback; busy: boolean; onGenerate: () => void; onWhatsApp: () => void; onWhatsAppFallback: () => void; onCopy: () => void }) {
   const completed = Boolean(item.inviteCompletedAt);
   const rejected = item.requestStatus === "rejected";
   const stateLabel = rejected ? "مرفوض" : completed ? "مكتمل" : item.inviteSentAt ? "مرسلة" : "غير مرسلة";
@@ -387,10 +475,10 @@ function InvitationRow({ item, link, whatsAppFallback, busy, onGenerate, onWhats
         {item.requestStatus && <p className={`mt-1 text-xs font-bold ${rejected ? "text-destructive" : "text-success"}`}>حالة طلب التسجيل: {requestLabel[item.requestStatus] || item.requestStatus}</p>}
       </div>
       {(!completed || rejected) && <div className="flex flex-wrap gap-2">
-        {link && <button data-testid={`button-copy-invitation-${item.supplierId}`} type="button" onClick={onCopy} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold hover:bg-muted"><Clipboard className="h-3.5 w-3.5" /> نسخ الرابط</button>}
+        {link && <button data-testid={`button-copy-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onCopy} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-60"><Clipboard className="h-3.5 w-3.5" /> نسخ الرابط</button>}
         <button data-testid={`button-generate-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onGenerate} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-60">{busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />} إنشاء ونسخ الرابط</button>
         <button data-testid={`button-whatsapp-invitation-${item.supplierId}`} type="button" disabled={busy} onClick={onWhatsApp} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"><MessageCircle className="h-3.5 w-3.5" /> فتح واتساب</button>
-        {whatsAppFallback && <a data-testid={`link-whatsapp-fallback-${item.supplierId}`} href={whatsAppFallback} target="_blank" rel="noopener noreferrer" onClick={onWhatsAppFallback} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/15"><MessageCircle className="h-3.5 w-3.5" /> متابعة الإرسال عبر واتساب</a>}
+        {whatsAppFallback && <button data-testid={`link-whatsapp-fallback-${item.supplierId}`} type="button" disabled={busy} onClick={onWhatsAppFallback} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/15 disabled:opacity-60"><MessageCircle className="h-3.5 w-3.5" /> متابعة الإرسال عبر واتساب</button>}
       </div>}
     </article>
   );

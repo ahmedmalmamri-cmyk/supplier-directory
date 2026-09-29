@@ -2952,6 +2952,17 @@ export const MarkSupplierInvitationSentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const markSupplierInvitationSentBodyTokenMin = 32;
+export const markSupplierInvitationSentBodyTokenMax = 64;
+
+
+export const markSupplierInvitationSentBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const MarkSupplierInvitationSentBody = zod.object({
+  "token": zod.string().min(markSupplierInvitationSentBodyTokenMin).max(markSupplierInvitationSentBodyTokenMax).regex(markSupplierInvitationSentBodyTokenRegExp)
+})
+
 export const MarkSupplierInvitationSentResponse = zod.object({
   "success": zod.boolean(),
   "message": zod.string()

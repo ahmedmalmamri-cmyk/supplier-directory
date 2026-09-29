@@ -1994,13 +1994,13 @@ paths:
           schema: { type: integer }
       responses:
         "200":
-          description: New invitation link generated
+          description: New pending invitation link generated without invalidating the currently active link
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SupplierInvitationLink" }
         "401": { description: Admin authentication required }
         "404": { description: Supplier not found }
-        "409": { description: Invitation already completed }
+        "409": { description: Invitation already completed unless its latest registration request was rejected }
   /admin/suppliers/{id}/invite-sent:
     post:
       operationId: markSupplierInvitationSent
@@ -2010,15 +2010,20 @@ paths:
           in: path
           required: true
           schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInvitationActivationInput" }
       responses:
         "200":
-          description: Invitation dispatch recorded
+          description: Pending link promoted and handoff/open queued; actual WhatsApp delivery cannot be verified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
         "401": { description: Admin authentication required }
         "404": { description: Supplier invitation not found }
-        "409": { description: Invitation cannot be marked as sent }
+        "409": { description: "Pending token is stale or does not match, or invitation cannot be reissued" }
   /invites/{token}:
     get:
       operationId: getSupplierInvite
@@ -3515,6 +3520,11 @@ components:
         token: { type: string }
         supplierName: { type: string }
         whatsapp: { type: string }
+    SupplierInvitationActivationInput:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
     SupplierInvite:
       type: object
       required: [supplierName, initialCity, initialWhatsapp, cities, categories, readyMixSubtypes, alreadyCompleted]
