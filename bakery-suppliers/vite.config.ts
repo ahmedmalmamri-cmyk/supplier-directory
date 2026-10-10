@@ -33,6 +33,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@workspace/api-client-react': path.resolve(import.meta.dirname, 'src/lib/api-client-react.ts'),
       '@': path.resolve(import.meta.dirname, 'src'),
       '@assets': path.resolve(
         import.meta.dirname,
