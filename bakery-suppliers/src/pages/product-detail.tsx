@@ -1,6 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { getGetProductQueryKey, useGetProduct } from "@workspace/api-client-react";
+
 import { Link, useRoute } from "wouter";
 import { Package, MapPin, ChevronLeft, Info, FileText, Calendar, Box, Droplets, ThermometerSnowflake, ShieldCheck } from "lucide-react";
 import { ProtectedWhatsAppButton } from "@/components/whatsapp/protected-whatsapp-button";
