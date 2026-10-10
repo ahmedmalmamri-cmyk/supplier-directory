@@ -1,46 +1,17 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
-
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    'PORT environment variable is required but was not provided.',
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    'BASE_PATH environment variable is required but was not provided.',
-  );
-}
-
 export default defineConfig({
-  base: basePath,
   plugins: [
     react(),
-  
+    tailwindcss(),
   ],
   resolve: {
     alias: {
-'@workspace/api-client-react': path.resolve(import.meta.dirname, '..', '..', 'lib', 'api-client-react'),
       '@': path.resolve(import.meta.dirname, 'src'),
-      '@assets': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'attached_assets',
-      ),
+      '@workspace/api-client-react': path.resolve(import.meta.dirname, '..', '..', 'lib', 'api-client-react', 'index.ts'),
     },
     dedupe: ['react', 'react-dom'],
   },
@@ -48,19 +19,5 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
-  },
-  server: {
-    port,
-    strictPort: true,
-    host: '0.0.0.0',
-    allowedHosts: true,
-    fs: {
-      strict: true,
-    },
-  },
-  preview: {
-    port,
-    host: '0.0.0.0',
-    allowedHosts: true,
   },
 });
