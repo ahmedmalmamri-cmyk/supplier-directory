@@ -1,6 +1,6 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { getFetchCategoryQueryKey, useFetchCategory } from "@workspace/api-client-react";
+
 import { Link, useRoute } from "wouter";
 import { Package, MapPin, Search, Wheat, Candy, Milk, Cookie, Nut, FlaskConical, Sparkles } from "lucide-react";
 import { useState } from "react";
