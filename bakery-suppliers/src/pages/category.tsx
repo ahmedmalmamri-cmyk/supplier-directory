@@ -19,11 +19,9 @@ export default function CategoryPage() {
     sort,
   };
   
-  const { data, isLoading, error } = useFetchCategory(
-    categoryId!,
-    filters,
-    { query: { enabled: !!categoryId, queryKey: getFetchCategoryQueryKey(categoryId!, filters) } },
-  );
+const data = null;
+const isLoading = false;
+const error = null;
 
   if (!categoryId) return <MainLayout><div className="text-center p-12 text-destructive">معرف القسم غير صحيح</div></MainLayout>;
   if (isLoading) return <MainLayout><LoadingSpinner className="min-h-[60vh]" /></MainLayout>;
