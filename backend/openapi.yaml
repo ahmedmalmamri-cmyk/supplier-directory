@@ -1,0 +1,3596 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 1.0.0
+  description: واجهة دليل موردي المخابز والحلويات
+servers:
+  - url: /api
+tags:
+  - name: health
+  - name: directory
+  - name: requests
+  - name: item-inquiries
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /home:
+    get:
+      operationId: getHome
+      tags: [directory]
+      responses:
+        "200":
+          description: Home page data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeData"
+  /groups:
+    get:
+      operationId: listGroups
+      tags: [directory]
+      responses:
+        "200":
+          description: Active groups and their visible category and supplier counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Group" }
+  /item-categories:
+    get:
+      operationId: listItemCategories
+      tags: [directory]
+      responses:
+        "200":
+          description: Active supplier categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ItemCategory" }
+  /requests/options:
+    get:
+      operationId: getRequestOptions
+      tags: [requests]
+      responses:
+        "200":
+          description: Allowed cities for request publication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestOptions"
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [requests]
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: city
+          in: query
+          required: false
+          schema: { type: string, maxLength: 80 }
+        - name: q
+          in: query
+          required: false
+          description: Search request title, details, category, business name, or city
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Requests visible to the authenticated buyer or supplier
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Request" }
+        "401": { description: Login required }
+        "403": { description: Account is not allowed to view requests }
+    post:
+      operationId: createRequest
+      tags: [requests]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestInput" }
+      responses:
+        "201":
+          description: Request published
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Request" }
+        "400": { description: Invalid request data or city is unavailable }
+        "401": { description: Buyer login required }
+        "403": { description: Only active business owners may publish requests }
+        "404": { description: Category is unavailable }
+  /supplier/requests/{requestId}/contact:
+    post:
+      operationId: createSupplierRequestContact
+      tags: [requests]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Prepared supplier-to-owner WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierRequestContactResponse" }
+        "400": { description: Invalid request ID }
+        "401": { description: Active supplier login required }
+        "404": { description: Request is unavailable }
+        "409": { description: A valid WhatsApp number is unavailable }
+  /supplier/requests/{requestId}/offer:
+    post:
+      operationId: createSupplierRequestOfferContact
+      tags: [requests]
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierRequestOfferInput" }
+      responses:
+        "200":
+          description: Prepared supplier offer WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierRequestContactResponse" }
+        "400": { description: Invalid request ID or offer message }
+        "401": { description: Active supplier login required }
+        "404": { description: Request is unavailable }
+        "409": { description: A valid WhatsApp number is unavailable }
+  /buyer/item-inquiries/matches:
+    get:
+      operationId: getBuyerItemInquiryMatches
+      tags: [item-inquiries]
+      parameters:
+        - name: itemId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: city
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 80 }
+      responses:
+        "200":
+          description: Number of active suppliers linked to this item in the selected city
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryMatchesResponse" }
+        "400": { description: Invalid item or city }
+        "401": { description: Buyer login required }
+  /buyer/item-inquiries:
+    get:
+      operationId: listBuyerItemInquiries
+      tags: [item-inquiries]
+      responses:
+        "200":
+          description: Inquiries created by the authenticated buyer, with supplier replies and no supplier contact details
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BuyerItemInquiry" }
+        "401": { description: Buyer login required }
+    post:
+      operationId: createBuyerItemInquiry
+      tags: [item-inquiries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerItemInquiryInput" }
+      responses:
+        "201":
+          description: Availability inquiry sent to matching active suppliers; it expires after 14 days
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerItemInquiry" }
+        "400": { description: "Invalid item, city, or inquiry details" }
+        "401": { description: Buyer login required }
+        "403": { description: Only active business owners may create availability inquiries }
+        "404": { description: Item is unavailable }
+        "409": { description: No active suppliers for this item in the selected city }
+  /buyer/item-inquiries/{id}/close:
+    patch:
+      operationId: closeBuyerItemInquiry
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Inquiry closed; suppliers can no longer reply
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryCloseResponse" }
+        "401": { description: Buyer login required }
+        "403": { description: Inquiry does not belong to this buyer }
+        "404": { description: Inquiry is unavailable }
+  /buyer/item-inquiries/{id}/contact/{supplierId}:
+    post:
+      operationId: createBuyerItemInquiryContact
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: supplierId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Prepared WhatsApp link for a supplier who replied to this inquiry; contact is logged before returning the link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryContactResponse" }
+        "401": { description: Buyer login required }
+        "403": { description: Inquiry does not belong to this buyer }
+        "404": { description: Supplier has not replied to this inquiry or is unavailable }
+        "409": { description: Supplier WhatsApp number is unavailable }
+  /buyer/item-inquiries/photo-upload-url:
+    post:
+      operationId: createBuyerItemInquiryPhotoUploadUrl
+      tags: [item-inquiries]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemInquiryPhotoUploadInput" }
+      responses:
+        "200":
+          description: Short-lived upload URL and private object path for an optional product/package reference image
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryPhotoUploadResponse" }
+        "400": { description: Unsupported image type or file size }
+        "401": { description: Buyer login required }
+  /supplier/item-inquiries:
+    get:
+      operationId: listSupplierItemInquiries
+      tags: [item-inquiries]
+      responses:
+        "200":
+          description: Active, unexpired availability inquiries sent only to this supplier for linked items in its city; includes buyer business name and this supplier's reply, never buyer contact fields
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierItemInquiry" }
+        "401": { description: Active supplier login required }
+        "403": { description: Supplier account is not allowed to view inquiries }
+  /supplier/item-inquiries/{id}/reply:
+    put:
+      operationId: upsertSupplierItemInquiryReply
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierItemInquiryReplyInput" }
+      responses:
+        "200":
+          description: Private availability response saved for the matching supplier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemInquiryReply" }
+        "400": { description: "Invalid response status, price, or details" }
+        "401": { description: Active supplier login required }
+        "403": { description: Inquiry was not sent to this supplier }
+        "404": { description: "Inquiry is closed, expired, or unavailable" }
+  /item-inquiries/{id}/photo:
+    get:
+      operationId: getItemInquiryPhoto
+      tags: [item-inquiries]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Private reference image, accessible only to its buyer and matching active suppliers
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "401": { description: Login required }
+        "403": { description: Account is not authorized to view this image }
+        "404": { description: Inquiry or image is unavailable }
+  /admin/item-categories:
+    get:
+      operationId: listAdminItemCategories
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier category tree for administration
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminItemCategory" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminItemCategory
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryInput" }
+      responses:
+        "201":
+          description: Created supplier category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid category or duplicate name }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/tree:
+    get:
+      operationId: getAdminSupplierTaxonomyTree
+      tags: [admin]
+      responses:
+        "200":
+          description: Proposed independent supplier taxonomy tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/audit:
+    get:
+      operationId: getAdminSupplierTaxonomyAudit
+      tags: [admin]
+      responses:
+        "200":
+          description: Latest 200 audited taxonomy changes without credentials or personally identifiable information
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyAuditEntry" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/nodes:
+    post:
+      operationId: createAdminSupplierTaxonomyNode
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyNodeInput" }
+      responses:
+        "201":
+          description: Created taxonomy node
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid node or parent }
+        "401": { description: Admin login required }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/bulk:
+    post:
+      operationId: bulkCreateAdminSupplierTaxonomyNodes
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyBulkInput" }
+      responses:
+        "201":
+          description: Created nodes atomically
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid nodes or parent }
+        "401": { description: Admin login required }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/{id}:
+    patch:
+      operationId: updateAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyNodeUpdate" }
+      responses:
+        "200":
+          description: Updated node
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Invalid node or cyclic move }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+        "409": { description: Exact node name already exists }
+  /admin/supplier-taxonomy/nodes/{id}/move:
+    post:
+      operationId: moveAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyMoveInput" }
+      responses:
+        "200":
+          description: Moved node, preserving supplier links
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+        "400": { description: Cyclic move or invalid parent }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+  /admin/supplier-taxonomy/nodes/{id}/delete:
+    post:
+      operationId: deleteAdminSupplierTaxonomyNode
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteInput" }
+      responses:
+        "200":
+          description: Deleted categories and their item links without deleting items; primary items receive a replacement category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyDeleteResponse" }
+        "400": { description: Missing confirmation or invalid transfer target }
+        "409": { description: "Replacement primary category required, supplier link confirmation missing, or duplicate subdivision" }
+        "401": { description: Admin login required }
+        "404": { description: Node not found }
+  /admin/supplier-taxonomy/order:
+    put:
+      operationId: reorderAdminSupplierTaxonomyNodes
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyOrderInput" }
+      responses:
+        "200":
+          description: Updated sibling display order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Invalid sibling order }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/items:
+    get:
+      operationId: listAdminSupplierTaxonomyItems
+      tags: [admin]
+      parameters:
+        - name: categoryId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: primaryOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, active, inactive], default: all }
+      responses:
+        "200":
+          description: Items with category path, optionally searched or filtered
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminSupplierTaxonomyItem
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemInput" }
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid item or category }
+        "401": { description: Admin login required }
+        "409": { description: Trimmed exact-case item name already exists }
+  /admin/supplier-taxonomy/items/bulk:
+    post:
+      operationId: bulkCreateAdminSupplierTaxonomyItems
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemsBulkInput" }
+      responses:
+        "201":
+          description: Created new items and skipped duplicate names
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItemsBulkResponse" }
+        "400": { description: Invalid items or category }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/items/{id}:
+    patch:
+      operationId: updateAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemUpdate" }
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid item or category }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+        "409": { description: Trimmed exact-case item name already exists }
+  /admin/supplier-taxonomy/items/{id}/move:
+    post:
+      operationId: moveAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemMoveInput" }
+      responses:
+        "200":
+          description: Moved item without changing its stable ID or supplier links
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+        "400": { description: Invalid destination category }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+  /admin/supplier-taxonomy/items/{id}/delete:
+    post:
+      operationId: deleteAdminSupplierTaxonomyItem
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemDeleteInput" }
+      responses:
+        "200":
+          description: Deleted confirmed item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Explicit confirmation required }
+        "401": { description: Admin login required }
+        "404": { description: Item not found }
+  /admin/supplier-taxonomy/items/{id}/suppliers:
+    put:
+      operationId: setAdminSupplierTaxonomyItemSuppliers
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyItemSuppliersInput" }
+      responses:
+        "200":
+          description: Replaced item supplier links after explicit confirmation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyItemSuppliersResponse" }
+        "400": { description: Invalid supplier list or missing confirmation }
+        "401": { description: Admin login required }
+        "404": { description: Item or supplier not found }
+  /admin/supplier-taxonomy/items/export.csv:
+    get:
+      operationId: exportAdminSupplierTaxonomyItemsCsv
+      tags: [admin]
+      responses:
+        "200":
+          description: Item list with category paths and supplier links in UTF-8 CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/legacy-import:
+    get:
+      operationId: previewAdminSupplierTaxonomyLegacyImport
+      tags: [admin]
+      responses:
+        "200":
+          description: Preview old item leaves, duplicate names, and unresolved supplier links without changing records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportSummary" }
+        "401": { description: Admin login required }
+    post:
+      operationId: importAdminSupplierTaxonomyLegacyItems
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportConfirmation" }
+      responses:
+        "200":
+          description: Imported only new item names into an inactive temporary section; preserved old records and skipped duplicates
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportResult" }
+        "400": { description: Explicit confirmation required }
+        "401": { description: Admin login required }
+        "500": { description: Import failed and was rolled back }
+  /admin/supplier-taxonomy/legacy-review:
+    get:
+      operationId: listAdminSupplierTaxonomyLegacyReview
+      tags: [admin]
+      responses:
+        "200":
+          description: Legacy item leaves and exact-name-only suggestions, with group headings excluded
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierTaxonomyLegacyReview" }
+        "401": { description: Admin login required }
+  /admin/supplier-taxonomy/legacy-review/{legacyId}/apply:
+    post:
+      operationId: applyAdminSupplierTaxonomyLegacyMapping
+      tags: [admin]
+      parameters:
+        - in: path
+          name: legacyId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyMappingInput" }
+      responses:
+        "200":
+          description: Explicitly confirmed mapping and copied supplier links; legacy records remain unchanged and reviewed mappings cannot be redirected implicitly
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierTaxonomyLegacyReview" }
+        "400": { description: Mapping confirmation is required }
+        "401": { description: Admin login required }
+        "404": { description: Legacy category or taxonomy item not found }
+        "409": { description: Legacy item already maps to a different taxonomy item and requires explicit correction }
+  /admin/supplier-taxonomy/export.csv:
+    get:
+      operationId: exportAdminSupplierTaxonomyCsv
+      tags: [admin]
+      responses:
+        "200":
+          description: Taxonomy nodes and linked suppliers as UTF-8 CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { description: Admin login required }
+  /admin/item-categories/import-report:
+    get:
+      operationId: getAdminItemCategoryImportReport
+      tags: [admin]
+      responses:
+        "200":
+          description: Result of importing the supplied item list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryImportReport" }
+        "401": { description: Admin login required }
+  /admin/groups:
+    get:
+      operationId: listAdminGroups
+      tags: [admin]
+      responses:
+        "200":
+          description: All groups, including inactive groups, for administration
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Group" }
+        "401": { description: Admin login required }
+    post:
+      operationId: createAdminGroup
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupInput" }
+      responses:
+        "201":
+          description: Created group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { description: Invalid group data }
+        "401": { description: Admin login required }
+        "409": { description: Group name or slug already exists }
+  /admin/groups/{id}:
+    patch:
+      operationId: updateAdminGroup
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupUpdate" }
+      responses:
+        "200":
+          description: Updated group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { description: Invalid group data }
+        "401": { description: Admin login required }
+        "404": { description: Group not found }
+        "409": { description: Group name or slug already exists }
+    delete:
+      operationId: deleteAdminGroup
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted group with no primary categories
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GroupDeleteResponse" }
+        "401": { description: Admin login required }
+        "404": { description: Group not found }
+        "409": { description: Move primary categories before deleting this group }
+  /admin/category-stats:
+    get:
+      operationId: getAdminCategoryStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Live summary of groups, categories, and category tags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCategoryStats" }
+        "401": { description: Admin login required }
+  /admin/item-categories/order:
+    patch:
+      operationId: reorderAdminItemCategories
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryOrderInput" }
+      responses:
+        "200":
+          description: Category order saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryOrderResponse" }
+        "400": { description: Invalid sibling order }
+        "401": { description: Admin login required }
+  /admin/item-categories/{id}:
+    patch:
+      operationId: updateAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryUpdate" }
+      responses:
+        "200":
+          description: Updated supplier category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid category or duplicate name }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+    delete:
+      operationId: deleteAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Category and its children deactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryDeleteResponse" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+  /admin/item-categories/{id}/permanent:
+    get:
+      operationId: getAdminItemCategoryDeletionPreview
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Current dependencies and eligibility for permanent deletion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryDeletionPreview" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+        "409": { description: Supplier selections cannot be inspected safely }
+    delete:
+      operationId: permanentlyDeleteAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Inactive category permanently removed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemCategoryPermanentDeleteResponse" }
+        "400": { description: Category must be inactive before permanent deletion }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+        "409": { description: Category has linked records that must be moved or unlinked first }
+  /admin/item-categories/{id}/transfer:
+    post:
+      operationId: transferAdminItemCategory
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryTransferInput" }
+      responses:
+        "200":
+          description: Category transferred without changing supplier selections
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: "Invalid destination, name conflict, or category cycle" }
+        "401": { description: Admin login required }
+        "404": { description: Category not found }
+  /admin/item-categories/{id}/tags:
+    put:
+      operationId: setAdminItemCategoryTags
+      tags: [admin]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ItemCategoryTagsInput" }
+      responses:
+        "200":
+          description: Replaced the category's secondary group tags
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminItemCategory" }
+        "400": { description: Invalid group assignment or primary-group duplication }
+        "401": { description: Admin login required }
+        "404": { description: Category or group not found }
+        "409": { description: Category cannot be tagged in its own primary group }
+  /admin/activity-log:
+    get:
+      operationId: listAdminActivityLog
+      tags: [admin]
+      responses:
+        "200":
+          description: Recent category activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ActivityLogEntry" }
+        "401": { description: Admin login required }
+  /search:
+    get:
+      operationId: searchDirectory
+      tags: [directory]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+  /categories/{id}:
+    get:
+      operationId: fetchCategory
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: rating
+          schema: { type: number }
+        - in: query
+          name: minOrder
+          schema: { type: integer }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [newest, rating, alphabetical] }
+      responses:
+        "200":
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryDetail"
+        "404": { description: Not found }
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [directory]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: subtypeId
+          required: false
+          description: Filter suppliers offering an approved subtype by catalog subtype ID
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: formId
+          required: false
+          description: Filter to a public active offer declaring this form
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: attributeOptionIds
+          required: false
+          description: All selected values must belong to the same matching public active offer
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: integer, minimum: 1 }
+        - in: query
+          name: variantForm
+          description: Precise almond form filter; only valid with category="لوز"
+          schema: { type: string, enum: [whole, slices, powder] }
+        - in: query
+          name: variantPreparation
+          description: Precise almond preparation filter; only valid with category="لوز"
+          schema: { type: string, enum: [raw, roasted] }
+        - in: query
+          name: variantSize
+          description: Precise whole-almond size filter; only valid with variantForm=whole
+          schema: { type: string, enum: ["32", "34", "36"] }
+        - in: query
+          name: rating
+          schema: { type: number, minimum: 1, maximum: 5 }
+        - in: query
+          name: package
+          schema: { type: string, enum: [verified, featured] }
+        - in: query
+          name: verified
+          schema: { type: boolean }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [newest, rating, alphabetical] }
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Supplier" }
+  /catalog/item-filters:
+    get:
+      operationId: getCatalogItemFilters
+      tags: [directory]
+      parameters:
+        - in: query
+          name: itemId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: category
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: Active forms and item-scoped attributes for each matched master item, independent of supplier presence
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemFilterOptions" }
+        "400": { description: Invalid or conflicting item selection }
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Supplier details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierDetail"
+        "404": { description: Not found }
+  /suppliers/{id}/reviews:
+    post:
+      operationId: addReview
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "400": { description: Invalid review }
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [directory]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404": { description: Not found }
+  /contact:
+    post:
+      operationId: sendContact
+      tags: [directory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Message received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactResponse"
+  /register:
+    post:
+      operationId: registerInterest
+      tags: [directory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registration interest saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400": { description: Invalid registration }
+  /buyer/register:
+    post:
+      operationId: registerBuyer
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerRegisterInput"
+      responses:
+        "201":
+          description: Buyer account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerAuthResponse"
+        "400": { description: Invalid registration }
+        "409": { description: Phone or email already used }
+  /buyer/login:
+    post:
+      operationId: loginBuyer
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerLoginInput"
+      responses:
+        "200":
+          description: Buyer session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerAuthResponse"
+        "401": { description: Invalid credentials }
+  /supplier/login:
+    post:
+      operationId: loginSupplier
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierLoginInput" }
+      responses:
+        "200":
+          description: Supplier session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAuthResponse" }
+        "400": { description: Invalid login input }
+        "401": { description: Invalid credentials }
+  /supplier/almond-variants:
+    get:
+      operationId: getSupplierAlmondVariants
+      tags: [supplier]
+      responses:
+        "200":
+          description: The authenticated supplier's almond variant preferences and current eligibility
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAlmondVariants" }
+        "401": { description: Supplier authentication required }
+    put:
+      operationId: updateSupplierAlmondVariants
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierAlmondVariantsInput" }
+      responses:
+        "200":
+          description: Preferences atomically replaced
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierAlmondVariants" }
+        "400": { description: Invalid mode or variant combination }
+        "401": { description: Supplier authentication required }
+        "409": { description: Supplier has no existing almond item link }
+  /supplier/catalog:
+    get:
+      operationId: getSupplierCatalog
+      tags: [supplier]
+      responses:
+        "200":
+          description: Active catalog, approved subtypes, supplier offers and pending proposals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalog" }
+        "401": { description: Supplier authentication required }
+  /supplier/catalog/offers:
+    post:
+      operationId: createSupplierCatalogOffer
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogOfferInput" }
+      responses:
+        "201":
+          description: Supplier offer created or reactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        "400": { description: "Invalid item, subtype or price" }
+        "401": { description: Supplier authentication required }
+        "404": { description: Active master item not found }
+  /supplier/catalog/offers/{id}:
+    patch:
+      operationId: updateSupplierCatalogOffer
+      tags: [supplier]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogOfferPriceInput" }
+      responses:
+        "200":
+          description: Supplier-owned offer updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        "400": { description: Invalid price }
+        "401": { description: Supplier authentication required }
+        "404": { description: Offer not found }
+        "409": { description: "Another active offer already has this subtype, form, and attribute-value set" }
+    delete:
+      operationId: deleteSupplierCatalogOffer
+      tags: [supplier]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Supplier-owned offer soft-deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogOfferDeleteResponse" }
+        "401": { description: Supplier authentication required }
+        "404": { description: Offer not found }
+  /supplier/catalog/master-proposals:
+    post:
+      operationId: createSupplierCatalogMasterProposal
+      tags: [supplier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalInput" }
+      responses:
+        "201":
+          description: Pending master proposal submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposal" }
+        "400": { description: Invalid names }
+        "401": { description: Supplier authentication required }
+        "409": { description: Duplicate master or proposal }
+  /admin/catalog:
+    get:
+      operationId: getAdminSupplierCatalog
+      tags: [admin]
+      responses:
+        "200":
+          description: Master catalog, subtype review queue, proposals and counts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalog" }
+        "401": { description: Admin authentication required }
+  /admin/catalog/masters:
+    post:
+      operationId: createAdminSupplierCatalogMaster
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterInput" }
+      responses:
+        "201":
+          description: Canonical taxonomy master created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalogMaster" }
+        "400": { description: Invalid names or category }
+        "401": { description: Admin authentication required }
+        "409": { description: Duplicate master }
+  /admin/catalog/masters/{id}:
+    patch:
+      operationId: updateAdminSupplierCatalogMasterTranslation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterTranslationInput" }
+      responses:
+        "200":
+          description: Legacy master English translation updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSupplierCatalogMasterTranslation" }
+        "400": { description: Invalid English translation }
+        "401": { description: Admin authentication required }
+        "404": { description: Master not found }
+        "409": { description: Translation is already used }
+  /admin/catalog/subtypes:
+    post:
+      operationId: createAdminSupplierCatalogSubtype
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSupplierCatalogSubtypeInput" }
+      responses:
+        "201":
+          description: Approved subtype created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogSubtype" }
+        "400": { description: Invalid names or master ID }
+        "401": { description: Admin authentication required }
+        "404": { description: Master not found }
+        "409": { description: Duplicate subtype }
+  /admin/catalog/masters/{id}/forms:
+    post:
+      operationId: createAdminCatalogItemForm
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogFormInput" }
+      responses:
+        "201":
+          description: Form scoped to the selected master item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogItemForm" }
+        "400": { description: Invalid bilingual form name }
+        "401": { description: Admin authentication required }
+        "404": { description: Master item not found }
+        "409": { description: Duplicate form in this master item }
+  /admin/catalog/masters/{id}/attributes:
+    post:
+      operationId: createAdminCatalogItemAttribute
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogAttributeInput" }
+      responses:
+        "201":
+          description: Item-scoped extra attribute with its allowed values
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogItemAttribute" }
+        "400": { description: Invalid attribute or option list }
+        "401": { description: Admin authentication required }
+        "404": { description: Master item not found }
+        "409": { description: Duplicate attribute or option }
+  /admin/catalog/attributes/{id}/options:
+    post:
+      operationId: createAdminCatalogAttributeOptions
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCatalogAttributeOptionsInput" }
+      responses:
+        "201":
+          description: Values added to the owning item-scoped attribute
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemAttributeOption" }
+        "400": { description: Invalid option list }
+        "401": { description: Admin authentication required }
+        "404": { description: Attribute not found }
+        "409": { description: Duplicate option }
+  /admin/catalog/subtypes/{id}/review:
+    patch:
+      operationId: reviewAdminSupplierCatalogSubtype
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogReviewInput" }
+      responses:
+        "200":
+          description: Subtype review recorded; rejected subtype history retained
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogReviewResponse" }
+        "400": { description: Invalid review decision }
+        "401": { description: Admin authentication required }
+        "404": { description: Subtype not found }
+        "409": { description: Subtype was already reviewed }
+  /admin/catalog/master-proposals/{id}/review:
+    patch:
+      operationId: reviewAdminSupplierCatalogMasterProposal
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalReviewInput" }
+      responses:
+        "200":
+          description: Proposal reviewed; approval creates a canonical active master
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierCatalogMasterProposalReviewResponse" }
+        "400": { description: Invalid decision or category }
+        "401": { description: Admin authentication required }
+        "404": { description: Proposal not found }
+        "409": { description: Duplicate master or proposal was already reviewed }
+  /buyer/logout:
+    post:
+      operationId: logoutBuyer
+      tags: [buyer]
+      responses:
+        "200":
+          description: Buyer session cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicSuccessResponse"
+  /buyer/me:
+    get:
+      operationId: getBuyerMe
+      tags: [buyer]
+      responses:
+        "200":
+          description: Current buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerMeResponse"
+        "401": { description: Buyer authentication required }
+  /buyer/contact:
+    post:
+      operationId: createBuyerContactLog
+      tags: [buyer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerContactInput"
+      responses:
+        "201":
+          description: Contact log created and WhatsApp URL prepared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerContactResponse"
+        "400": { description: Invalid contact input }
+        "401": { description: Buyer authentication required }
+        "404": { description: Supplier not found }
+  /buyer-invites/{token}:
+    get:
+      operationId: getBuyerInvitation
+      tags: [buyer]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Public buyer invitation details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationPublic" }
+        "404": { description: Invitation is invalid or unavailable }
+        "409": { description: Invitation already activated }
+  /buyer-invites/{token}/activate:
+    post:
+      operationId: activateBuyerInvitation
+      tags: [buyer]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationActivationInput" }
+      responses:
+        "201":
+          description: Buyer account activated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationActivationResponse" }
+        "400": { description: Invalid activation details }
+        "404": { description: Invitation is invalid or unavailable }
+        "409": { description: "Phone or email already used, or invitation already activated" }
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Admin session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Invalid credentials }
+  /admin/logout:
+    post:
+      operationId: adminLogout
+      tags: [admin]
+      responses:
+        "200":
+          description: Admin session cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+  /admin/registrations:
+    get:
+      operationId: listRegistrationInterests
+      tags: [admin]
+      responses:
+        "200":
+          description: Registration requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationInterestList"
+        "401": { description: Admin authentication required }
+  /admin/registrations/{id}/approve:
+    post:
+      operationId: approveRegistration
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Registration approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Admin authentication required }
+        "404": { description: Registration not found }
+  /admin/registrations/{id}/reject:
+    post:
+      operationId: rejectRegistration
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Registration rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResponse"
+        "401": { description: Admin authentication required }
+        "404": { description: Registration not found }
+  /admin/buyer-invitations:
+    get:
+      operationId: listBuyerInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [invited, activated, active, suspended] }
+      responses:
+        "200":
+          description: Buyer invitations and activated accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BuyerInvitation" }
+        "401": { description: Admin authentication required }
+    post:
+      operationId: createBuyerInvitation
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationInput" }
+      responses:
+        "201":
+          description: Buyer invitation draft created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitation" }
+        "400": { description: Invalid invitation details }
+        "401": { description: Admin authentication required }
+        "409": { description: Phone already has an account or invitation }
+  /admin/buyer-invitations/{id}:
+    patch:
+      operationId: updateBuyerInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationUpdate" }
+      responses:
+        "200":
+          description: Buyer invitation updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitation" }
+        "400": { description: Invalid invitation details }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Activated invitations cannot be edited }
+    delete:
+      operationId: deleteBuyerInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unactivated buyer invitation deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Activated invitations cannot be deleted }
+  /admin/buyer-invitations/{id}/link:
+    post:
+      operationId: getBuyerInvitationLink
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Stable invitation link and WhatsApp message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already activated }
+  /admin/buyer-invitations/{id}/sent:
+    post:
+      operationId: markBuyerInvitationSent
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: WhatsApp opening recorded (delivery is not confirmed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already activated }
+  /admin/buyer-invitations/stats:
+    get:
+      operationId: getBuyerInvitationStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Buyer invitation, search, and contact activity statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyerInvitationStats" }
+        "401": { description: Admin authentication required }
+  /admin/buyer-invitations/export:
+    get:
+      operationId: exportBuyerInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [invited, activated, active, suspended] }
+      responses:
+        "200":
+          description: Excel-compatible CSV export
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "401": { description: Admin authentication required }
+  /admin/buyer-invitations/{id}/account-status:
+    patch:
+      operationId: updateInvitedBuyerAccountStatus
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BuyerInvitationAccountStatusInput" }
+      responses:
+        "200":
+          description: Buyer account status updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "400": { description: Invalid account status or suspension duration }
+        "401": { description: Admin authentication required }
+        "404": { description: Activated buyer invitation not found }
+  /admin/invitations:
+    get:
+      operationId: listSupplierInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [unsent, sent, completed] }
+      responses:
+        "200":
+          description: Supplier invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierInvitation" }
+        "401": { description: Admin authentication required }
+    post:
+      operationId: createSupplierInvitationDraft
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInvitationDraftInput" }
+      responses:
+        "201":
+          description: Supplier invitation draft created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitation" }
+        "400": { description: Invalid supplier details }
+        "401": { description: Admin authentication required }
+  /admin/invitations/stats:
+    get:
+      operationId: getSupplierInvitationStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier invitation statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationStats" }
+        "401": { description: Admin authentication required }
+  /admin/invitations/options:
+    get:
+      operationId: getSupplierInvitationOptions
+      tags: [admin]
+      responses:
+        "200":
+          description: City suggestions for supplier invitation forms
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationOptions" }
+        "401": { description: Admin authentication required }
+  /admin/suppliers/source-stats:
+    get:
+      operationId: getSupplierSourceStats
+      tags: [admin]
+      responses:
+        "200":
+          description: Supplier counts by creation source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierSourceStats" }
+        "401": { description: Admin authentication required }
+  /admin/invitations/export:
+    get:
+      operationId: exportSupplierInvitations
+      tags: [admin]
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string, enum: [unsent, sent, completed] }
+      responses:
+        "200":
+          description: Excel-compatible CSV export
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid invitation status }
+        "401": { description: Admin authentication required }
+  /admin/suppliers/{id}/invite:
+    post:
+      operationId: generateSupplierInvitation
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: New pending invitation link generated without invalidating the currently active link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvitationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Supplier not found }
+        "409": { description: Invitation already completed unless its latest registration request was rejected }
+  /admin/suppliers/{id}/invite-sent:
+    post:
+      operationId: markSupplierInvitationSent
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInvitationActivationInput" }
+      responses:
+        "200":
+          description: Pending link promoted and handoff/open queued; actual WhatsApp delivery cannot be verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "401": { description: Admin authentication required }
+        "404": { description: Supplier invitation not found }
+        "409": { description: "Pending token is stale or does not match, or invitation cannot be reissued" }
+  /invites/{token}:
+    get:
+      operationId: getSupplierInvite
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Public invitation details and form options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInvite" }
+        "404": { description: Invitation is invalid or no longer available }
+        "409": { description: Invitation already completed }
+  /invites/{token}/open:
+    post:
+      operationId: recordSupplierInviteOpened
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      responses:
+        "200":
+          description: Invitation open recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicSuccessResponse" }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already completed }
+  /invites/{token}/complete:
+    post:
+      operationId: completeSupplierInvite
+      tags: [invitations]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInviteInput" }
+      responses:
+        "201":
+          description: Supplier information submitted for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierInviteCompletion" }
+        "400": { description: Invalid supplier submission }
+        "404": { description: Invitation not found }
+        "409": { description: Invitation already completed }
+  /supplier/activation:
+    get:
+      operationId: getSupplierActivation
+      tags: [suppliers]
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Approved supplier details for initial account activation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationInfo" }
+        "400": { description: Invalid activation token }
+        "404": { description: "Activation link is invalid, expired, or revoked" }
+        "409": { description: Supplier account is already active }
+  /supplier/activation/complete:
+    post:
+      operationId: completeSupplierActivation
+      tags: [suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierActivationInput" }
+      responses:
+        "200":
+          description: Password set and supplier signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationResult" }
+        "400": { description: Password is invalid or confirmation does not match }
+        "404": { description: "Activation link is invalid, expired, or revoked" }
+        "409": { description: Link already used or account already active }
+  /admin/supplier-requests/{id}/activation-link:
+    post:
+      operationId: createSupplierActivationLink
+      tags: [admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Single-use password setup link for an approved supplier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplierActivationLink" }
+        "401": { description: Admin authentication required }
+        "404": { description: Approved supplier request not found }
+        "409": { description: Request is not approved or supplier already has active access }
+components:
+  schemas:
+    CatalogBilingualNames:
+      type: object
+      required: [nameAr, nameEn]
+      properties:
+        nameAr: { type: string, minLength: 1, maxLength: 120 }
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+    SupplierCatalogSubtype:
+      type: object
+      required: [id, nameAr, nameEn, status, isApproved]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        isApproved: { type: boolean }
+    SupplierCatalogOffer:
+      type: object
+      required: [id, subtypeId, price, lastUpdated, isActive, eligibilityStatus, formId, formNameAr, attributeOptionIds]
+      properties:
+        id: { type: integer }
+        subtypeId: { type: integer }
+        price: { type: ["number", "null"], minimum: 0 }
+        lastUpdated: { type: string, format: date-time }
+        isActive: { type: boolean }
+        eligibilityStatus: { type: string, enum: [eligible, pending] }
+        formId: { type: ["integer", "null"] }
+        formNameAr: { type: ["string", "null"] }
+        attributeOptionIds:
+          type: array
+          items: { type: integer }
+    SupplierCatalogMaster:
+      type: object
+      required: [id, name, nameEn, subtypes, offers, forms, attributes]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        subtypes:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogSubtype" }
+        offers:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogOffer" }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
+    SupplierCatalogPendingSubtypeProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, itemId]
+          properties:
+            id: { type: integer }
+            itemId: { type: integer }
+    SupplierCatalogPendingMasterProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, status, createdAt]
+          properties:
+            id: { type: integer }
+            status: { type: string, enum: [pending, approved, rejected] }
+            createdAt: { type: string, format: date-time }
+    SupplierCatalog:
+      type: object
+      required: [profileComplete, masters, pendingProposals]
+      properties:
+        profileComplete:
+          type: boolean
+          description: True only when the supplier is active and has an active offer for an approved subtype of an active, publicly visible taxonomy item and node.
+        masters:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierCatalogMaster" }
+        pendingProposals:
+          type: object
+          required: [subtypes, masters]
+          properties:
+            subtypes:
+              type: array
+              items: { $ref: "#/components/schemas/SupplierCatalogPendingSubtypeProposal" }
+            masters:
+              type: array
+              items: { $ref: "#/components/schemas/SupplierCatalogPendingMasterProposal" }
+    SupplierCatalogOfferInput:
+      type: object
+      required: [itemId, formId]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        formId: { type: integer, minimum: 1 }
+        attributeOptionIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        subtypeId: { type: integer, minimum: 1 }
+        newSubtype: { $ref: "#/components/schemas/CatalogBilingualNames" }
+        price: { type: ["number", "null"], minimum: 0 }
+    CatalogItemForm:
+      type: object
+      required: [id, itemId, nameAr, nameEn, isActive]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+    CatalogItemAttributeOption:
+      type: object
+      required: [id, attributeId, nameAr, nameEn, isActive]
+      properties:
+        id: { type: integer }
+        attributeId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+    CatalogItemAttribute:
+      type: object
+      required: [id, itemId, nameAr, nameEn, isActive, options]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        isActive: { type: boolean }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttributeOption" }
+    CatalogItemOfferAttributeValue:
+      type: object
+      required: [id, attributeId, attributeNameAr, optionNameAr, optionNameEn]
+      properties:
+        id: { type: integer }
+        attributeId: { type: integer }
+        attributeNameAr: { type: string }
+        optionNameAr: { type: string }
+        optionNameEn: { type: string }
+    CatalogItemFilterOptions:
+      type: object
+      required: [id, name, nameEn, forms, attributes]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
+    AdminCatalogFormInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+    AdminCatalogAttributeInput:
+      type: object
+      required: [nameAr, nameEn, options]
+      properties:
+        nameAr: { type: string, minLength: 1, maxLength: 120 }
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+        options:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CatalogBilingualNames" }
+    AdminCatalogAttributeOptionsInput:
+      type: object
+      required: [options]
+      properties:
+        options:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CatalogBilingualNames" }
+    SupplierCatalogOfferPriceInput:
+      type: object
+      minProperties: 1
+      properties:
+        price: { type: ["number", "null"], minimum: 0 }
+        formId: { type: integer, minimum: 1 }
+        attributeOptionIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+    SupplierCatalogOfferDeleteResponse:
+      type: object
+      required: [id, isActive]
+      properties:
+        id: { type: integer }
+        isActive: { type: boolean, const: false }
+    SupplierCatalogMasterProposalInput:
+      $ref: "#/components/schemas/CatalogBilingualNames"
+    SupplierCatalogMasterProposal:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [id, status]
+          properties:
+            id: { type: integer }
+            status: { type: string, enum: [pending] }
+    AdminSupplierCatalogMaster:
+      type: object
+      required: [id, nameAr, nameEn, categoryId, categoryName, isActive, forms, attributes]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: ["string", "null"] }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        isActive: { type: boolean }
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemForm" }
+        attributes:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogItemAttribute" }
+    AdminSupplierCatalogMasterInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [categoryId]
+          properties:
+            categoryId: { type: integer, minimum: 1 }
+    AdminSupplierCatalogMasterTranslationInput:
+      type: object
+      required: [nameEn]
+      properties:
+        nameEn: { type: string, minLength: 1, maxLength: 120 }
+    AdminSupplierCatalogMasterTranslation:
+      type: object
+      required: [id, nameEn]
+      properties:
+        id: { type: integer }
+        nameEn: { type: string }
+    AdminSupplierCatalogSubtypeInput:
+      allOf:
+        - $ref: "#/components/schemas/CatalogBilingualNames"
+        - type: object
+          required: [itemId]
+          properties:
+            itemId: { type: integer, minimum: 1 }
+    SupplierCatalogReviewInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+    SupplierCatalogReviewResponse:
+      type: object
+      required: [id, status, isApproved, reviewedAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [approved, rejected] }
+        isApproved: { type: boolean }
+        reviewedAt: { type: string, format: date-time }
+    SupplierCatalogMasterProposalReviewInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        categoryId: { type: integer, minimum: 1 }
+    SupplierCatalogMasterProposalReviewResponse:
+      type: object
+      required: [id, status, itemId, categoryId, reviewedAt]
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [approved, rejected] }
+        itemId: { type: ["integer", "null"] }
+        categoryId: { type: ["integer", "null"] }
+        reviewedAt: { type: string, format: date-time }
+    AdminSupplierCatalog:
+      type: object
+      required: [masters, subtypes, masterProposals, stats]
+      properties:
+        masters:
+          type: array
+          items: { $ref: "#/components/schemas/AdminSupplierCatalogMaster" }
+        subtypes:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/SupplierCatalogSubtype"
+              - type: object
+                required: [itemId, proposedBySupplierId, createdAt, reviewedAt]
+                properties:
+                  itemId: { type: integer }
+                  proposedBySupplierId: { type: ["integer", "null"] }
+                  createdAt: { type: string, format: date-time }
+                  reviewedAt: { type: ["string", "null"], format: date-time }
+        masterProposals:
+          type: array
+          items:
+            type: object
+            required: [id, nameAr, nameEn, status, supplierId, supplierName, categoryId, itemId, createdAt, reviewedAt]
+            properties:
+              id: { type: integer }
+              nameAr: { type: string }
+              nameEn: { type: string }
+              status: { type: string, enum: [pending, approved, rejected] }
+              supplierId: { type: integer }
+              supplierName: { type: string }
+              categoryId: { type: ["integer", "null"] }
+              itemId: { type: ["integer", "null"] }
+              createdAt: { type: string, format: date-time }
+              reviewedAt: { type: ["string", "null"], format: date-time }
+        stats:
+          type: object
+          required: [activeMasters, totalSubtypes, pendingSubtypes, pendingMasterProposals, supplierAccounts, completeSupplierProfiles, approvedSubtypes, pendingProposals]
+          properties:
+            activeMasters: { type: integer }
+            totalSubtypes: { type: integer }
+            pendingSubtypes: { type: integer }
+            pendingMasterProposals: { type: integer }
+            supplierAccounts: { type: integer, description: Count of supplier user accounts with active login status. }
+            completeSupplierProfiles: { type: integer, description: Count of active suppliers with at least one publicly eligible catalog offer. }
+            approvedSubtypes: { type: integer }
+            pendingProposals: { type: integer, description: Pending subtype proposals plus pending master proposals. }
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    Category:
+      type: object
+      required: [id, name, icon, slug]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        icon: { type: string }
+        slug: { type: string }
+        productCount: { type: integer }
+    Group:
+      type: object
+      required: [id, name, slug, icon, parentId, displayOrder, isActive, categoryCount, supplierCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        icon: { type: string }
+        parentId: { type: ["integer", "null"], description: "Null for a root group; otherwise the parent group ID." }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
+        categoryCount: { type: integer }
+        supplierCount: { type: integer }
+    GroupInput:
+      type: object
+      required: [name, icon, displayOrder, isActive]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+        parentId: { type: ["integer", "null"] }
+    GroupUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, minLength: 1, maxLength: 24 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+        parentId: { type: ["integer", "null"] }
+    GroupDeleteResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    AdminCategoryStats:
+      type: object
+      required: [groupCount, categoryCount, tagCount, mostTaggedCategory]
+      properties:
+        groupCount: { type: integer }
+        categoryCount: { type: integer }
+        tagCount: { type: integer }
+        mostTaggedCategory:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MostTaggedCategory"
+    MostTaggedCategory:
+      type: object
+      required: [id, name, groupCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        groupCount: { type: integer }
+    ItemCategory:
+      type: object
+      required: [id, name, icon, slug, groupName, parentId, primaryGroupId, subGroupId, tagGroupIds, description, displayOnHome, displayOrder, isActive, createdAt, updatedAt, supplierCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        icon: { type: string }
+        slug: { type: string }
+        groupName: { type: string }
+        parentId: { type: ["integer", "null"] }
+        primaryGroupId: { type: ["integer", "null"] }
+        subGroupId: { type: ["integer", "null"], description: "Optional subdivision within the primary group." }
+        subGroupIds:
+          type: array
+          description: "All active subgroups containing this item, including additional section memberships."
+          items: { type: integer }
+        directGroupIds:
+          type: array
+          description: "Root groups directly linked to this item; excludes membership inherited from a subgroup."
+          items: { type: integer }
+        tagGroupIds:
+          type: array
+          items: { type: integer }
+        description: { type: ["string", "null"] }
+        displayOnHome: { type: boolean }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        supplierCount: { type: integer }
+    Request:
+      type: object
+      required: [id, categoryId, categoryName, title, description, quantity, unit, frequency, city, businessName, status, createdAt, expiresAt]
+      properties:
+        id: { type: integer }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        title: { type: string }
+        description: { type: string }
+        quantity: { type: number }
+        unit: { type: string, enum: ["كيلو", "كرتون", "كيس", "علبة"] }
+        frequency: { type: string, enum: ["مرة واحدة", "أسبوعي", "شهري"] }
+        city: { type: string }
+        businessName: { type: ["string", "null"] }
+        status: { type: string, enum: ["active", "closed", "expired"] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    SupplierRequestContactResponse:
+      type: object
+      required: [success, message, simulated, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        simulated: { type: boolean }
+        whatsappUrl: { type: ["string", "null"], format: uri }
+    SupplierRequestOfferInput:
+      type: object
+      required: [offer]
+      properties:
+        offer: { type: string, minLength: 1, maxLength: 1000 }
+    ItemInquiryMatchesResponse:
+      type: object
+      required: [itemId, city, count]
+      properties:
+        itemId: { type: integer }
+        city: { type: string }
+        count: { type: integer, minimum: 0 }
+    BuyerItemInquiryInput:
+      type: object
+      required: [itemId, brandOrType, city, allowAlternatives]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        brandOrType: { type: string, minLength: 1, maxLength: 160 }
+        city: { type: string, minLength: 1, maxLength: 80 }
+        allowAlternatives: { type: boolean }
+        packageDetails: { type: string, maxLength: 200 }
+        note: { type: string, maxLength: 1000 }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        photoPath:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: "^/objects/"
+          description: Private object path returned by the photo upload URL endpoint.
+    ItemInquiryDetails:
+      type: object
+      required: [id, itemId, itemName, brandOrType, city, allowAlternatives, packageDetails, note, quantity, photoUrl, businessName, status, createdAt, expiresAt]
+      properties:
+        id: { type: integer }
+        itemId: { type: integer }
+        itemName: { type: string }
+        brandOrType: { type: string }
+        city: { type: string }
+        allowAlternatives: { type: boolean }
+        packageDetails: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        quantity: { type: ["number", "null"], exclusiveMinimum: 0 }
+        photoUrl: { type: ["string", "null"], description: Authenticated route for the optional private reference photo. }
+        businessName: { type: ["string", "null"] }
+        status: { type: string, enum: [active, closed, expired] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    BuyerItemInquiry:
+      allOf:
+        - $ref: "#/components/schemas/ItemInquiryDetails"
+        - type: object
+          required: [replies]
+          properties:
+            replies:
+              type: array
+              items: { $ref: "#/components/schemas/ItemInquiryReply" }
+    SupplierItemInquiry:
+      allOf:
+        - $ref: "#/components/schemas/ItemInquiryDetails"
+        - type: object
+          required: [ownReply]
+          properties:
+            ownReply:
+              oneOf:
+                - type: "null"
+                - $ref: "#/components/schemas/ItemInquiryReply"
+    ItemInquiryReply:
+      type: object
+      required: [supplierId, supplierBusinessName, responseStatus, price, currency, packageDetails, branchAddress, note, respondedAt]
+      properties:
+        supplierId: { type: integer }
+        supplierBusinessName: { type: string }
+        responseStatus: { type: string, enum: [available, unavailable, alternative] }
+        price: { type: ["number", "null"], exclusiveMinimum: 0 }
+        currency: { type: string, enum: [SAR] }
+        packageDetails: { type: ["string", "null"] }
+        branchAddress: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        respondedAt: { type: string, format: date-time }
+    SupplierItemInquiryReplyInput:
+      type: object
+      required: [responseStatus]
+      properties:
+        responseStatus: { type: string, enum: [available, unavailable, alternative] }
+        price: { type: number, exclusiveMinimum: 0 }
+        packageDetails: { type: string, maxLength: 200 }
+        branchAddress: { type: string, maxLength: 300 }
+        note: { type: string, maxLength: 1000 }
+    ItemInquiryCloseResponse:
+      type: object
+      required: [success, status]
+      properties:
+        success: { type: boolean }
+        status: { type: string, enum: [closed] }
+    ItemInquiryPhotoUploadInput:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+    ItemInquiryPhotoUploadResponse:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: "^/objects/"
+    ItemInquiryContactResponse:
+      type: object
+      required: [success, message, simulated, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        simulated: { type: boolean }
+        whatsappUrl: { type: ["string", "null"], format: uri }
+    RequestInput:
+      type: object
+      required: [categoryId, quantity, unit, frequency, city, description]
+      properties:
+        categoryId: { type: integer, minimum: 1 }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit: { type: string, enum: ["كيلو", "كرتون", "كيس", "علبة"] }
+        frequency: { type: string, enum: ["مرة واحدة", "أسبوعي", "شهري"] }
+        city: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 1000 }
+    RequestOptions:
+      type: object
+      required: [cities]
+      properties:
+        cities:
+          type: array
+          items: { type: string }
+    AdminItemCategory:
+      allOf:
+        - $ref: "#/components/schemas/ItemCategory"
+        - type: object
+          required: [supplierCount, notes]
+          properties:
+            supplierCount: { type: integer }
+            notes: { type: ["string", "null"], maxLength: 500 }
+    SupplierTaxonomyNode:
+      type: object
+      required: [id, parentId, name, icon, description, displayOrder, isActive, itemCount, children]
+      properties:
+        id: { type: integer }
+        parentId: { type: ["integer", "null"] }
+        name: { type: string }
+        icon: { type: string }
+        description: { type: ["string", "null"] }
+        displayOrder: { type: integer }
+        isActive: { type: boolean }
+        itemCount: { type: integer }
+        children:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyNode" }
+    SupplierTaxonomyAuditEntry:
+      type: object
+      required: [id, adminId, action, entityType, entityId, details, createdAt]
+      properties:
+        id: { type: integer }
+        adminId: { type: ["integer", "null"] }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: ["integer", "null"] }
+        details:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+    SupplierTaxonomyNodeInput:
+      type: object
+      required: [name]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    SupplierTaxonomyBulkInput:
+      type: object
+      required: [nodes]
+      properties:
+        nodes:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/SupplierTaxonomyNodeInput" }
+    SupplierTaxonomyNodeUpdate:
+      type: object
+      properties:
+        parentId: { type: ["integer", "null"] }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    SupplierTaxonomyMoveInput:
+      type: object
+      required: [parentId]
+      properties:
+        parentId: { type: ["integer", "null"] }
+    SupplierTaxonomyDeleteInput:
+      type: object
+      required: [strategy, confirmed]
+      properties:
+        strategy: { type: string, enum: [cascade, transfer] }
+        confirmed: { type: boolean }
+        confirmSupplierLinks: { type: boolean }
+        transferToNodeId: { type: integer, minimum: 1 }
+        replacementPrimaryCategoryId: { type: integer, minimum: 1 }
+    SupplierTaxonomyDeleteResponse:
+      type: object
+      required: [success, deletedNodeCount, transferredItemCount]
+      properties:
+        success: { type: boolean }
+        deletedNodeCount: { type: integer }
+        transferredItemCount: { type: integer }
+    SupplierTaxonomyOrderInput:
+      type: object
+      required: [parentId, orderedIds]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        orderedIds:
+          type: array
+          items: { type: integer, minimum: 1 }
+    SupplierTaxonomyLegacyReview:
+      type: object
+      required: [legacyId, legacyName, legacyGroupName, legacyParentId, supplierCount, suggestedItemId, mappedItemId, reviewedAt]
+      properties:
+        legacyId: { type: integer }
+        legacyName: { type: string }
+        legacyGroupName: { type: string }
+        legacyParentId: { type: ["integer", "null"] }
+        supplierCount: { type: integer }
+        suggestedItemId: { type: ["integer", "null"] }
+        mappedItemId: { type: ["integer", "null"] }
+        reviewedAt: { type: ["string", "null"] }
+    SupplierTaxonomyLegacyImportSummary:
+      type: object
+      required: [sourceItemCount, duplicateCount, readyToImportCount, importedCount, alreadyMappedCount, unreviewedItemCount, unreviewedSupplierLinkCount, missingImportedCount, temporaryCategoryId]
+      properties:
+        sourceItemCount: { type: integer }
+        duplicateCount: { type: integer }
+        readyToImportCount: { type: integer }
+        importedCount: { type: integer }
+        alreadyMappedCount: { type: integer }
+        unreviewedItemCount: { type: integer }
+        unreviewedSupplierLinkCount: { type: integer }
+        missingImportedCount: { type: integer }
+        temporaryCategoryId: { type: ["integer", "null"] }
+    SupplierTaxonomyLegacyImportConfirmation:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean }
+    SupplierTaxonomyLegacyImportResult:
+      type: object
+      required: [added, skippedDuplicates, alreadyMapped, summary]
+      properties:
+        added: { type: integer }
+        skippedDuplicates: { type: integer }
+        alreadyMapped: { type: integer }
+        summary: { $ref: "#/components/schemas/SupplierTaxonomyLegacyImportSummary" }
+    SupplierTaxonomyLegacyMappingInput:
+      type: object
+      required: [itemId, confirmed]
+      properties:
+        itemId: { type: integer, minimum: 1 }
+        confirmed: { type: boolean }
+    SupplierTaxonomyItem:
+      type: object
+      required: [id, name, categoryId, categoryPath, categories, isActive, notes, supplierCount, supplierIds, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        categoryId: { type: integer }
+        categoryPath: { type: string }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItemCategory" }
+        isActive: { type: boolean }
+        notes: { type: ["string", "null"] }
+        supplierCount: { type: integer }
+        supplierIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SupplierTaxonomyItemCategory:
+      type: object
+      required: [id, name, path, isPrimary]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        path: { type: string }
+        isPrimary: { type: boolean }
+    SupplierTaxonomyItemInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        categoryId: { type: integer, minimum: 1 }
+        categoryIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        primaryCategoryId: { type: integer, minimum: 1 }
+        notes: { type: ["string", "null"], maxLength: 500 }
+        isActive: { type: boolean }
+    SupplierTaxonomyItemsBulkInput:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItemInput" }
+    SupplierTaxonomyItemsBulkResponse:
+      type: object
+      required: [added, skipped, items]
+      properties:
+        added: { type: integer }
+        skipped: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierTaxonomyItem" }
+    SupplierTaxonomyItemUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        categoryId: { type: integer, minimum: 1 }
+        categoryIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        primaryCategoryId: { type: integer, minimum: 1 }
+        notes: { type: ["string", "null"], maxLength: 500 }
+        isActive: { type: boolean }
+    SupplierTaxonomyItemMoveInput:
+      type: object
+      required: [categoryId]
+      properties:
+        categoryId: { type: integer, minimum: 1 }
+    SupplierTaxonomyItemDeleteInput:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean }
+    SupplierTaxonomyItemSuppliersInput:
+      type: object
+      required: [supplierIds, confirmed]
+      properties:
+        supplierIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        confirmed: { type: boolean }
+    SupplierTaxonomyItemSuppliersResponse:
+      type: object
+      required: [itemId, supplierIds]
+      properties:
+        itemId: { type: integer }
+        supplierIds:
+          type: array
+          items: { type: integer }
+    ItemCategoryImportReport:
+      type: object
+      required: [added, skipped, failed, appliedAt]
+      properties:
+        added: { type: integer }
+        skipped: { type: integer }
+        failed: { type: integer }
+        appliedAt: { type: ["string", "null"] }
+    ItemCategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24, description: "Optional. Blank or omitted uses the default package icon." }
+        primaryGroupId: { type: ["integer", "null"], description: "Null leaves this item unassigned." }
+        parentId: { type: integer, description: "Optional legacy alias for primaryGroupId." }
+        subGroupId: { type: ["integer", "null"] }
+        description: { type: ["string", "null"], maxLength: 500 }
+        notes: { type: ["string", "null"], maxLength: 500 }
+    ItemCategoryUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        icon: { type: string, maxLength: 24, description: "Blank selects the default package icon; omission preserves the existing icon." }
+        description: { type: ["string", "null"], maxLength: 500 }
+        primaryGroupId: { type: ["integer", "null"] }
+        subGroupId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"], maxLength: 500 }
+        displayOrder: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+        displayOnHome: { type: boolean }
+    ItemCategoryTagsInput:
+      type: object
+      required: [groupIds]
+      properties:
+        groupIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer }
+    ItemCategoryTransferInput:
+      type: object
+      required: [destinationId, moveSubcategories]
+      properties:
+        destinationId: { type: ["integer", "null"] }
+        moveSubcategories: { type: boolean }
+        subGroupId: { type: ["integer", "null"], description: "Destination subdivision; null clears the subdivision." }
+    ItemCategoryOrderInput:
+      type: object
+      required: [parentId, categoryIds]
+      properties:
+        parentId: { type: ["integer", "null"] }
+        categoryIds:
+          type: array
+          minItems: 1
+          items: { type: integer }
+    ItemCategoryDeleteResponse:
+      type: object
+      required: [success, deactivatedCount]
+      properties:
+        success: { type: boolean }
+        deactivatedCount: { type: integer }
+    ItemCategoryPermanentDeleteResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    ItemCategoryDeletionPreview:
+      type: object
+      required: [id, name, isActive, childCategoryCount, supplierLinkCount, aliasCount, blockingAliasCount, requestCount, productCount, canDelete]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        isActive: { type: boolean }
+        childCategoryCount: { type: integer }
+        supplierLinkCount: { type: integer }
+        aliasCount: { type: integer }
+        blockingAliasCount: { type: integer }
+        requestCount: { type: integer }
+        productCount: { type: integer }
+        canDelete: { type: boolean }
+    ItemCategoryOrderResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    ActivityLogEntry:
+      type: object
+      required: [id, adminId, actionType, entityType, entityId, oldValue, newValue, createdAt]
+      properties:
+        id: { type: integer }
+        adminId: { type: integer }
+        actionType: { type: string, enum: [add, edit, transfer, delete] }
+        entityType: { type: string, enum: [category, supplier, buyer] }
+        entityId: { type: integer }
+        oldValue: { type: ["object", "null"], additionalProperties: true }
+        newValue: { type: ["object", "null"], additionalProperties: true }
+        createdAt: { type: string }
+    Supplier:
+      type: object
+      required: [id, name, city, region, description, hasWhatsApp, address, website, googleCategory, googleRating, googleReviewCount, hoursNote, isVerified, isFeatured, averageRating, createdAt, offeredSubtypes]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        region: { type: string }
+        description: { type: string }
+        hasWhatsApp: { type: boolean }
+        address: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        googleCategory: { type: string, nullable: true }
+        googleRating: { type: number, nullable: true }
+        googleReviewCount: { type: integer, nullable: true }
+        hoursNote: { type: string, nullable: true }
+        isVerified: { type: boolean }
+        isFeatured: { type: boolean }
+        averageRating: { type: number }
+        createdAt: { type: string }
+        productCount: { type: integer }
+        offeredSubtypes:
+          type: array
+          items:
+            type: object
+            required: [id, itemId, nameAr, nameEn, itemName, itemNameEn, price, lastUpdated]
+            properties:
+              offerId: { type: integer }
+              id: { type: integer }
+              itemId: { type: integer }
+              nameAr: { type: string }
+              nameEn: { type: string }
+              itemName: { type: string }
+              itemNameEn: { type: ["string", "null"] }
+              price: { type: ["number", "null"], minimum: 0 }
+              lastUpdated: { type: string, format: date-time }
+              formId: { type: ["integer", "null"] }
+              formNameAr: { type: ["string", "null"] }
+              attributeOptions:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogItemOfferAttributeValue" }
+    AlmondVariant:
+      type: object
+      required: [form, preparation, size]
+      properties:
+        form: { type: string, enum: [whole, slices, powder] }
+        preparation: { type: string, enum: [raw, roasted] }
+        size: { type: ["string", "null"], enum: ["32", "34", "36", null] }
+    SupplierAlmondVariants:
+      type: object
+      required: [eligible, mode, variants]
+      properties:
+        eligible: { type: boolean }
+        mode: { type: string, enum: [unspecified, all, selected] }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/AlmondVariant" }
+    SupplierAlmondVariantsInput:
+      type: object
+      required: [mode, variants]
+      properties:
+        mode: { type: string, enum: [unspecified, all, selected] }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/AlmondVariant" }
+    Product:
+      type: object
+      required: [id, supplierId, supplierName, categoryId, categoryName, name, weight, unit, countryOfOrigin, minOrder, createdAt]
+      properties:
+        id: { type: integer }
+        supplierId: { type: integer }
+        supplierName: { type: string }
+        categoryId: { type: integer }
+        categoryName: { type: string }
+        name: { type: string }
+        weight: { type: string }
+        unit: { type: string }
+        countryOfOrigin: { type: string }
+        minOrder: { type: integer }
+        imageUrl: { type: [string, "null"] }
+        createdAt: { type: string }
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          required: [ingredients, technicalData, recommendedUse, shelfLife, storageConditions, supplier, similarProducts]
+          properties:
+            ingredients: { type: string }
+            technicalData: { type: string }
+            recommendedUse: { type: string }
+            shelfLife: { type: string }
+            storageConditions: { type: string }
+            supplier: { $ref: "#/components/schemas/Supplier" }
+            similarProducts:
+              type: array
+              items: { $ref: "#/components/schemas/Product" }
+    Review:
+      type: object
+      required: [id, supplierId, reviewerName, rating, comment, createdAt]
+      properties:
+        id: { type: integer }
+        supplierId: { type: integer }
+        reviewerName: { type: string }
+        rating: { type: integer }
+        comment: { type: string }
+        createdAt: { type: string }
+    ReviewInput:
+      type: object
+      required: [reviewerName, rating, comment]
+      properties:
+        reviewerName: { type: string, minLength: 2, maxLength: 80 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, minLength: 3, maxLength: 500 }
+    SupplierDetail:
+      allOf:
+        - $ref: "#/components/schemas/Supplier"
+        - type: object
+          required: [products, reviews]
+          properties:
+            products:
+              type: array
+              items: { $ref: "#/components/schemas/Product" }
+            reviews:
+              type: array
+              items: { $ref: "#/components/schemas/Review" }
+    HomeData:
+      type: object
+      required: [categories, featuredSuppliers, latestProducts, stats]
+      properties:
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+        featuredSuppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        latestProducts:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        stats:
+          $ref: "#/components/schemas/Stats"
+    Stats:
+      type: object
+      required: [suppliers, products, cities, reviews]
+      properties:
+        suppliers: { type: integer }
+        products: { type: integer }
+        cities: { type: integer }
+        reviews: { type: integer }
+    SearchResults:
+      type: object
+      required: [suppliers, products]
+      properties:
+        suppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+    CategoryDetail:
+      type: object
+      required: [category, suppliers, products, cities]
+      properties:
+        category: { $ref: "#/components/schemas/Category" }
+        suppliers:
+          type: array
+          items: { $ref: "#/components/schemas/Supplier" }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        cities:
+          type: array
+          items: { type: string }
+    ContactInput:
+      type: object
+      required: [name, email, subject, message]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        email: { type: string, format: email }
+        subject: { type: string, minLength: 2, maxLength: 120 }
+        message: { type: string, minLength: 5, maxLength: 1000 }
+    ContactResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    RegisterInput:
+      type: object
+      required: [name, email, region]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        email: { type: string, format: email }
+        region: { type: string, enum: ["المنطقة الشرقية"] }
+    RegisterResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    BuyerUser:
+      type: object
+      required: [id, fullName, phone, email, city, businessType, businessName, otherBusinessType, isOwner, jobTitle, createdAt, lastLogin]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        email: { type: [string, "null"], format: email }
+        city: { type: string }
+        businessType: { type: string }
+        businessName: { type: [string, "null"] }
+        otherBusinessType: { type: [string, "null"] }
+        isOwner: { type: boolean }
+        jobTitle: { type: [string, "null"] }
+        createdAt: { type: string }
+        lastLogin: { type: [string, "null"] }
+    BuyerRegisterInput:
+      type: object
+      required: [fullName, phone, city, businessType, isOwner, password]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string }
+        email: { type: string, format: email, maxLength: 160 }
+        city: { type: string }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
+        businessName: { type: string, maxLength: 120 }
+        otherBusinessType: { type: string, maxLength: 80 }
+        isOwner: { type: boolean }
+        jobTitle: { type: string, maxLength: 80 }
+        password: { type: string, minLength: 6, maxLength: 128, pattern: "^[A-Za-z0-9]+$" }
+        newsletterWeekly: { type: boolean }
+        buyersGroup: { type: boolean }
+    BuyerInvitationInput:
+      type: object
+      required: [fullName, phone, businessName, businessType, city]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 10, maxLength: 24 }
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        internalNotes: { type: string, maxLength: 1000 }
+        invitedAt: { type: string, format: date-time }
+    BuyerInvitationUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 10, maxLength: 24 }
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        businessType: { type: string, enum: ["مخبز", "محل حلويات", "مخبز وحلويات", "كافيه", "مطعم", "أسرة منتجة", "أسر منتجة", "فندق", "آخر"] }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        internalNotes: { type: string, maxLength: 1000 }
+        invitedAt: { type: string, format: date-time }
+    BuyerInvitation:
+      type: object
+      required: [id, fullName, phone, businessName, businessType, city, internalNotes, invitedAt, createdBy, inviteSentAt, activatedAt, buyerId, accountStatus, lastLogin, suspendedUntil, createdAt]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        businessName: { type: string }
+        businessType: { type: string }
+        city: { type: string }
+        internalNotes: { type: string }
+        invitedAt: { type: string }
+        createdBy: { type: string }
+        inviteSentAt: { type: [string, "null"] }
+        activatedAt: { type: [string, "null"] }
+        buyerId: { type: [integer, "null"] }
+        accountStatus: { type: string, enum: [invited, activated, active, suspended] }
+        lastLogin: { type: [string, "null"] }
+        suspendedUntil: { type: [string, "null"] }
+        createdAt: { type: string }
+    BuyerInvitationLink:
+      type: object
+      required: [token, fullName, phone, url, whatsappUrl]
+      properties:
+        token: { type: string }
+        fullName: { type: string }
+        phone: { type: string }
+        url: { type: string, format: uri }
+        whatsappUrl: { type: string, format: uri }
+    BuyerInvitationPublic:
+      type: object
+      required: [fullName, businessName, businessType, city, alreadyActivated]
+      properties:
+        fullName: { type: string }
+        businessName: { type: string }
+        businessType: { type: string }
+        city: { type: string }
+        alreadyActivated: { type: boolean }
+    BuyerInvitationActivationInput:
+      type: object
+      required: [password, email, newsletterWeekly, buyersGroup, termsAccepted]
+      properties:
+        password: { type: string, minLength: 6, maxLength: 128, pattern: "^[A-Za-z0-9]+$" }
+        email: { type: string, maxLength: 160 }
+        newsletterWeekly: { type: boolean }
+        buyersGroup: { type: boolean }
+        termsAccepted: { type: boolean, const: true }
+    BuyerInvitationActivationResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    BuyerInvitationStats:
+      type: object
+      required: [invited, activated, active, suspended, topSearches, dailyContactAttempts]
+      properties:
+        invited: { type: integer }
+        activated: { type: integer }
+        active: { type: integer }
+        suspended: { type: integer }
+        topSearches:
+          type: array
+          items:
+            type: object
+            required: [term, count]
+            properties:
+              term: { type: string }
+              count: { type: integer }
+        dailyContactAttempts:
+          type: array
+          items:
+            type: object
+            required: [date, count]
+            properties:
+              date: { type: string, format: date }
+              count: { type: integer }
+    BuyerInvitationAccountStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended] }
+        durationDays: { type: integer, minimum: 1, maximum: 90 }
+        reason: { type: string, maxLength: 1000 }
+    BuyerLoginInput:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string }
+        password: { type: string, minLength: 1 }
+        rememberMe: { type: boolean, default: false }
+    SupplierLoginInput:
+      type: object
+      required: [phone, password]
+      properties:
+        phone: { type: string }
+        password: { type: string, minLength: 1 }
+        rememberMe: { type: boolean, default: false }
+    SupplierAuthResponse:
+      type: object
+      required: [success, supplier]
+      properties:
+        success: { type: boolean }
+        supplier:
+          type: object
+          required: [id, name, city, phone, whatsapp, isVerified]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            city: { type: string }
+            phone: { type: string }
+            whatsapp: { type: string }
+            isVerified: { type: boolean }
+    BuyerAuthResponse:
+      type: object
+      required: [success, message, user]
+      properties:
+        success: { type: boolean }
+        requestCode: { type: string }
+        message: { type: string }
+        user: { $ref: "#/components/schemas/BuyerUser" }
+    BuyerMeResponse:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/BuyerUser" }
+    BuyerContactInput:
+      type: object
+      required: [supplierId]
+      properties:
+        supplierId: { type: integer }
+        message: { type: string, maxLength: 1000 }
+    BuyerContactResponse:
+      type: object
+      required: [success, messageId, message, whatsappUrl]
+      properties:
+        success: { type: boolean }
+        messageId: { type: string }
+        message: { type: string }
+        whatsappUrl: { type: string, format: uri }
+    BasicSuccessResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    AdminLoginInput:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, minLength: 1 }
+    AdminResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    RegistrationInterest:
+      type: object
+      required: [id, name, email, region, status, createdAt, reviewedAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        region: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string }
+        reviewedAt: { type: [string, "null"] }
+    RegistrationInterestList:
+      type: array
+      items:
+        $ref: "#/components/schemas/RegistrationInterest"
+    SupplierInvitationDraftInput:
+      type: object
+      required: [name, whatsapp, city]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        whatsapp: { type: string, minLength: 10, maxLength: 24 }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        source: { type: string, enum: [manual, whatsapp], default: manual }
+    SupplierInvitationOptions:
+      type: object
+      required: [cities]
+      properties:
+        cities:
+          type: array
+          items: { type: string }
+    SupplierSourceStats:
+      type: object
+      required: [manual, whatsapp, selfRegistered]
+      properties:
+        manual: { type: integer, minimum: 0 }
+        whatsapp: { type: integer, minimum: 0 }
+        selfRegistered: { type: integer, minimum: 0 }
+    SupplierInvitation:
+      type: object
+      required: [supplierId, name, city, whatsapp, inviteSentAt, inviteOpenedAt, inviteCompletedAt, requestStatus, isActive, createdAt]
+      properties:
+        supplierId: { type: integer }
+        name: { type: string }
+        city: { type: string }
+        whatsapp: { type: string }
+        inviteSentAt: { type: [string, "null"] }
+        inviteOpenedAt: { type: [string, "null"] }
+        inviteCompletedAt: { type: [string, "null"] }
+        requestStatus: { type: [string, "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    SupplierInvitationStats:
+      type: object
+      required: [sent, opened, completed, responseRate]
+      properties:
+        sent: { type: integer }
+        opened: { type: integer }
+        completed: { type: integer }
+        responseRate: { type: number }
+    SupplierInvitationLink:
+      type: object
+      required: [supplierId, token, supplierName, whatsapp]
+      properties:
+        supplierId: { type: integer }
+        token: { type: string }
+        supplierName: { type: string }
+        whatsapp: { type: string }
+    SupplierInvitationActivationInput:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
+    SupplierInvite:
+      type: object
+      required: [supplierName, initialCity, initialWhatsapp, cities, categories, readyMixSubtypes, alreadyCompleted]
+      properties:
+        supplierName: { type: string }
+        initialCity: { type: string }
+        initialWhatsapp: { type: string }
+        alreadyCompleted: { type: boolean }
+        cities:
+          type: array
+          items: { type: string }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/ItemCategory" }
+        readyMixSubtypes:
+          type: array
+          items: { type: string }
+    SupplierInviteInput:
+      type: object
+      required: [businessName, city, whatsapp, categories]
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        city: { type: string, minLength: 2, maxLength: 80 }
+        whatsapp: { type: string, minLength: 10, maxLength: 24 }
+        categories:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { type: string, minLength: 1, maxLength: 100 }
+        otherCategory: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        images:
+          type: array
+          maxItems: 3
+          items: { type: string, maxLength: 7000000 }
+    SupplierInviteCompletion:
+      type: object
+      required: [success, status, requestCode, message]
+      properties:
+        success: { type: boolean }
+        status: { type: string, enum: [pending_review] }
+        requestCode: { type: string }
+        message: { type: string }
+    SupplierActivationInfo:
+      type: object
+      required: [supplierName, phone, expiresAt]
+      properties:
+        supplierName: { type: string }
+        phone: { type: string }
+        expiresAt: { type: string, format: date-time }
+    SupplierActivationInput:
+      type: object
+      required: [token, password, confirmPassword]
+      properties:
+        token: { type: string, minLength: 32, maxLength: 64, pattern: "^[A-Za-z0-9_-]+$" }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        confirmPassword: { type: string, minLength: 8, maxLength: 128 }
+    SupplierActivationResult:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    SupplierActivationLink:
+      type: object
+      required: [path, expiresAt]
+      properties:
+        path: { type: string }
+        expiresAt: { type: string, format: date-time }
